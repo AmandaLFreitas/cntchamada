@@ -209,18 +209,32 @@ export default function Students() {
     }
   };
 
+  // Auto-pairing: Segunda↔Quarta, Terça↔Quinta
+  const getPairedDay = (day: string): string | null => {
+    const pairs: Record<string, string> = {
+      'Segunda': 'Quarta', 'Quarta': 'Segunda',
+      'Terça': 'Quinta', 'Quinta': 'Terça',
+    };
+    return pairs[day] || null;
+  };
+
   const toggleDayTime = (day: string, time: string) => {
     setForm(f => {
-      const current = f.daySchedules[day] || [];
-      const updated = current.includes(time)
-        ? current.filter(t => t !== time)
-        : [...current, time];
       const newDaySchedules = { ...f.daySchedules };
-      if (updated.length === 0) {
-        delete newDaySchedules[day];
-      } else {
-        newDaySchedules[day] = updated;
-      }
+      const applyToggle = (d: string) => {
+        const current = newDaySchedules[d] || [];
+        const updated = current.includes(time)
+          ? current.filter(t => t !== time)
+          : [...current, time];
+        if (updated.length === 0) {
+          delete newDaySchedules[d];
+        } else {
+          newDaySchedules[d] = updated;
+        }
+      };
+      applyToggle(day);
+      const paired = getPairedDay(day);
+      if (paired) applyToggle(paired);
       return { ...f, daySchedules: newDaySchedules };
     });
   };
