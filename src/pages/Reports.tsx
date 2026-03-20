@@ -3,11 +3,13 @@ import { useReportData } from '@/hooks/use-supabase-data';
 import { AttendanceReport } from '@/components/AttendanceReport';
 import { Separator } from '@/components/ui/separator';
 import { Input } from '@/components/ui/input';
-import { Search, ChevronLeft, User } from 'lucide-react';
+import { Search, ChevronLeft, User, FileText } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useQuery } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { CertificateDialog } from '@/components/CertificateDialog';
+import type { CertificateData } from '@/lib/certificate-templates';
 
 type ViewMode = 'cards' | 'list';
 type StatusFilter = 'em_andamento' | 'finalizado' | 'desistiu';
