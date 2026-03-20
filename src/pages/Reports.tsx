@@ -295,10 +295,33 @@ export default function Reports() {
                   </div>
                 </div>
               )}
+              {(selectedStudent.status === 'finalizado' || selectedStudent.status === 'desistiu') && (
+                <Button
+                  className="w-full gap-2"
+                  onClick={() => {
+                    const courseName = (selectedStudent.courses as any)?.name || selectedStudent.custom_course_name || 'N/A';
+                    const today = new Date().toISOString().split('T')[0];
+                    setCertData({
+                      studentName: selectedStudent.full_name || 'Sem nome',
+                      courseName,
+                      workload: selectedStudent.workload ?? 48,
+                      startDate: selectedStudent.enrollment_date ?? null,
+                      endDate: today,
+                    });
+                    setCertOpen(true);
+                  }}
+                >
+                  <FileText className="h-4 w-4" /> Gerar Certificado
+                </Button>
+              )}
             </div>
           )}
         </DialogContent>
       </Dialog>
+
+      {certData && (
+        <CertificateDialog open={certOpen} onOpenChange={setCertOpen} data={certData} />
+      )}
     </div>
   );
 }
