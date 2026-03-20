@@ -3,7 +3,6 @@ import { BrowserRouter, Route, Routes } from "react-router-dom";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { Layout } from "@/components/Layout";
-import { BirthdayAlert } from "@/components/BirthdayAlert";
 import Overview from "./pages/Overview";
 import Students from "./pages/Students";
 import Attendance from "./pages/Attendance";
@@ -17,7 +16,6 @@ const App = () => (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
       <Sonner />
-      <BirthdayAlert />
       <BrowserRouter>
         <Layout>
           <Routes>
