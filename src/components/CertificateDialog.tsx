@@ -1,11 +1,10 @@
 import { useState, useRef, useEffect } from 'react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { getCertificateTemplate, type CertificateData } from '@/lib/certificate-templates';
-import { Printer, Download, Eye, Pencil } from 'lucide-react';
+import { getCertificateFields, type CertificateData, type CertificateFields } from '@/lib/certificate-templates';
+import { Printer, Download, Pencil, Eye } from 'lucide-react';
 import html2canvas from 'html2canvas';
 import jsPDF from 'jspdf';
 
@@ -16,22 +15,21 @@ interface Props {
 }
 
 export function CertificateDialog({ open, onOpenChange, data }: Props) {
-  const [mode, setMode] = useState<'edit' | 'preview'>('edit');
-  const [text, setText] = useState('');
-  const [studentName, setStudentName] = useState(data.studentName);
-  const [courseName, setCourseName] = useState(data.courseName);
-  const [workload, setWorkload] = useState(data.workload);
+  const [mode, setMode] = useState<'edit' | 'preview'>('preview');
+  const [fields, setFields] = useState<CertificateFields | null>(null);
   const certRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (open) {
-      setStudentName(data.studentName);
-      setCourseName(data.courseName);
-      setWorkload(data.workload);
-      setText(getCertificateTemplate(data));
-      setMode('edit');
+      setFields(getCertificateFields(data));
+      setMode('preview');
     }
   }, [open, data]);
+
+  const updateField = (key: keyof CertificateFields, value: string) => {
+    if (!fields) return;
+    setFields({ ...fields, [key]: value });
+  };
 
   const handlePrint = () => {
     const content = certRef.current;
@@ -39,22 +37,14 @@ export function CertificateDialog({ open, onOpenChange, data }: Props) {
     const w = window.open('', '_blank');
     if (!w) return;
     w.document.write(`<html><head><title>Certificado</title><style>
-      @page { size: landscape; margin: 0; }
-      body { margin: 0; font-family: 'Georgia', serif; }
-      .cert { width: 297mm; height: 210mm; box-sizing: border-box; padding: 24mm; display: flex; flex-direction: column; align-items: center; justify-content: center; border: 8px double #1a365d; position: relative; }
-      .cert::before { content: ''; position: absolute; inset: 8px; border: 2px solid #c6a14a; pointer-events: none; }
-      h1 { font-size: 32pt; color: #1a365d; margin: 0 0 4mm; letter-spacing: 2px; }
-      h2 { font-size: 14pt; color: #4a5568; font-weight: normal; margin: 0 0 12mm; }
-      .body-text { font-size: 13pt; line-height: 1.8; text-align: center; max-width: 220mm; white-space: pre-wrap; color: #2d3748; }
-      .footer { margin-top: 20mm; display: flex; gap: 60mm; }
-      .sig { text-align: center; width: 70mm; }
-      .sig-line { border-top: 1px solid #2d3748; margin-bottom: 2mm; }
-      .sig-label { font-size: 10pt; color: #4a5568; }
+      @page { size: A4 landscape; margin: 0; }
+      body { margin: 0; }
+      .cert-page { width: 297mm; height: 210mm; box-sizing: border-box; }
     </style></head><body>`);
-    w.document.write(content.innerHTML);
+    w.document.write(content.outerHTML);
     w.document.write('</body></html>');
     w.document.close();
-    setTimeout(() => { w.print(); }, 400);
+    setTimeout(() => w.print(), 400);
   };
 
   const handleDownload = async () => {
@@ -64,93 +54,159 @@ export function CertificateDialog({ open, onOpenChange, data }: Props) {
     const imgData = canvas.toDataURL('image/png');
     const pdf = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
     pdf.addImage(imgData, 'PNG', 0, 0, 297, 210);
-    pdf.save(`certificado-${studentName.replace(/\s+/g, '-').toLowerCase()}.pdf`);
+    pdf.save(`certificado-${fields?.studentName.replace(/\s+/g, '-').toLowerCase() ?? 'aluno'}.pdf`);
   };
+
+  if (!fields) return null;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle>Certificado — {studentName}</DialogTitle>
-        </DialogHeader>
-
-        {mode === 'edit' ? (
-          <div className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <Label>Nome do Aluno</Label>
-                <Input value={studentName} onChange={e => setStudentName(e.target.value)} />
-              </div>
-              <div>
-                <Label>Curso</Label>
-                <Input value={courseName} onChange={e => setCourseName(e.target.value)} />
-              </div>
-              <div>
-                <Label>Carga Horária (horas)</Label>
-                <Input type="number" value={workload} onChange={e => setWorkload(Number(e.target.value))} />
-              </div>
-            </div>
-            <div>
-              <Label>Texto do Certificado</Label>
-              <Textarea value={text} onChange={e => setText(e.target.value)} rows={8} />
-            </div>
-            <Button onClick={() => setMode('preview')} className="gap-2">
-              <Eye className="h-4 w-4" /> Visualizar
-            </Button>
-          </div>
-        ) : (
-          <div className="space-y-4">
-            <div
-              ref={certRef}
-              style={{
-                width: '297mm',
-                height: '210mm',
-                padding: '24mm',
-                border: '8px double #1a365d',
-                position: 'relative',
-                display: 'flex',
-                flexDirection: 'column',
-                alignItems: 'center',
-                justifyContent: 'center',
-                fontFamily: "'Georgia', serif",
-                background: '#fff',
-                boxSizing: 'border-box',
-                transform: 'scale(0.35)',
-                transformOrigin: 'top left',
-              }}
-            >
-              <div style={{ position: 'absolute', inset: '8px', border: '2px solid #c6a14a', pointerEvents: 'none' }} />
-              <h1 style={{ fontSize: '32pt', color: '#1a365d', margin: '0 0 4mm', letterSpacing: '2px' }}>CERTIFICADO</h1>
-              <h2 style={{ fontSize: '14pt', color: '#4a5568', fontWeight: 'normal', margin: '0 0 12mm' }}>CNT Informática</h2>
-              <div style={{ fontSize: '13pt', lineHeight: 1.8, textAlign: 'center', maxWidth: '220mm', whiteSpace: 'pre-wrap', color: '#2d3748' }}>
-                {text}
-              </div>
-              <div style={{ marginTop: '20mm', display: 'flex', gap: '60mm' }}>
-                <div style={{ textAlign: 'center', width: '70mm' }}>
-                  <div style={{ borderTop: '1px solid #2d3748', marginBottom: '2mm' }} />
-                  <div style={{ fontSize: '10pt', color: '#4a5568' }}>Diretor(a)</div>
-                </div>
-                <div style={{ textAlign: 'center', width: '70mm' }}>
-                  <div style={{ borderTop: '1px solid #2d3748', marginBottom: '2mm' }} />
-                  <div style={{ fontSize: '10pt', color: '#4a5568' }}>Instrutor(a)</div>
-                </div>
-              </div>
-            </div>
-            <div style={{ height: `calc(210mm * 0.35)` }} />
-
-            <DialogFooter className="flex gap-2 justify-end">
-              <Button variant="outline" onClick={() => setMode('edit')} className="gap-2">
+      <DialogContent className="max-w-[95vw] w-[1200px] max-h-[95vh] overflow-y-auto p-4">
+        <DialogHeader className="flex flex-row items-center justify-between gap-2 flex-wrap">
+          <DialogTitle className="text-lg">Certificado</DialogTitle>
+          <div className="flex gap-2 flex-wrap">
+            {mode === 'preview' ? (
+              <Button variant="outline" size="sm" onClick={() => setMode('edit')} className="gap-1.5">
                 <Pencil className="h-4 w-4" /> Editar
               </Button>
-              <Button variant="outline" onClick={handlePrint} className="gap-2">
-                <Printer className="h-4 w-4" /> Imprimir
+            ) : (
+              <Button variant="outline" size="sm" onClick={() => setMode('preview')} className="gap-1.5">
+                <Eye className="h-4 w-4" /> Visualizar
               </Button>
-              <Button onClick={handleDownload} className="gap-2">
-                <Download className="h-4 w-4" /> Baixar PDF
-              </Button>
-            </DialogFooter>
+            )}
+            <Button variant="outline" size="sm" onClick={handlePrint} className="gap-1.5">
+              <Printer className="h-4 w-4" /> Imprimir
+            </Button>
+            <Button size="sm" onClick={handleDownload} className="gap-1.5">
+              <Download className="h-4 w-4" /> Baixar PDF
+            </Button>
+          </div>
+        </DialogHeader>
+
+        {mode === 'edit' && (
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-3 py-2 border-b">
+            <div>
+              <Label className="text-xs">Nome do Aluno</Label>
+              <Input value={fields.studentName} onChange={e => updateField('studentName', e.target.value)} className="h-8 text-sm" />
+            </div>
+            <div>
+              <Label className="text-xs">Curso</Label>
+              <Input value={fields.courseTitle} onChange={e => updateField('courseTitle', e.target.value)} className="h-8 text-sm" />
+            </div>
+            <div>
+              <Label className="text-xs">Módulos</Label>
+              <Input value={fields.modules} onChange={e => updateField('modules', e.target.value)} className="h-8 text-sm" />
+            </div>
+            <div>
+              <Label className="text-xs">Modalidade</Label>
+              <Input value={fields.modalidade} onChange={e => updateField('modalidade', e.target.value)} className="h-8 text-sm" />
+            </div>
+            <div>
+              <Label className="text-xs">Frequência</Label>
+              <Input value={fields.frequencia} onChange={e => updateField('frequencia', e.target.value)} className="h-8 text-sm" />
+            </div>
+            <div>
+              <Label className="text-xs">Carga Horária</Label>
+              <Input value={fields.cargaHoraria} onChange={e => updateField('cargaHoraria', e.target.value)} className="h-8 text-sm" />
+            </div>
+            <div>
+              <Label className="text-xs">Nota</Label>
+              <Input value={fields.nota} onChange={e => updateField('nota', e.target.value)} className="h-8 text-sm" />
+            </div>
+            <div>
+              <Label className="text-xs">Data Início</Label>
+              <Input value={fields.startDate} onChange={e => updateField('startDate', e.target.value)} className="h-8 text-sm" />
+            </div>
+            <div>
+              <Label className="text-xs">Data Fim</Label>
+              <Input value={fields.endDate} onChange={e => updateField('endDate', e.target.value)} className="h-8 text-sm" />
+            </div>
+            <div>
+              <Label className="text-xs">Cidade</Label>
+              <Input value={fields.city} onChange={e => updateField('city', e.target.value)} className="h-8 text-sm" />
+            </div>
+            <div className="col-span-2">
+              <Label className="text-xs">Data por Extenso</Label>
+              <Input value={fields.fullDate} onChange={e => updateField('fullDate', e.target.value)} className="h-8 text-sm" />
+            </div>
           </div>
         )}
+
+        {/* Certificate Preview - exact format from the DOCX models */}
+        <div className="flex justify-center overflow-auto">
+          <div
+            ref={certRef}
+            className="cert-page"
+            style={{
+              width: '297mm',
+              height: '210mm',
+              padding: '20mm 30mm',
+              background: '#fff',
+              fontFamily: "'Times New Roman', 'Georgia', serif",
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              justifyContent: 'center',
+              boxSizing: 'border-box',
+              transform: 'scale(0.38)',
+              transformOrigin: 'top left',
+              position: 'relative',
+              color: '#000',
+            }}
+          >
+            {/* Line 1: Certificamos que, NOME */}
+            <p style={{ fontSize: '22pt', textAlign: 'center', margin: '0 0 16mm', lineHeight: 1.6 }}>
+              Certificamos que,{' '}
+              <span style={{ fontWeight: 'bold', textDecoration: 'underline' }}>
+                {fields.studentName}
+              </span>
+            </p>
+
+            {/* Line 2: Concluiu o curso de: CURSO */}
+            <p style={{ fontSize: '22pt', textAlign: 'center', margin: '0 0 8mm', lineHeight: 1.6 }}>
+              Concluiu o curso de:{' '}
+              <span style={{ fontWeight: 'bold', textDecoration: 'underline' }}>
+                {fields.courseTitle}
+              </span>
+            </p>
+
+            {/* Line 3: Modules (if any) */}
+            {fields.modules && (
+              <p style={{ fontSize: '16pt', textAlign: 'center', margin: '0 0 12mm', lineHeight: 1.5, fontWeight: 'bold', textDecoration: 'underline' }}>
+                {fields.modules}
+              </p>
+            )}
+
+            {/* Line 4: Modalidade – Frequência – Carga horária – Nota */}
+            <p style={{ fontSize: '18pt', textAlign: 'center', margin: '0 0 12mm', lineHeight: 1.8 }}>
+              Modalidade{' '}
+              <span style={{ fontStyle: 'italic', textDecoration: 'underline' }}>{fields.modalidade}</span>
+              {' – Frequência '}
+              <span style={{ fontStyle: 'italic', fontWeight: 'bold', textDecoration: 'underline' }}>{fields.frequencia}</span>
+              {' - Carga horária '}
+              <span style={{ fontStyle: 'italic', fontWeight: 'bold', textDecoration: 'underline' }}>{fields.cargaHoraria}</span>
+              <br />
+              {'horas - Nota '}
+              <span style={{ fontStyle: 'italic', fontWeight: 'bold', textDecoration: 'underline' }}>{fields.nota}</span>
+            </p>
+
+            {/* Line 5: Período */}
+            <p style={{ fontSize: '18pt', textAlign: 'center', margin: '0 0 12mm', lineHeight: 1.6 }}>
+              No período de{' '}
+              <span style={{ fontStyle: 'italic', textDecoration: 'underline' }}>{fields.startDate}</span>
+              {'  a  '}
+              <span style={{ fontStyle: 'italic', textDecoration: 'underline' }}>{fields.endDate}</span>
+            </p>
+
+            {/* Line 6: Cidade, data */}
+            <p style={{ fontSize: '18pt', textAlign: 'center', margin: '0', fontStyle: 'italic', lineHeight: 1.6 }}>
+              {fields.city},{' '}
+              <span style={{ fontWeight: 'bold' }}>{fields.fullDate}</span>
+            </p>
+          </div>
+        </div>
+        {/* Spacer matching scaled height */}
+        <div style={{ height: 'calc(210mm * 0.38)' }} />
       </DialogContent>
     </Dialog>
   );
