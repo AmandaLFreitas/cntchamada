@@ -20,6 +20,8 @@ export default function Reports() {
   const [viewMode, setViewMode] = useState<ViewMode>('cards');
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('em_andamento');
   const [selectedStudentId, setSelectedStudentId] = useState<string | null>(null);
+  const [certOpen, setCertOpen] = useState(false);
+  const [certData, setCertData] = useState<CertificateData | null>(null);
 
   // Fetch all students (active and inactive) for filtering by status
   const { data: allStudents } = useQuery({
