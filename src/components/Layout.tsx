@@ -1,5 +1,6 @@
 import { SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar';
 import { AppSidebar } from '@/components/AppSidebar';
+import { BirthdayBanner } from '@/components/BirthdayBanner';
 import logoImg from '@/assets/logo-cnt.png';
 
 export function Layout({ children }: { children: React.ReactNode }) {
@@ -16,6 +17,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
             </div>
           </header>
           <main className="flex-1 p-4 md:p-6 overflow-auto">
+            <BirthdayBanner />
             {children}
           </main>
         </div>

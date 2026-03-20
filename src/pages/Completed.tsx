@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useCompletions, useStudents } from '@/hooks/use-supabase-data';
+import { useCompletions } from '@/hooks/use-supabase-data';
 import { Input } from '@/components/ui/input';
 import { Search } from 'lucide-react';
 import { CertificateDialog } from '@/components/CertificateDialog';
@@ -13,13 +13,14 @@ export default function Completed() {
   const [certOpen, setCertOpen] = useState(false);
   const [certData, setCertData] = useState<CertificateData | null>(null);
 
-  // Fetch all students (including inactive) for search
-  const { data: allStudents } = useQuery({
-    queryKey: ['all_students_for_cert'],
+  // Only finalized students (not desistiu)
+  const { data: finalizedStudents } = useQuery({
+    queryKey: ['finalized_students_for_cert'],
     queryFn: async () => {
       const { data, error } = await supabase
         .from('students')
         .select('*, courses(name, workload)')
+        .eq('status', 'finalizado')
         .order('full_name');
       if (error) throw error;
       return data;
@@ -28,41 +29,23 @@ export default function Completed() {
 
   if (isLoading) return <p className="text-muted-foreground">Carregando...</p>;
 
-  // Search results from completions and students
+  // Search in finalized students and completions
   const searchResults = search.trim().length > 0
-    ? (completions ?? []).filter(c =>
-        (c.students as any)?.full_name?.toLowerCase().includes(search.toLowerCase())
+    ? (finalizedStudents ?? []).filter(s =>
+        s.full_name?.toLowerCase().includes(search.toLowerCase())
       )
-    : [];
+    : (finalizedStudents ?? []);
 
-  // Also search in all students that don't have completions
-  const studentResults = search.trim().length > 0
-    ? (allStudents ?? []).filter(s => {
-        const hasCompletion = completions?.some(c => c.student_id === s.id);
-        return !hasCompletion && s.full_name?.toLowerCase().includes(search.toLowerCase());
-      })
-    : [];
-
-  const openCertFromCompletion = (c: any) => {
-    setCertData({
-      studentName: (c.students as any)?.full_name || 'Sem nome',
-      courseName: c.course_name || 'N/A',
-      workload: 48,
-      startDate: c.start_date,
-      endDate: c.end_date,
-    });
-    setCertOpen(true);
-  };
-
-  const openCertFromStudent = (s: any) => {
-    const courseName = s.courses?.name || s.custom_course_name || 'N/A';
+  const openCert = (s: any) => {
+    const completion = completions?.find(c => c.student_id === s.id);
+    const courseName = (s.courses as any)?.name || s.custom_course_name || completion?.course_name || 'N/A';
     const today = new Date().toISOString().split('T')[0];
     setCertData({
       studentName: s.full_name || 'Sem nome',
       courseName,
       workload: s.workload ?? 48,
-      startDate: s.enrollment_date ?? null,
-      endDate: today,
+      startDate: s.enrollment_date ?? completion?.start_date ?? null,
+      endDate: completion?.end_date ?? today,
     });
     setCertOpen(true);
   };
@@ -70,6 +53,7 @@ export default function Completed() {
   return (
     <div>
       <h1 className="text-2xl font-bold mb-4">Certificados</h1>
+      <p className="text-sm text-muted-foreground mb-4">Disponível apenas para alunos com status <strong>Finalizado</strong>.</p>
 
       <div className="relative mb-4 max-w-sm">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -81,41 +65,28 @@ export default function Completed() {
         />
       </div>
 
-      {search.trim().length > 0 ? (
+      {searchResults.length > 0 ? (
         <div className="space-y-2">
-          {searchResults.map(c => (
-            <button
-              key={c.id}
-              onClick={() => openCertFromCompletion(c)}
-              className="w-full bg-card border rounded-lg p-3 text-left hover:shadow-md transition-shadow cursor-pointer flex items-center justify-between"
-            >
-              <div>
-                <p className="font-medium">{(c.students as any)?.full_name || 'Sem nome'}</p>
-                <p className="text-sm text-muted-foreground">{c.course_name || 'N/A'} • Finalizado em {c.end_date}</p>
-              </div>
-              <span className="text-xs bg-green-100 text-green-800 px-2 py-1 rounded">Concluído</span>
-            </button>
-          ))}
-          {studentResults.map(s => (
-            <button
-              key={s.id}
-              onClick={() => openCertFromStudent(s)}
-              className="w-full bg-card border rounded-lg p-3 text-left hover:shadow-md transition-shadow cursor-pointer flex items-center justify-between"
-            >
-              <div>
-                <p className="font-medium">{s.full_name || 'Sem nome'}</p>
-                <p className="text-sm text-muted-foreground">{(s.courses as any)?.name || s.custom_course_name || 'Sem curso'}</p>
-              </div>
-              <span className="text-xs bg-muted px-2 py-1 rounded capitalize">{s.status?.replace('_', ' ') || 'Em andamento'}</span>
-            </button>
-          ))}
-          {searchResults.length === 0 && studentResults.length === 0 && (
-            <p className="text-muted-foreground text-center py-8">Nenhum aluno encontrado.</p>
-          )}
+          {searchResults.map(s => {
+            const courseName = (s.courses as any)?.name || s.custom_course_name || 'Sem curso';
+            return (
+              <button
+                key={s.id}
+                onClick={() => openCert(s)}
+                className="w-full bg-card border rounded-lg p-3 text-left hover:shadow-md transition-shadow cursor-pointer flex items-center justify-between"
+              >
+                <div>
+                  <p className="font-medium">{s.full_name || 'Sem nome'}</p>
+                  <p className="text-sm text-muted-foreground">{courseName}</p>
+                </div>
+                <span className="text-xs bg-green-100 text-green-800 px-2 py-1 rounded">Finalizado</span>
+              </button>
+            );
+          })}
         </div>
       ) : (
         <p className="text-muted-foreground text-center py-8">
-          Digite o nome do aluno para buscar e gerar o certificado.
+          {search.trim() ? 'Nenhum aluno finalizado encontrado.' : 'Nenhum aluno finalizado.'}
         </p>
       )}
 
