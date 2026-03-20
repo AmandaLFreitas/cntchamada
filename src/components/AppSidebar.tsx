@@ -19,7 +19,7 @@ const items = [
   { title: 'Alunos', url: '/alunos', icon: Users },
   { title: 'Chamada', url: '/chamada', icon: ClipboardList },
   { title: 'Relatórios', url: '/relatorios', icon: BarChart3 },
-  { title: 'Finalizados', url: '/finalizados', icon: CheckCircle },
+  { title: 'Certificados', url: '/finalizados', icon: CheckCircle },
 ];
 
 export function AppSidebar() {

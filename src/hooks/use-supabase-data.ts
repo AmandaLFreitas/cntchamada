@@ -160,6 +160,7 @@ export function useUpdateStudent() {
       id: string; full_name?: string; street?: string; house_number?: string; birth_date?: string;
       cpf?: string; enrollment_date?: string; course_id?: string | null; custom_course_name?: string;
       guardian_name?: string; guardian_phone?: string; workload?: number; status?: string;
+      is_active?: boolean;
       schedules?: string[];
     }) => {
       const { error } = await supabase.from('students').update(studentData).eq('id', id);
