@@ -41,26 +41,34 @@ export function CertificateDialog({ open, onOpenChange, data }: Props) {
     <style>
       @import url('https://fonts.googleapis.com/css2?family=Gabriela&display=swap');
       @page { size: A4 landscape; margin: 0; }
-      * { margin: 0; padding: 0; box-sizing: border-box; }
-      body { margin: 0; }
+      html, body { margin: 0; padding: 0; width: 297mm; height: 210mm; }
       .cert-page {
-        width: 297mm;
-        height: 210mm;
-        padding: 25mm 35mm;
-        font-family: 'Gabriela', 'Georgia', serif;
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        justify-content: center;
-        box-sizing: border-box;
-        color: #000;
-        background: #fff;
+        width: 297mm !important;
+        height: 210mm !important;
+        min-height: 210mm !important;
+        padding: 25mm 35mm !important;
+        font-family: 'Gabriela', 'Georgia', serif !important;
+        display: flex !important;
+        flex-direction: column !important;
+        align-items: center !important;
+        justify-content: center !important;
+        box-sizing: border-box !important;
+        color: #000 !important;
+        background: #fff !important;
+        transform: none !important;
+        border: none !important;
+        box-shadow: none !important;
+        position: relative !important;
       }
     </style></head><body>`);
-    w.document.write(content.outerHTML);
+    const clone = content.cloneNode(true) as HTMLElement;
+    clone.style.transform = 'none';
+    clone.style.border = 'none';
+    clone.style.boxShadow = 'none';
+    w.document.write(clone.outerHTML);
     w.document.write('</body></html>');
     w.document.close();
-    setTimeout(() => w.print(), 600);
+    setTimeout(() => w.print(), 800);
   };
 
   const handleDownload = async () => {
