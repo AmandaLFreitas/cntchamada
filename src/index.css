@@ -1,0 +1,78 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 210 20% 96%;
+    --foreground: 215 40% 12%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 215 40% 12%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 215 40% 12%;
+
+    --primary: 217 80% 32%;
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 217 60% 92%;
+    --secondary-foreground: 217 80% 25%;
+
+    --muted: 210 25% 93%;
+    --muted-foreground: 215 16% 47%;
+
+    --accent: 217 70% 88%;
+    --accent-foreground: 217 80% 25%;
+
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 100%;
+
+    --success: 160 84% 39%;
+    --success-foreground: 0 0% 100%;
+
+    --border: 214 25% 88%;
+    --input: 214 25% 88%;
+    --ring: 217 80% 32%;
+
+    --radius: 0.5rem;
+
+    --sidebar-background: 217 80% 22%;
+    --sidebar-foreground: 210 20% 92%;
+    --sidebar-primary: 0 0% 100%;
+    --sidebar-primary-foreground: 217 80% 22%;
+    --sidebar-accent: 217 70% 30%;
+    --sidebar-accent-foreground: 0 0% 100%;
+    --sidebar-border: 217 60% 28%;
+    --sidebar-ring: 217 80% 50%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground font-sans antialiased;
+    font-family: 'Inter', sans-serif;
+  }
+}
+
+@media print {
+  body * {
+    visibility: hidden;
+  }
+  [data-report-print],
+  [data-report-print] * {
+    visibility: visible;
+  }
+  [data-report-print] {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+  }
+}
