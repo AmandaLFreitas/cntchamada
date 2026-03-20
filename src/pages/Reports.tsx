@@ -3,11 +3,13 @@ import { useReportData } from '@/hooks/use-supabase-data';
 import { AttendanceReport } from '@/components/AttendanceReport';
 import { Separator } from '@/components/ui/separator';
 import { Input } from '@/components/ui/input';
-import { Search, ChevronLeft, User } from 'lucide-react';
+import { Search, ChevronLeft, User, FileText } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useQuery } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { CertificateDialog } from '@/components/CertificateDialog';
+import type { CertificateData } from '@/lib/certificate-templates';
 
 type ViewMode = 'cards' | 'list';
 type StatusFilter = 'em_andamento' | 'finalizado' | 'desistiu';
@@ -18,6 +20,8 @@ export default function Reports() {
   const [viewMode, setViewMode] = useState<ViewMode>('cards');
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('em_andamento');
   const [selectedStudentId, setSelectedStudentId] = useState<string | null>(null);
+  const [certOpen, setCertOpen] = useState(false);
+  const [certData, setCertData] = useState<CertificateData | null>(null);
 
   // Fetch all students (active and inactive) for filtering by status
   const { data: allStudents } = useQuery({
@@ -291,10 +295,33 @@ export default function Reports() {
                   </div>
                 </div>
               )}
+              {(selectedStudent.status === 'finalizado' || selectedStudent.status === 'desistiu') && (
+                <Button
+                  className="w-full gap-2"
+                  onClick={() => {
+                    const courseName = (selectedStudent.courses as any)?.name || selectedStudent.custom_course_name || 'N/A';
+                    const today = new Date().toISOString().split('T')[0];
+                    setCertData({
+                      studentName: selectedStudent.full_name || 'Sem nome',
+                      courseName,
+                      workload: selectedStudent.workload ?? 48,
+                      startDate: selectedStudent.enrollment_date ?? null,
+                      endDate: today,
+                    });
+                    setCertOpen(true);
+                  }}
+                >
+                  <FileText className="h-4 w-4" /> Gerar Certificado
+                </Button>
+              )}
             </div>
           )}
         </DialogContent>
       </Dialog>
+
+      {certData && (
+        <CertificateDialog open={certOpen} onOpenChange={setCertOpen} data={certData} />
+      )}
     </div>
   );
 }
