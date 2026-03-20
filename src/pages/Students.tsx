@@ -167,8 +167,9 @@ export default function Students() {
     return ids;
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     const schedules = computeScheduleIds(form.daySchedules);
+    const shouldDeactivate = form.status === 'finalizado' || form.status === 'desistiu';
     const data: any = {
       full_name: form.full_name || null,
       street: form.street || null,
@@ -180,9 +181,10 @@ export default function Students() {
       custom_course_name: form.custom_course_name || null,
       guardian_name: form.show_guardian ? form.guardian_name || null : null,
       guardian_phone: form.show_guardian ? form.guardian_phone || null : null,
-      schedules,
+      schedules: shouldDeactivate ? [] : schedules,
       workload: form.workload,
       status: form.status,
+      is_active: !shouldDeactivate,
     };
 
     if (editingId) {
