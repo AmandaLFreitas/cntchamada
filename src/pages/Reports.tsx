@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useReportData } from '@/hooks/use-supabase-data';
 import { AttendanceReport } from '@/components/AttendanceReport';
+import { MonthlyReports } from '@/components/MonthlyReports';
 import { Separator } from '@/components/ui/separator';
 import { Input } from '@/components/ui/input';
 import { Search, ChevronLeft, User, FileText } from 'lucide-react';
@@ -23,7 +24,6 @@ export default function Reports() {
   const [certOpen, setCertOpen] = useState(false);
   const [certData, setCertData] = useState<CertificateData | null>(null);
 
-  // Fetch all students (active and inactive) for filtering by status
   const { data: allStudents } = useQuery({
     queryKey: ['all_students_with_courses'],
     queryFn: async () => {
@@ -36,7 +36,6 @@ export default function Reports() {
     },
   });
 
-  // Fetch counts by status
   const { data: statusCounts } = useQuery({
     queryKey: ['student_status_counts'],
     queryFn: async () => {
@@ -51,7 +50,6 @@ export default function Reports() {
     },
   });
 
-  // Fetch student schedules for detail view
   const { data: studentSchedules } = useQuery({
     queryKey: ['student_detail_schedules', selectedStudentId],
     enabled: !!selectedStudentId,
@@ -65,7 +63,6 @@ export default function Reports() {
     },
   });
 
-  // Fetch attendance counts for selected student
   const { data: studentAttendance } = useQuery({
     queryKey: ['student_detail_attendance', selectedStudentId],
     enabled: !!selectedStudentId,
@@ -99,11 +96,7 @@ export default function Reports() {
     setSearch('');
   };
 
-  const filteredByStatus = allStudents?.filter(s => {
-    const st = s.status || 'em_andamento';
-    return st === statusFilter;
-  }) ?? [];
-
+  const filteredByStatus = allStudents?.filter(s => (s.status || 'em_andamento') === statusFilter) ?? [];
   const filteredStudents = filteredByStatus.filter(s =>
     !search || s.full_name?.toLowerCase().includes(search.toLowerCase())
   );
@@ -117,75 +110,24 @@ export default function Reports() {
       {viewMode === 'cards' ? (
         <>
           <div className="flex flex-wrap gap-4 mb-6">
-            <button
-              onClick={() => handleCardClick('em_andamento')}
-              className="bg-card border rounded-lg p-4 hover:shadow-md transition-shadow cursor-pointer text-left"
-            >
+            <button onClick={() => handleCardClick('em_andamento')} className="bg-card border rounded-lg p-4 hover:shadow-md transition-shadow cursor-pointer text-left">
               <p className="text-sm text-muted-foreground">Em andamento</p>
               <p className="text-3xl font-bold text-primary">{statusCounts?.em_andamento ?? 0}</p>
             </button>
-            <button
-              onClick={() => handleCardClick('finalizado')}
-              className="bg-card border rounded-lg p-4 hover:shadow-md transition-shadow cursor-pointer text-left"
-            >
+            <button onClick={() => handleCardClick('finalizado')} className="bg-card border rounded-lg p-4 hover:shadow-md transition-shadow cursor-pointer text-left">
               <p className="text-sm text-muted-foreground">Finalizados</p>
               <p className="text-3xl font-bold text-green-600">{statusCounts?.finalizado ?? 0}</p>
             </button>
-            <button
-              onClick={() => handleCardClick('desistiu')}
-              className="bg-card border rounded-lg p-4 hover:shadow-md transition-shadow cursor-pointer text-left"
-            >
+            <button onClick={() => handleCardClick('desistiu')} className="bg-card border rounded-lg p-4 hover:shadow-md transition-shadow cursor-pointer text-left">
               <p className="text-sm text-muted-foreground">Desistentes</p>
               <p className="text-3xl font-bold text-destructive">{statusCounts?.desistiu ?? 0}</p>
             </button>
           </div>
 
-          {/* Active students report table */}
-          <div className="relative mb-4 max-w-sm">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input placeholder="Buscar aluno..." value={search} onChange={e => setSearch(e.target.value)} className="pl-9" />
-          </div>
+          <Separator className="my-6" />
+          <MonthlyReports />
 
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b bg-muted/50">
-                  <th className="text-left p-3 font-medium">Nome</th>
-                  <th className="text-left p-3 font-medium">Curso</th>
-                  <th className="text-center p-3 font-medium">Presenças</th>
-                  <th className="text-center p-3 font-medium">Faltas</th>
-                  <th className="text-left p-3 font-medium">Início</th>
-                  <th className="text-left p-3 font-medium">Fim</th>
-                </tr>
-              </thead>
-              <tbody>
-                {(data?.students ?? [])
-                  .filter(s => !search || s.full_name?.toLowerCase().includes(search.toLowerCase()))
-                  .map(s => {
-                    const counts = data?.attendanceCounts[s.id] ?? { present: 0, absent: 0 };
-                    const startDate = data?.firstAttendance[s.id] ?? '-';
-                    const completion = data?.completionMap[s.id];
-                    const courseName = (s.courses as any)?.name || s.custom_course_name || 'N/A';
-                    return (
-                      <tr key={s.id} className="border-b hover:bg-muted/30 cursor-pointer" onClick={() => setSelectedStudentId(s.id)}>
-                        <td className="p-3">{s.full_name || 'Sem nome'}</td>
-                        <td className="p-3">{courseName}</td>
-                        <td className="p-3 text-center">
-                          <span className="text-green-600 font-medium">{counts.present}</span>
-                        </td>
-                        <td className="p-3 text-center">
-                          <span className="text-destructive font-medium">{counts.absent}</span>
-                        </td>
-                        <td className="p-3">{startDate}</td>
-                        <td className="p-3">{completion?.end_date ?? '-'}</td>
-                      </tr>
-                    );
-                  })}
-              </tbody>
-            </table>
-          </div>
-
-          <Separator className="my-8" />
+          <Separator className="my-6" />
           <AttendanceReport />
         </>
       ) : (
@@ -202,11 +144,8 @@ export default function Reports() {
 
           <div className="grid gap-2">
             {filteredStudents.map(s => (
-              <button
-                key={s.id}
-                onClick={() => setSelectedStudentId(s.id)}
-                className="bg-card border rounded-lg p-3 flex items-center gap-3 hover:shadow-md transition-shadow cursor-pointer text-left w-full"
-              >
+              <button key={s.id} onClick={() => setSelectedStudentId(s.id)}
+                className="bg-card border rounded-lg p-3 flex items-center gap-3 hover:shadow-md transition-shadow cursor-pointer text-left w-full">
                 <User className="h-4 w-4 text-muted-foreground flex-shrink-0" />
                 <div className="min-w-0">
                   <p className="font-medium truncate">{s.full_name || 'Sem nome'}</p>
@@ -221,7 +160,6 @@ export default function Reports() {
         </>
       )}
 
-      {/* Student Detail Dialog */}
       <Dialog open={!!selectedStudentId} onOpenChange={() => setSelectedStudentId(null)}>
         <DialogContent className="max-w-lg max-h-[80vh] overflow-auto">
           <DialogHeader>
@@ -230,44 +168,17 @@ export default function Reports() {
           {selectedStudent && (
             <div className="space-y-4">
               <div className="grid grid-cols-2 gap-3 text-sm">
-                <div>
-                  <p className="text-muted-foreground">CPF</p>
-                  <p className="font-medium">{selectedStudent.cpf || '-'}</p>
-                </div>
-                <div>
-                  <p className="text-muted-foreground">Data de Nascimento</p>
-                  <p className="font-medium">{selectedStudent.birth_date || '-'}</p>
-                </div>
-                <div>
-                  <p className="text-muted-foreground">Endereço</p>
-                  <p className="font-medium">{selectedStudent.street ? `${selectedStudent.street}, ${selectedStudent.house_number || 's/n'}` : '-'}</p>
-                </div>
-                <div>
-                  <p className="text-muted-foreground">Matrícula</p>
-                  <p className="font-medium">{selectedStudent.enrollment_date || '-'}</p>
-                </div>
-                <div>
-                  <p className="text-muted-foreground">Curso</p>
-                  <p className="font-medium">{(selectedStudent.courses as any)?.name || selectedStudent.custom_course_name || '-'}</p>
-                </div>
-                <div>
-                  <p className="text-muted-foreground">Carga Horária</p>
-                  <p className="font-medium">{selectedStudent.workload}h</p>
-                </div>
-                <div>
-                  <p className="text-muted-foreground">Status</p>
-                  <p className="font-medium capitalize">{selectedStudent.status?.replace('_', ' ') || 'Em andamento'}</p>
-                </div>
+                <div><p className="text-muted-foreground">CPF</p><p className="font-medium">{selectedStudent.cpf || '-'}</p></div>
+                <div><p className="text-muted-foreground">Data de Nascimento</p><p className="font-medium">{selectedStudent.birth_date || '-'}</p></div>
+                <div><p className="text-muted-foreground">Endereço</p><p className="font-medium">{selectedStudent.street ? `${selectedStudent.street}, ${selectedStudent.house_number || 's/n'}` : '-'}</p></div>
+                <div><p className="text-muted-foreground">Matrícula</p><p className="font-medium">{selectedStudent.enrollment_date || '-'}</p></div>
+                <div><p className="text-muted-foreground">Curso</p><p className="font-medium">{(selectedStudent.courses as any)?.name || selectedStudent.custom_course_name || '-'}</p></div>
+                <div><p className="text-muted-foreground">Carga Horária</p><p className="font-medium">{selectedStudent.workload}h</p></div>
+                <div><p className="text-muted-foreground">Status</p><p className="font-medium capitalize">{selectedStudent.status?.replace('_', ' ') || 'Em andamento'}</p></div>
                 {selectedStudent.guardian_name && (
                   <>
-                    <div>
-                      <p className="text-muted-foreground">Responsável</p>
-                      <p className="font-medium">{selectedStudent.guardian_name}</p>
-                    </div>
-                    <div>
-                      <p className="text-muted-foreground">Tel. Responsável</p>
-                      <p className="font-medium">{selectedStudent.guardian_phone || '-'}</p>
-                    </div>
+                    <div><p className="text-muted-foreground">Responsável</p><p className="font-medium">{selectedStudent.guardian_name}</p></div>
+                    <div><p className="text-muted-foreground">Tel. Responsável</p><p className="font-medium">{selectedStudent.guardian_phone || '-'}</p></div>
                   </>
                 )}
               </div>
@@ -295,22 +206,20 @@ export default function Reports() {
                   </div>
                 </div>
               )}
-              {(selectedStudent.status === 'finalizado' || selectedStudent.status === 'desistiu') && (
-                <Button
-                  className="w-full gap-2"
-                  onClick={() => {
-                    const courseName = (selectedStudent.courses as any)?.name || selectedStudent.custom_course_name || 'N/A';
-                    const today = new Date().toISOString().split('T')[0];
-                    setCertData({
-                      studentName: selectedStudent.full_name || 'Sem nome',
-                      courseName,
-                      workload: selectedStudent.workload ?? 48,
-                      startDate: selectedStudent.enrollment_date ?? null,
-                      endDate: today,
-                    });
-                    setCertOpen(true);
-                  }}
-                >
+
+              {selectedStudent.status === 'finalizado' && (
+                <Button className="w-full gap-2" onClick={() => {
+                  const courseName = (selectedStudent.courses as any)?.name || selectedStudent.custom_course_name || 'N/A';
+                  const today = new Date().toISOString().split('T')[0];
+                  setCertData({
+                    studentName: selectedStudent.full_name || 'Sem nome',
+                    courseName,
+                    workload: selectedStudent.workload ?? 48,
+                    startDate: selectedStudent.enrollment_date ?? null,
+                    endDate: today,
+                  });
+                  setCertOpen(true);
+                }}>
                   <FileText className="h-4 w-4" /> Gerar Certificado
                 </Button>
               )}
@@ -319,9 +228,7 @@ export default function Reports() {
         </DialogContent>
       </Dialog>
 
-      {certData && (
-        <CertificateDialog open={certOpen} onOpenChange={setCertOpen} data={certData} />
-      )}
+      {certData && <CertificateDialog open={certOpen} onOpenChange={setCertOpen} data={certData} />}
     </div>
   );
 }

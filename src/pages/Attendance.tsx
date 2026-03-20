@@ -5,9 +5,24 @@ import { useTimeSlots, useSlotCounts, useSlotStudents, useAttendance, useSaveAtt
 import { getTodayDayName } from '@/lib/constants';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { DateInput } from '@/components/DateInput';
 import { Check, X, Minus } from 'lucide-react';
+
+function parseDateInput(dateStr: string): string | null {
+  // Convert dd/mm/yyyy to yyyy-mm-dd
+  const parts = dateStr.split('/');
+  if (parts.length === 3 && parts[0].length === 2 && parts[1].length === 2 && parts[2].length === 4) {
+    return `${parts[2]}-${parts[1]}-${parts[0]}`;
+  }
+  return null;
+}
+
+function formatToDisplay(isoDate: string): string {
+  const parts = isoDate.split('-');
+  if (parts.length === 3) return `${parts[2]}/${parts[1]}/${parts[0]}`;
+  return isoDate;
+}
 
 function getDayNameFromDate(dateStr: string): string {
   const days = ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado'];
@@ -17,9 +32,21 @@ function getDayNameFromDate(dateStr: string): string {
   return name;
 }
 
+function isEnrolledByDate(enrollmentDate: string | null, checkDate: string): boolean {
+  if (!enrollmentDate) return true; // No enrollment date = show
+  // Parse enrollment date (could be dd/mm/yyyy or yyyy-mm-dd)
+  let isoEnrollment = enrollmentDate;
+  const parts = enrollmentDate.split('/');
+  if (parts.length === 3 && parts[2].length === 4) {
+    isoEnrollment = `${parts[2]}-${parts[1]}-${parts[0]}`;
+  }
+  return isoEnrollment <= checkDate;
+}
+
 export default function Attendance() {
   const today = new Date().toISOString().split('T')[0];
   const [selectedDate, setSelectedDate] = useState(today);
+  const [dateDisplay, setDateDisplay] = useState(formatToDisplay(today));
   const [selectedSlotId, setSelectedSlotId] = useState<string | null>(null);
 
   const selectedDay = getDayNameFromDate(selectedDate);
@@ -32,6 +59,14 @@ export default function Attendance() {
 
   const daySlots = timeSlots?.filter(s => s.day_of_week === selectedDay) ?? [];
 
+  // Filter students: only active and enrolled by selected
+  const filteredStudents = slotStudents?.filter(s => {
+    const student = s.students;
+    if (!student) return false;
+    if (!student.is_active) return false;
+    return isEnrolledByDate(student.enrollment_date, selectedDate);
+  }) ?? [];
+
   const getStatus = (studentId: string) => {
     return attendance?.find(a => a.student_id === studentId)?.status ?? null;
   };
@@ -39,6 +74,12 @@ export default function Attendance() {
   const markAttendance = (studentId: string, status: string) => {
     if (!selectedSlotId) return;
     saveAttendance.mutate({ studentId, timeSlotId: selectedSlotId, date: selectedDate, status });
+  };
+
+  const handleDateChange = (display: string) => {
+    setDateDisplay(display);
+    const iso = parseDateInput(display);
+    if (iso) setSelectedDate(iso);
   };
 
   const handleDayChange = (day: string) => {
@@ -51,7 +92,9 @@ export default function Attendance() {
     if (diff < -3) diff += 7;
     const newDate = new Date(current);
     newDate.setDate(newDate.getDate() + diff);
-    setSelectedDate(newDate.toISOString().split('T')[0]);
+    const iso = newDate.toISOString().split('T')[0];
+    setSelectedDate(iso);
+    setDateDisplay(formatToDisplay(iso));
   };
 
   return (
@@ -60,7 +103,7 @@ export default function Attendance() {
         <h1 className="text-2xl font-bold">Chamada</h1>
         <div className="flex items-center gap-2">
           <Label className="text-sm whitespace-nowrap">Data:</Label>
-          <Input type="date" value={selectedDate} onChange={e => setSelectedDate(e.target.value)} className="w-auto" />
+          <DateInput value={dateDisplay} onChange={handleDateChange} className="w-36" />
         </div>
       </div>
 
@@ -81,11 +124,11 @@ export default function Attendance() {
       <Dialog open={!!selectedSlotId} onOpenChange={() => setSelectedSlotId(null)}>
         <DialogContent className="max-w-2xl max-h-[80vh] overflow-auto">
           <DialogHeader>
-            <DialogTitle>Chamada - {selectedDate} ({selectedDay})</DialogTitle>
+            <DialogTitle>Chamada - {dateDisplay} ({selectedDay})</DialogTitle>
           </DialogHeader>
-          {slotStudents && slotStudents.length > 0 ? (
+          {filteredStudents.length > 0 ? (
             <div className="space-y-2">
-              {slotStudents.map(s => {
+              {filteredStudents.map(s => {
                 const student = s.students;
                 if (!student) return null;
                 const status = getStatus(student.id);
