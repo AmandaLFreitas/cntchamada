@@ -1,10 +1,8 @@
 import { useState, useRef, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { getCertificateFields, type CertificateData, type CertificateFields } from '@/lib/certificate-templates';
-import { Printer, Download, Pencil, Eye } from 'lucide-react';
+import { Printer, Download } from 'lucide-react';
 import html2canvas from 'html2canvas';
 import jsPDF from 'jspdf';
 
@@ -14,15 +12,80 @@ interface Props {
   data: CertificateData;
 }
 
+function InlineEdit({
+  value,
+  onChange,
+  style,
+}: {
+  value: string;
+  onChange: (v: string) => void;
+  style?: React.CSSProperties;
+}) {
+  const [editing, setEditing] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (editing && inputRef.current) {
+      inputRef.current.focus();
+      inputRef.current.select();
+    }
+  }, [editing]);
+
+  if (editing) {
+    return (
+      <input
+        ref={inputRef}
+        value={value}
+        onChange={e => onChange(e.target.value)}
+        onBlur={() => setEditing(false)}
+        onKeyDown={e => { if (e.key === 'Enter') setEditing(false); }}
+        className="inline-edit-input"
+        style={{
+          ...style,
+          background: 'rgba(59,130,246,0.08)',
+          border: '1px dashed #3b82f6',
+          borderRadius: '3px',
+          padding: '2px 4px',
+          outline: 'none',
+          font: 'inherit',
+          fontFamily: 'inherit',
+          fontSize: 'inherit',
+          fontWeight: 'inherit',
+          fontStyle: 'inherit',
+          textDecoration: 'inherit',
+          textAlign: 'center' as const,
+          minWidth: '40px',
+          width: `${Math.max(value.length, 3)}ch`,
+        }}
+      />
+    );
+  }
+
+  return (
+    <span
+      onClick={() => setEditing(true)}
+      title="Clique para editar"
+      style={{
+        ...style,
+        cursor: 'pointer',
+        borderBottom: '1px dashed rgba(59,130,246,0.4)',
+        transition: 'background 0.15s',
+      }}
+      onMouseEnter={e => (e.currentTarget.style.background = 'rgba(59,130,246,0.06)')}
+      onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
+    >
+      {value || '—'}
+    </span>
+  );
+}
+
 export function CertificateDialog({ open, onOpenChange, data }: Props) {
-  const [mode, setMode] = useState<'edit' | 'preview'>('preview');
   const [fields, setFields] = useState<CertificateFields | null>(null);
   const certRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (open) {
       setFields(getCertificateFields(data));
-      setMode('preview');
     }
   }, [open, data]);
 
@@ -58,8 +121,9 @@ export function CertificateDialog({ open, onOpenChange, data }: Props) {
         transform: none !important;
         border: none !important;
         box-shadow: none !important;
-        position: relative !important;
       }
+      .inline-edit-input { display: none !important; }
+      span[title] { border-bottom: none !important; cursor: default !important; }
     </style></head><body>`);
     const clone = content.cloneNode(true) as HTMLElement;
     clone.style.transform = 'none';
@@ -74,7 +138,15 @@ export function CertificateDialog({ open, onOpenChange, data }: Props) {
   const handleDownload = async () => {
     const el = certRef.current;
     if (!el) return;
+    // Temporarily remove edit hints for capture
+    const editSpans = el.querySelectorAll('span[title]');
+    editSpans.forEach(s => {
+      (s as HTMLElement).style.borderBottom = 'none';
+    });
     const canvas = await html2canvas(el, { scale: 3, useCORS: true });
+    editSpans.forEach(s => {
+      (s as HTMLElement).style.borderBottom = '1px dashed rgba(59,130,246,0.4)';
+    });
     const imgData = canvas.toDataURL('image/png');
     const pdf = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
     pdf.addImage(imgData, 'PNG', 0, 0, 297, 210);
@@ -89,15 +161,6 @@ export function CertificateDialog({ open, onOpenChange, data }: Props) {
         <DialogHeader className="flex flex-row items-center justify-between gap-2 flex-wrap pb-2 border-b">
           <DialogTitle className="text-lg">Certificado</DialogTitle>
           <div className="flex gap-2 flex-wrap">
-            {mode === 'preview' ? (
-              <Button variant="outline" size="sm" onClick={() => setMode('edit')} className="gap-1.5">
-                <Pencil className="h-4 w-4" /> Editar
-              </Button>
-            ) : (
-              <Button variant="outline" size="sm" onClick={() => setMode('preview')} className="gap-1.5">
-                <Eye className="h-4 w-4" /> Visualizar
-              </Button>
-            )}
             <Button variant="outline" size="sm" onClick={handlePrint} className="gap-1.5">
               <Printer className="h-4 w-4" /> Imprimir
             </Button>
@@ -107,54 +170,7 @@ export function CertificateDialog({ open, onOpenChange, data }: Props) {
           </div>
         </DialogHeader>
 
-        {mode === 'edit' && (
-          <div className="grid grid-cols-2 md:grid-cols-3 gap-3 py-2 border-b">
-            <div>
-              <Label className="text-xs">Nome do Aluno</Label>
-              <Input value={fields.studentName} onChange={e => updateField('studentName', e.target.value)} className="h-8 text-sm" />
-            </div>
-            <div>
-              <Label className="text-xs">Curso</Label>
-              <Input value={fields.courseTitle} onChange={e => updateField('courseTitle', e.target.value)} className="h-8 text-sm" />
-            </div>
-            <div>
-              <Label className="text-xs">Módulos</Label>
-              <Input value={fields.modules} onChange={e => updateField('modules', e.target.value)} className="h-8 text-sm" />
-            </div>
-            <div>
-              <Label className="text-xs">Modalidade</Label>
-              <Input value={fields.modalidade} onChange={e => updateField('modalidade', e.target.value)} className="h-8 text-sm" />
-            </div>
-            <div>
-              <Label className="text-xs">Frequência</Label>
-              <Input value={fields.frequencia} onChange={e => updateField('frequencia', e.target.value)} className="h-8 text-sm" />
-            </div>
-            <div>
-              <Label className="text-xs">Carga Horária</Label>
-              <Input value={fields.cargaHoraria} onChange={e => updateField('cargaHoraria', e.target.value)} className="h-8 text-sm" />
-            </div>
-            <div>
-              <Label className="text-xs">Nota</Label>
-              <Input value={fields.nota} onChange={e => updateField('nota', e.target.value)} className="h-8 text-sm" />
-            </div>
-            <div>
-              <Label className="text-xs">Data Início</Label>
-              <Input value={fields.startDate} onChange={e => updateField('startDate', e.target.value)} className="h-8 text-sm" />
-            </div>
-            <div>
-              <Label className="text-xs">Data Fim</Label>
-              <Input value={fields.endDate} onChange={e => updateField('endDate', e.target.value)} className="h-8 text-sm" />
-            </div>
-            <div>
-              <Label className="text-xs">Cidade</Label>
-              <Input value={fields.city} onChange={e => updateField('city', e.target.value)} className="h-8 text-sm" />
-            </div>
-            <div className="col-span-2">
-              <Label className="text-xs">Data por Extenso</Label>
-              <Input value={fields.fullDate} onChange={e => updateField('fullDate', e.target.value)} className="h-8 text-sm" />
-            </div>
-          </div>
-        )}
+        <p className="text-xs text-muted-foreground text-center py-1">Clique em qualquer campo do certificado para editar</p>
 
         {/* Certificate Preview */}
         <div className="flex justify-center overflow-auto py-2" style={{ minHeight: '300px' }}>
@@ -181,64 +197,70 @@ export function CertificateDialog({ open, onOpenChange, data }: Props) {
               flexShrink: 0,
             }}
           >
-            {/* Title for some templates */}
             {fields.modules && (
               <p style={{ fontSize: '18pt', textAlign: 'center', margin: '0 0 8mm', letterSpacing: '2px', fontWeight: 'normal' }}>
                 Certificado de Conclusão
               </p>
             )}
 
-            {/* Line 1: Certificamos que, NOME */}
             <p style={{ fontSize: '24pt', textAlign: 'center', margin: '0 0 14mm', lineHeight: 1.6 }}>
               Certificamos que,{' '}
               <span style={{ fontWeight: 'bold', textDecoration: 'underline' }}>
-                {fields.studentName}
+                <InlineEdit value={fields.studentName} onChange={v => updateField('studentName', v)} />
               </span>
             </p>
 
-            {/* Line 2: Concluiu o curso de: CURSO */}
             <p style={{ fontSize: '24pt', textAlign: 'center', margin: '0 0 6mm', lineHeight: 1.6 }}>
               Concluiu o curso de:{' '}
               <span style={{ fontWeight: 'bold', textDecoration: 'underline' }}>
-                {fields.courseTitle}
+                <InlineEdit value={fields.courseTitle} onChange={v => updateField('courseTitle', v)} />
               </span>
             </p>
 
-            {/* Line 3: Modules (if any) */}
             {fields.modules && (
               <p style={{ fontSize: '17pt', textAlign: 'center', margin: '0 0 10mm', lineHeight: 1.5, fontWeight: 'bold', textDecoration: 'underline' }}>
-                {fields.modules}
+                <InlineEdit value={fields.modules} onChange={v => updateField('modules', v)} />
               </p>
             )}
 
-            {/* Line 4: Modalidade – Frequência – Carga horária – Nota */}
             <p style={{ fontSize: '19pt', textAlign: 'center', margin: '0 0 10mm', lineHeight: 1.8 }}>
               Modalidade{' '}
-              <span style={{ fontStyle: 'italic', textDecoration: 'underline' }}>{fields.modalidade}</span>
+              <span style={{ fontStyle: 'italic', textDecoration: 'underline' }}>
+                <InlineEdit value={fields.modalidade} onChange={v => updateField('modalidade', v)} />
+              </span>
               {' – Frequência '}
-              <span style={{ fontStyle: 'italic', fontWeight: 'bold', textDecoration: 'underline' }}>{fields.frequencia}</span>
+              <span style={{ fontStyle: 'italic', fontWeight: 'bold', textDecoration: 'underline' }}>
+                <InlineEdit value={fields.frequencia} onChange={v => updateField('frequencia', v)} />
+              </span>
               {' - Carga horária '}
-              <span style={{ fontStyle: 'italic', fontWeight: 'bold', textDecoration: 'underline' }}>{fields.cargaHoraria}</span>
+              <span style={{ fontStyle: 'italic', fontWeight: 'bold', textDecoration: 'underline' }}>
+                <InlineEdit value={fields.cargaHoraria} onChange={v => updateField('cargaHoraria', v)} />
+              </span>
               {' horas - Nota '}
-              <span style={{ fontStyle: 'italic', fontWeight: 'bold', textDecoration: 'underline' }}>{fields.nota}</span>
+              <span style={{ fontStyle: 'italic', fontWeight: 'bold', textDecoration: 'underline' }}>
+                <InlineEdit value={fields.nota} onChange={v => updateField('nota', v)} />
+              </span>
             </p>
 
-            {/* Line 5: Período */}
             <p style={{ fontSize: '19pt', textAlign: 'center', margin: '0 0 10mm', lineHeight: 1.6 }}>
               No período de{' '}
-              <span style={{ fontStyle: 'italic', textDecoration: 'underline' }}>{fields.startDate}</span>
+              <span style={{ fontStyle: 'italic', textDecoration: 'underline' }}>
+                <InlineEdit value={fields.startDate} onChange={v => updateField('startDate', v)} />
+              </span>
               {'  a  '}
-              <span style={{ fontStyle: 'italic', textDecoration: 'underline' }}>{fields.endDate}</span>
+              <span style={{ fontStyle: 'italic', textDecoration: 'underline' }}>
+                <InlineEdit value={fields.endDate} onChange={v => updateField('endDate', v)} />
+              </span>
             </p>
 
-            {/* Line 6: Cidade, data */}
             <p style={{ fontSize: '19pt', textAlign: 'center', margin: '0', fontStyle: 'italic', lineHeight: 1.6 }}>
-              {fields.city},{' '}
-              <span style={{ fontWeight: 'bold' }}>{fields.fullDate}</span>
+              <InlineEdit value={fields.city} onChange={v => updateField('city', v)} />,{' '}
+              <span style={{ fontWeight: 'bold' }}>
+                <InlineEdit value={fields.fullDate} onChange={v => updateField('fullDate', v)} />
+              </span>
             </p>
           </div>
         </div>
-        {/* Spacer matching scaled height */}
         <div style={{ height: 'calc(210mm * 0.52)' }} />
       </DialogContent>
     </Dialog>
