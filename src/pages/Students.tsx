@@ -325,8 +325,8 @@ export default function Students() {
               <div><Label>CPF</Label><Input value={form.cpf} onChange={e => setForm(f => ({ ...f, cpf: e.target.value }))} /></div>
               <div><Label>Rua</Label><Input value={form.street} onChange={e => setForm(f => ({ ...f, street: e.target.value }))} /></div>
               <div><Label>Número</Label><Input value={form.house_number} onChange={e => setForm(f => ({ ...f, house_number: e.target.value }))} /></div>
-              <div><Label>Data de nascimento</Label><Input placeholder="dd/mm/aaaa" value={form.birth_date} onChange={e => setForm(f => ({ ...f, birth_date: e.target.value }))} /></div>
-              <div><Label>Data da matrícula</Label><Input placeholder="dd/mm/aaaa" value={form.enrollment_date} onChange={e => setForm(f => ({ ...f, enrollment_date: e.target.value }))} /></div>
+              <div><Label>Data de nascimento</Label><DateInput value={form.birth_date} onChange={v => setForm(f => ({ ...f, birth_date: v }))} /></div>
+              <div><Label>Data da matrícula</Label><DateInput value={form.enrollment_date} onChange={v => setForm(f => ({ ...f, enrollment_date: v }))} /></div>
             </div>
 
             {showGuardian && (
