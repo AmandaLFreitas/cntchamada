@@ -237,8 +237,10 @@ export default function Students() {
         }
       };
       applyToggle(day);
-      const paired = getPairedDay(day);
-      if (paired) applyToggle(paired);
+      if (!f.customScheduleMode) {
+        const paired = getPairedDay(day);
+        if (paired) applyToggle(paired);
+      }
       return { ...f, daySchedules: newDaySchedules };
     });
   };
