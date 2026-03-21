@@ -1,4 +1,4 @@
-import { LayoutDashboard, Users, ClipboardList, BarChart3, CheckCircle } from 'lucide-react';
+import { LayoutDashboard, Users, ClipboardList, BarChart3, CheckCircle, Cake } from 'lucide-react';
 import { NavLink } from '@/components/NavLink';
 import { useLocation, useNavigate } from 'react-router-dom';
 import logoImg from '@/assets/logo-cnt.png';
