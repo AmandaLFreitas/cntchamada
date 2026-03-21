@@ -20,6 +20,7 @@ const items = [
   { title: 'Chamada', url: '/chamada', icon: ClipboardList },
   { title: 'Relatórios', url: '/relatorios', icon: BarChart3 },
   { title: 'Certificados', url: '/finalizados', icon: CheckCircle },
+  { title: 'Aniversariantes', url: '/aniversariantes', icon: Cake },
 ];
 
 export function AppSidebar() {
