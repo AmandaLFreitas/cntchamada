@@ -21,6 +21,7 @@ interface StudentForm {
   daySchedules: Record<string, string[]>;
   show_guardian: boolean; workload: number;
   status: string;
+  customScheduleMode: boolean;
 }
 
 const emptyForm: StudentForm = {
@@ -30,6 +31,7 @@ const emptyForm: StudentForm = {
   daySchedules: {},
   show_guardian: false, workload: 48,
   status: 'em_andamento',
+  customScheduleMode: false,
 };
 
 const WEEKDAY_TIMES = [
