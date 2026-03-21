@@ -156,6 +156,7 @@ export default function Students() {
       show_guardian: !!student.guardian_name || isMinor(student.birth_date ?? ''),
       workload: student.workload ?? 48,
       status: (student as any).status || 'em_andamento',
+      customScheduleMode: false,
     });
     setDialogOpen(true);
   };
