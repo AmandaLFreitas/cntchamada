@@ -395,34 +395,94 @@ export default function Students() {
               </div>
             </div>
 
-            {/* Schedule - Organized by Day */}
+            {/* Schedule Section */}
             <div>
-              <Label className="mb-2 block font-semibold">Dias e Horários</Label>
-              <div className="space-y-3">
-                {DAYS_OF_WEEK.map(day => {
-                  const dayTimes = form.daySchedules[day] || [];
-                  const times = day === 'Sábado' ? SATURDAY_TIMES : WEEKDAY_TIMES;
-                  return (
-                    <div key={day} className="border rounded-lg p-3">
-                      <span className="font-medium text-sm block mb-2">{day}</span>
-                      <div className="flex flex-wrap gap-2 ml-2">
-                        {times.map(t => {
-                          const tk = timeKey(t.start, t.end);
-                          return (
-                            <label key={tk} className="flex items-center gap-1.5 text-sm cursor-pointer">
-                              <Checkbox
-                                checked={dayTimes.includes(tk)}
-                                onCheckedChange={() => toggleDayTime(day, tk)}
-                              />
-                              {t.label}
-                            </label>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  );
-                })}
+              <div className="flex items-center justify-between mb-2">
+                <Label className="font-semibold">Dias e Horários</Label>
+                <label className="flex items-center gap-2 text-sm cursor-pointer">
+                  <Switch
+                    checked={form.customScheduleMode}
+                    onCheckedChange={v => setForm(f => ({ ...f, customScheduleMode: v, daySchedules: {} }))}
+                  />
+                  Horários personalizados
+                </label>
               </div>
+
+              <p className="text-xs text-muted-foreground mb-3">
+                {form.customScheduleMode
+                  ? 'Modo personalizado: selecione livremente qualquer combinação de dia e horário.'
+                  : 'Modo padrão: Segunda↔Quarta e Terça↔Quinta são pareados automaticamente.'}
+              </p>
+
+              {!form.customScheduleMode ? (
+                <div className="space-y-3">
+                  <div className="border rounded-lg p-3">
+                    <span className="font-medium text-sm block mb-2">Segunda e Quarta</span>
+                    <div className="flex flex-wrap gap-2 ml-2">
+                      {WEEKDAY_TIMES.map(t => {
+                        const tk = timeKey(t.start, t.end);
+                        return (
+                          <label key={tk} className="flex items-center gap-1.5 text-sm cursor-pointer">
+                            <Checkbox checked={(form.daySchedules['Segunda'] || []).includes(tk)} onCheckedChange={() => toggleDayTime('Segunda', tk)} />
+                            {t.label}
+                          </label>
+                        );
+                      })}
+                    </div>
+                  </div>
+                  <div className="border rounded-lg p-3">
+                    <span className="font-medium text-sm block mb-2">Terça e Quinta</span>
+                    <div className="flex flex-wrap gap-2 ml-2">
+                      {WEEKDAY_TIMES.map(t => {
+                        const tk = timeKey(t.start, t.end);
+                        return (
+                          <label key={tk} className="flex items-center gap-1.5 text-sm cursor-pointer">
+                            <Checkbox checked={(form.daySchedules['Terça'] || []).includes(tk)} onCheckedChange={() => toggleDayTime('Terça', tk)} />
+                            {t.label}
+                          </label>
+                        );
+                      })}
+                    </div>
+                  </div>
+                  <div className="border rounded-lg p-3">
+                    <span className="font-medium text-sm block mb-2">Sábado</span>
+                    <div className="flex flex-wrap gap-2 ml-2">
+                      {SATURDAY_TIMES.map(t => {
+                        const tk = timeKey(t.start, t.end);
+                        return (
+                          <label key={tk} className="flex items-center gap-1.5 text-sm cursor-pointer">
+                            <Checkbox checked={(form.daySchedules['Sábado'] || []).includes(tk)} onCheckedChange={() => toggleDayTime('Sábado', tk)} />
+                            {t.label}
+                          </label>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {DAYS_OF_WEEK.map(day => {
+                    const dayTimes = form.daySchedules[day] || [];
+                    const times = day === 'Sábado' ? SATURDAY_TIMES : WEEKDAY_TIMES;
+                    return (
+                      <div key={day} className="border rounded-lg p-3">
+                        <span className="font-medium text-sm block mb-2">{day}</span>
+                        <div className="flex flex-wrap gap-2 ml-2">
+                          {times.map(t => {
+                            const tk = timeKey(t.start, t.end);
+                            return (
+                              <label key={tk} className="flex items-center gap-1.5 text-sm cursor-pointer">
+                                <Checkbox checked={dayTimes.includes(tk)} onCheckedChange={() => toggleDayTime(day, tk)} />
+                                {t.label}
+                              </label>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
 
               {Object.keys(form.daySchedules).length > 0 && (
                 <p className="text-xs text-muted-foreground mt-2">
