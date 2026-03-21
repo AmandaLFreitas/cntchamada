@@ -12,6 +12,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { DAYS_OF_WEEK } from '@/lib/constants';
 import { Plus, Pencil, Trash2, Search, History } from 'lucide-react';
 import { toast } from 'sonner';
+import { Switch } from '@/components/ui/switch';
 
 interface StudentForm {
   full_name: string; street: string; house_number: string; birth_date: string;
