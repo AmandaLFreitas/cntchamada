@@ -12,6 +12,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { DAYS_OF_WEEK } from '@/lib/constants';
 import { Plus, Pencil, Trash2, Search, History } from 'lucide-react';
 import { toast } from 'sonner';
+import { Switch } from '@/components/ui/switch';
 
 interface StudentForm {
   full_name: string; street: string; house_number: string; birth_date: string;
@@ -20,6 +21,7 @@ interface StudentForm {
   daySchedules: Record<string, string[]>;
   show_guardian: boolean; workload: number;
   status: string;
+  customScheduleMode: boolean;
 }
 
 const emptyForm: StudentForm = {
@@ -29,6 +31,7 @@ const emptyForm: StudentForm = {
   daySchedules: {},
   show_guardian: false, workload: 48,
   status: 'em_andamento',
+  customScheduleMode: false,
 };
 
 const WEEKDAY_TIMES = [
@@ -153,6 +156,7 @@ export default function Students() {
       show_guardian: !!student.guardian_name || isMinor(student.birth_date ?? ''),
       workload: student.workload ?? 48,
       status: (student as any).status || 'em_andamento',
+      customScheduleMode: false,
     });
     setDialogOpen(true);
   };
@@ -233,8 +237,10 @@ export default function Students() {
         }
       };
       applyToggle(day);
-      const paired = getPairedDay(day);
-      if (paired) applyToggle(paired);
+      if (!f.customScheduleMode) {
+        const paired = getPairedDay(day);
+        if (paired) applyToggle(paired);
+      }
       return { ...f, daySchedules: newDaySchedules };
     });
   };
@@ -389,34 +395,94 @@ export default function Students() {
               </div>
             </div>
 
-            {/* Schedule - Organized by Day */}
+            {/* Schedule Section */}
             <div>
-              <Label className="mb-2 block font-semibold">Dias e Horários</Label>
-              <div className="space-y-3">
-                {DAYS_OF_WEEK.map(day => {
-                  const dayTimes = form.daySchedules[day] || [];
-                  const times = day === 'Sábado' ? SATURDAY_TIMES : WEEKDAY_TIMES;
-                  return (
-                    <div key={day} className="border rounded-lg p-3">
-                      <span className="font-medium text-sm block mb-2">{day}</span>
-                      <div className="flex flex-wrap gap-2 ml-2">
-                        {times.map(t => {
-                          const tk = timeKey(t.start, t.end);
-                          return (
-                            <label key={tk} className="flex items-center gap-1.5 text-sm cursor-pointer">
-                              <Checkbox
-                                checked={dayTimes.includes(tk)}
-                                onCheckedChange={() => toggleDayTime(day, tk)}
-                              />
-                              {t.label}
-                            </label>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  );
-                })}
+              <div className="flex items-center justify-between mb-2">
+                <Label className="font-semibold">Dias e Horários</Label>
+                <label className="flex items-center gap-2 text-sm cursor-pointer">
+                  <Switch
+                    checked={form.customScheduleMode}
+                    onCheckedChange={v => setForm(f => ({ ...f, customScheduleMode: v, daySchedules: {} }))}
+                  />
+                  Horários personalizados
+                </label>
               </div>
+
+              <p className="text-xs text-muted-foreground mb-3">
+                {form.customScheduleMode
+                  ? 'Modo personalizado: selecione livremente qualquer combinação de dia e horário.'
+                  : 'Modo padrão: Segunda↔Quarta e Terça↔Quinta são pareados automaticamente.'}
+              </p>
+
+              {!form.customScheduleMode ? (
+                <div className="space-y-3">
+                  <div className="border rounded-lg p-3">
+                    <span className="font-medium text-sm block mb-2">Segunda e Quarta</span>
+                    <div className="flex flex-wrap gap-2 ml-2">
+                      {WEEKDAY_TIMES.map(t => {
+                        const tk = timeKey(t.start, t.end);
+                        return (
+                          <label key={tk} className="flex items-center gap-1.5 text-sm cursor-pointer">
+                            <Checkbox checked={(form.daySchedules['Segunda'] || []).includes(tk)} onCheckedChange={() => toggleDayTime('Segunda', tk)} />
+                            {t.label}
+                          </label>
+                        );
+                      })}
+                    </div>
+                  </div>
+                  <div className="border rounded-lg p-3">
+                    <span className="font-medium text-sm block mb-2">Terça e Quinta</span>
+                    <div className="flex flex-wrap gap-2 ml-2">
+                      {WEEKDAY_TIMES.map(t => {
+                        const tk = timeKey(t.start, t.end);
+                        return (
+                          <label key={tk} className="flex items-center gap-1.5 text-sm cursor-pointer">
+                            <Checkbox checked={(form.daySchedules['Terça'] || []).includes(tk)} onCheckedChange={() => toggleDayTime('Terça', tk)} />
+                            {t.label}
+                          </label>
+                        );
+                      })}
+                    </div>
+                  </div>
+                  <div className="border rounded-lg p-3">
+                    <span className="font-medium text-sm block mb-2">Sábado</span>
+                    <div className="flex flex-wrap gap-2 ml-2">
+                      {SATURDAY_TIMES.map(t => {
+                        const tk = timeKey(t.start, t.end);
+                        return (
+                          <label key={tk} className="flex items-center gap-1.5 text-sm cursor-pointer">
+                            <Checkbox checked={(form.daySchedules['Sábado'] || []).includes(tk)} onCheckedChange={() => toggleDayTime('Sábado', tk)} />
+                            {t.label}
+                          </label>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {DAYS_OF_WEEK.map(day => {
+                    const dayTimes = form.daySchedules[day] || [];
+                    const times = day === 'Sábado' ? SATURDAY_TIMES : WEEKDAY_TIMES;
+                    return (
+                      <div key={day} className="border rounded-lg p-3">
+                        <span className="font-medium text-sm block mb-2">{day}</span>
+                        <div className="flex flex-wrap gap-2 ml-2">
+                          {times.map(t => {
+                            const tk = timeKey(t.start, t.end);
+                            return (
+                              <label key={tk} className="flex items-center gap-1.5 text-sm cursor-pointer">
+                                <Checkbox checked={dayTimes.includes(tk)} onCheckedChange={() => toggleDayTime(day, tk)} />
+                                {t.label}
+                              </label>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
 
               {Object.keys(form.daySchedules).length > 0 && (
                 <p className="text-xs text-muted-foreground mt-2">
