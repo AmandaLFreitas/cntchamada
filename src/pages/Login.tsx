@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Lock, User } from 'lucide-react';
+import logoImg from '@/assets/logo-cnt.png';
 
 export default function Login() {
   const { signIn } = useAuth();
@@ -32,9 +33,7 @@ export default function Login() {
       <div className="w-full max-w-sm">
         <div className="bg-card border rounded-xl p-8 shadow-lg">
           <div className="text-center mb-6">
-            <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-3">
-              <Lock className="h-8 w-8 text-primary" />
-            </div>
+            <img src={logoImg} alt="CNT Informática" className="w-20 h-20 rounded-full mx-auto mb-1 object-cover" />
             <h1 className="text-2xl font-bold text-foreground">CNT Informática</h1>
             <p className="text-sm text-muted-foreground mt-1">Faça login para acessar o sistema</p>
           </div>
