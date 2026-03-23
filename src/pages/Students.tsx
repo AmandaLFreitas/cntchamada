@@ -188,10 +188,10 @@ export default function Students() {
     const shouldDeactivate = form.status === 'finalizado' || form.status === 'desistiu';
     const data: any = {
       full_name: form.full_name || null,
-      street: form.street || null,
-      house_number: form.house_number || null,
+      street: isAdmin ? (form.street || null) : undefined,
+      house_number: isAdmin ? (form.house_number || null) : undefined,
       birth_date: form.birth_date || null,
-      cpf: form.cpf || null,
+      cpf: isAdmin ? (form.cpf || null) : undefined,
       enrollment_date: form.enrollment_date || null,
       course_id: form.course_id || null,
       custom_course_name: form.custom_course_name || null,
@@ -201,7 +201,10 @@ export default function Students() {
       workload: form.workload,
       status: form.status,
       is_active: !shouldDeactivate,
+      payment_method: isAdmin ? (form.payment_method || null) : undefined,
     };
+    // Remove undefined keys so we don't overwrite admin-only fields
+    Object.keys(data).forEach(k => { if (data[k] === undefined) delete data[k]; });
 
     if (editingId) {
       updateStudent.mutate({ id: editingId, ...data }, {
