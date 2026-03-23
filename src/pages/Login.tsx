@@ -5,7 +5,6 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Lock, User } from 'lucide-react';
 import logoImg from '@/assets/logo-cnt.png';
-import logoImg from '@/assets/logo-cnt.png';
 
 export default function Login() {
   const { signIn } = useAuth();
