@@ -40,6 +40,7 @@ const emptyForm: StudentForm = {
   show_guardian: false, workload: 48,
   status: 'em_andamento',
   customScheduleMode: false,
+  payment_method: '',
 };
 
 const WEEKDAY_TIMES = [
