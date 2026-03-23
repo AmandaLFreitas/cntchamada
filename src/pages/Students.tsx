@@ -3,6 +3,7 @@ import { useStudents, useCourses, useTimeSlots, useCreateStudent, useUpdateStude
 import { supabase } from '@/integrations/supabase/client';
 import { DateInput } from '@/components/DateInput';
 import { useQuery } from '@tanstack/react-query';
+import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -22,7 +23,14 @@ interface StudentForm {
   show_guardian: boolean; workload: number;
   status: string;
   customScheduleMode: boolean;
+  payment_method: string;
 }
+
+const PAYMENT_OPTIONS = [
+  { value: 'a_vista', label: 'À vista' },
+  { value: 'cartao', label: 'Cartão' },
+  { value: 'boleto', label: 'Boleto' },
+];
 
 const emptyForm: StudentForm = {
   full_name: '', street: '', house_number: '', birth_date: '',
@@ -32,6 +40,7 @@ const emptyForm: StudentForm = {
   show_guardian: false, workload: 48,
   status: 'em_andamento',
   customScheduleMode: false,
+  payment_method: '',
 };
 
 const WEEKDAY_TIMES = [
@@ -74,6 +83,7 @@ function timeKey(start: string, end: string) {
 }
 
 export default function Students() {
+  const { isAdmin } = useAuth();
   const [search, setSearch] = useState('');
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -157,6 +167,7 @@ export default function Students() {
       workload: student.workload ?? 48,
       status: (student as any).status || 'em_andamento',
       customScheduleMode: false,
+      payment_method: (student as any).payment_method ?? '',
     });
     setDialogOpen(true);
   };
@@ -177,10 +188,10 @@ export default function Students() {
     const shouldDeactivate = form.status === 'finalizado' || form.status === 'desistiu';
     const data: any = {
       full_name: form.full_name || null,
-      street: form.street || null,
-      house_number: form.house_number || null,
+      street: isAdmin ? (form.street || null) : undefined,
+      house_number: isAdmin ? (form.house_number || null) : undefined,
       birth_date: form.birth_date || null,
-      cpf: form.cpf || null,
+      cpf: isAdmin ? (form.cpf || null) : undefined,
       enrollment_date: form.enrollment_date || null,
       course_id: form.course_id || null,
       custom_course_name: form.custom_course_name || null,
@@ -190,7 +201,10 @@ export default function Students() {
       workload: form.workload,
       status: form.status,
       is_active: !shouldDeactivate,
+      payment_method: isAdmin ? (form.payment_method || null) : undefined,
     };
+    // Remove undefined keys so we don't overwrite admin-only fields
+    Object.keys(data).forEach(k => { if (data[k] === undefined) delete data[k]; });
 
     if (editingId) {
       updateStudent.mutate({ id: editingId, ...data }, {
@@ -342,9 +356,9 @@ export default function Students() {
           <div className="grid gap-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div><Label>Nome completo</Label><Input value={form.full_name} onChange={e => setForm(f => ({ ...f, full_name: e.target.value }))} /></div>
-              <div><Label>CPF</Label><Input value={form.cpf} onChange={e => setForm(f => ({ ...f, cpf: e.target.value }))} /></div>
-              <div><Label>Rua</Label><Input value={form.street} onChange={e => setForm(f => ({ ...f, street: e.target.value }))} /></div>
-              <div><Label>Número</Label><Input value={form.house_number} onChange={e => setForm(f => ({ ...f, house_number: e.target.value }))} /></div>
+              {isAdmin && <div><Label>CPF</Label><Input value={form.cpf} onChange={e => setForm(f => ({ ...f, cpf: e.target.value }))} /></div>}
+              {isAdmin && <div><Label>Rua</Label><Input value={form.street} onChange={e => setForm(f => ({ ...f, street: e.target.value }))} /></div>}
+              {isAdmin && <div><Label>Número</Label><Input value={form.house_number} onChange={e => setForm(f => ({ ...f, house_number: e.target.value }))} /></div>}
               <div><Label>Data de nascimento</Label><DateInput value={form.birth_date} onChange={v => setForm(f => ({ ...f, birth_date: v }))} /></div>
               <div><Label>Data da matrícula</Label><DateInput value={form.enrollment_date} onChange={v => setForm(f => ({ ...f, enrollment_date: v }))} /></div>
             </div>
@@ -393,6 +407,19 @@ export default function Students() {
                   </SelectContent>
                 </Select>
               </div>
+              {isAdmin && (
+                <div>
+                  <Label>Forma de pagamento</Label>
+                  <Select value={form.payment_method} onValueChange={v => setForm(f => ({ ...f, payment_method: v }))}>
+                    <SelectTrigger><SelectValue placeholder="Selecionar" /></SelectTrigger>
+                    <SelectContent>
+                      {PAYMENT_OPTIONS.map(o => (
+                        <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
             </div>
 
             {/* Schedule Section */}
