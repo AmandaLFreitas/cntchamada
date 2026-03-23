@@ -3,7 +3,8 @@ import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { User } from 'lucide-react';
+import { Lock, User } from 'lucide-react';
+import logoImg from '@/assets/logo-cnt.png';
 import logoImg from '@/assets/logo-cnt.png';
 
 export default function Login() {
