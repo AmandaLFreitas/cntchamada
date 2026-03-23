@@ -27,26 +27,19 @@ export function MonthlyReports() {
   const endDate = new Date(year, month + 1, 0).toISOString().split('T')[0];
 
   const { data: stats } = useQuery({
-    queryKey: ['monthly_stats', month, year],
+    queryKey: ['monthly_stats_sc', month, year],
     queryFn: async () => {
-      const { data: active } = await supabase
-        .from('students')
+      const { data: active } = await (supabase as any).from('student_courses')
         .select('id')
         .eq('status', 'em_andamento');
 
-      const { data: finalized } = await supabase
-        .from('students')
-        .select('id')
-        .eq('status', 'finalizado')
-        .gte('updated_at', startDate)
-        .lte('updated_at', endDate + 'T23:59:59');
+      const { data: finalized } = await (supabase as any).from('student_courses')
+        .select('id, created_at')
+        .eq('status', 'finalizado');
 
-      const { data: dropouts } = await supabase
-        .from('students')
-        .select('id')
-        .eq('status', 'desistiu')
-        .gte('updated_at', startDate)
-        .lte('updated_at', endDate + 'T23:59:59');
+      const { data: dropouts } = await (supabase as any).from('student_courses')
+        .select('id, created_at')
+        .eq('status', 'desistiu');
 
       const { data: attendance } = await supabase
         .from('attendance')
@@ -64,44 +57,37 @@ export function MonthlyReports() {
     },
   });
 
-  // Fetch students for detail view
   const { data: detailStudents } = useQuery({
-    queryKey: ['monthly_detail_students', detailView, month, year],
+    queryKey: ['monthly_detail_sc', detailView, month, year],
     enabled: !!detailView,
     queryFn: async () => {
-      if (detailView === 'active') {
-        const { data } = await supabase
-          .from('students')
-          .select('*, courses(name, workload)')
-          .eq('status', 'em_andamento')
-          .order('full_name');
-        return data ?? [];
-      }
-      if (detailView === 'finalized') {
-        const { data } = await supabase
-          .from('students')
-          .select('*, courses(name, workload)')
-          .eq('status', 'finalizado')
-          .gte('updated_at', startDate)
-          .lte('updated_at', endDate + 'T23:59:59')
-          .order('full_name');
-        return data ?? [];
-      }
-      if (detailView === 'dropouts') {
-        const { data } = await supabase
-          .from('students')
-          .select('*, courses(name, workload)')
-          .eq('status', 'desistiu')
-          .gte('updated_at', startDate)
-          .lte('updated_at', endDate + 'T23:59:59')
-          .order('full_name');
-        return data ?? [];
-      }
-      return [];
+      let statusFilter = 'em_andamento';
+      if (detailView === 'finalized') statusFilter = 'finalizado';
+      if (detailView === 'dropouts') statusFilter = 'desistiu';
+
+      const { data } = await (supabase as any).from('student_courses')
+        .select('*, students(id, full_name, birth_date, cpf, street, house_number, enrollment_date, first_class_date, guardian_name, guardian_phone), courses(name, workload)')
+        .eq('status', statusFilter);
+
+      // Flatten for display
+      return (data ?? []).map((sc: any) => ({
+        id: sc.students?.id ?? sc.id,
+        full_name: sc.students?.full_name,
+        birth_date: sc.students?.birth_date,
+        cpf: sc.students?.cpf,
+        street: sc.students?.street,
+        house_number: sc.students?.house_number,
+        enrollment_date: sc.enrollment_date,
+        first_class_date: sc.first_class_date,
+        guardian_name: sc.students?.guardian_name,
+        guardian_phone: sc.students?.guardian_phone,
+        courseName: sc.courses?.name || sc.custom_course_name || 'Sem curso',
+        workload: sc.workload,
+        status: sc.status,
+      }));
     },
   });
 
-  // Fetch schedules for selected student
   const { data: studentSchedules } = useQuery({
     queryKey: ['monthly_student_schedules', selectedStudentId],
     enabled: !!selectedStudentId,
@@ -114,7 +100,6 @@ export function MonthlyReports() {
     },
   });
 
-  // Fetch attendance for selected student
   const { data: studentAttendance } = useQuery({
     queryKey: ['monthly_student_attendance', selectedStudentId],
     enabled: !!selectedStudentId,
@@ -128,9 +113,9 @@ export function MonthlyReports() {
     },
   });
 
-  const selectedStudent = detailStudents?.find(s => s.id === selectedStudentId);
+  const selectedStudent = detailStudents?.find((s: any) => s.id === selectedStudentId);
 
-  const filteredDetail = detailStudents?.filter(s =>
+  const filteredDetail = detailStudents?.filter((s: any) =>
     !search || s.full_name?.toLowerCase().includes(search.toLowerCase())
   ) ?? [];
 
@@ -142,7 +127,6 @@ export function MonthlyReports() {
 
   const years = Array.from({ length: 5 }, (_, i) => now.getFullYear() - i);
 
-  // Individual report calculations
   const attendanceSummary = studentAttendance ? {
     present: studentAttendance.filter(a => a.status === 'present').length,
     absent: studentAttendance.filter(a => a.status === 'absent').length,
@@ -211,7 +195,6 @@ export function MonthlyReports() {
         </div>
       </div>
 
-      {/* Detail View Dialog */}
       <Dialog open={!!detailView} onOpenChange={() => { setDetailView(null); setSelectedStudentId(null); }}>
         <DialogContent className="max-w-2xl max-h-[85vh] overflow-auto">
           <DialogHeader>
@@ -232,13 +215,13 @@ export function MonthlyReports() {
                 <Input placeholder="Buscar aluno..." value={search} onChange={e => setSearch(e.target.value)} className="pl-9" />
               </div>
               <div className="space-y-2">
-                {filteredDetail.map(s => (
-                  <button key={s.id} onClick={() => setSelectedStudentId(s.id)}
+                {filteredDetail.map((s: any) => (
+                  <button key={s.id + s.courseName} onClick={() => setSelectedStudentId(s.id)}
                     className="bg-card border rounded-lg p-3 flex items-center gap-3 hover:shadow-md transition-shadow cursor-pointer text-left w-full">
                     <User className="h-4 w-4 text-muted-foreground flex-shrink-0" />
                     <div className="min-w-0 flex-1">
                       <p className="font-medium truncate">{s.full_name || 'Sem nome'}</p>
-                      <p className="text-sm text-muted-foreground">{(s.courses as any)?.name || s.custom_course_name || 'Sem curso'}</p>
+                      <p className="text-sm text-muted-foreground">{s.courseName}</p>
                     </div>
                   </button>
                 ))}
@@ -248,7 +231,6 @@ export function MonthlyReports() {
               </div>
             </>
           ) : (
-            // Individual student report
             <div className="space-y-4">
               <div className="flex gap-2 print:hidden">
                 <Button variant="outline" size="sm" onClick={handlePrintReport}>
@@ -263,10 +245,10 @@ export function MonthlyReports() {
                 {selectedStudent && (
                   <div className="grid grid-cols-2 gap-3 text-sm">
                     <div><p className="text-muted-foreground">Nome</p><p className="font-medium">{selectedStudent.full_name}</p></div>
-                    <div><p className="text-muted-foreground">Curso</p><p className="font-medium">{(selectedStudent.courses as any)?.name || selectedStudent.custom_course_name || '-'}</p></div>
+                    <div><p className="text-muted-foreground">Curso</p><p className="font-medium">{selectedStudent.courseName}</p></div>
                     <div><p className="text-muted-foreground">Carga Horária</p><p className="font-medium">{selectedStudent.workload}h</p></div>
                     <div><p className="text-muted-foreground">Matrícula</p><p className="font-medium">{selectedStudent.enrollment_date || '-'}</p></div>
-                    <div><p className="text-muted-foreground">Primeiro dia</p><p className="font-medium">{(selectedStudent as any).first_class_date || '-'}</p></div>
+                    <div><p className="text-muted-foreground">Primeiro dia</p><p className="font-medium">{selectedStudent.first_class_date || '-'}</p></div>
                     <div><p className="text-muted-foreground">Status</p><p className="font-medium capitalize">{selectedStudent.status?.replace('_', ' ')}</p></div>
                   </div>
                 )}

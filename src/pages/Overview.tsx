@@ -33,10 +33,8 @@ export default function Overview() {
 
   const daySlots = timeSlots?.filter(s => s.day_of_week === selectedDay) ?? [];
 
-  // Get student IDs for batch queries
-  const studentIds = slotStudents?.map(s => s.students?.id).filter(Boolean) ?? [];
+  const studentIds = slotStudents?.map((s: any) => s.students?.id).filter(Boolean) ?? [];
 
-  // First attendance dates
   const { data: firstDates } = useQuery({
     queryKey: ['first_dates_batch', studentIds],
     enabled: studentIds.length > 0,
@@ -55,7 +53,6 @@ export default function Overview() {
     },
   });
 
-  // Count weekly hours per student (number of schedules)
   const { data: scheduleCounts } = useQuery({
     queryKey: ['schedule_counts_batch', studentIds],
     enabled: studentIds.length > 0,
@@ -67,10 +64,9 @@ export default function Overview() {
       const map: Record<string, number> = {};
       data?.forEach(r => {
         if (!map[r.student_id]) map[r.student_id] = 0;
-        // Each schedule = 1 hour (approx)
         if (r.time_slots) {
-          const start = r.time_slots.start_time?.split(':').map(Number) ?? [0, 0];
-          const end = r.time_slots.end_time?.split(':').map(Number) ?? [0, 0];
+          const start = (r.time_slots as any).start_time?.split(':').map(Number) ?? [0, 0];
+          const end = (r.time_slots as any).end_time?.split(':').map(Number) ?? [0, 0];
           const hours = (end[0] + end[1] / 60) - (start[0] + start[1] / 60);
           map[r.student_id] += Math.max(hours, 1);
         }
@@ -112,11 +108,12 @@ export default function Overview() {
     handleDateSelect(newDate);
   };
 
-  const handleComplete = async (student: any) => {
+  const handleComplete = async (s: any) => {
+    const student = s.students;
     const courseName = student.courses?.name || student.custom_course_name || 'N/A';
     const startDate = firstDates?.[student.id] ?? null;
     completeStudent.mutate(
-      { studentId: student.id, courseName, startDate },
+      { studentId: student.id, studentCourseId: s.student_course_id, courseName, startDate },
       { onSuccess: () => { toast.success('Curso finalizado!'); setSelectedSlotId(null); } }
     );
   };
@@ -137,13 +134,7 @@ export default function Overview() {
               </Button>
             </PopoverTrigger>
             <PopoverContent className="w-auto p-0" align="end">
-              <Calendar
-                mode="single"
-                selected={selectedDate}
-                onSelect={handleDateSelect}
-                initialFocus
-                className={cn("p-3 pointer-events-auto")}
-              />
+              <Calendar mode="single" selected={selectedDate} onSelect={handleDateSelect} initialFocus className={cn("p-3 pointer-events-auto")} />
             </PopoverContent>
           </Popover>
           <Button variant="outline" size="icon" onClick={() => navigateDate(1)}>
@@ -156,13 +147,7 @@ export default function Overview() {
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 mt-4">
         {daySlots.map(slot => (
-          <TimeSlotCard
-            key={slot.id}
-            startTime={slot.start_time}
-            endTime={slot.end_time}
-            studentCount={slotCounts?.[slot.id] ?? 0}
-            onClick={() => setSelectedSlotId(slot.id)}
-          />
+          <TimeSlotCard key={slot.id} startTime={slot.start_time} endTime={slot.end_time} studentCount={slotCounts?.[slot.id] ?? 0} onClick={() => setSelectedSlotId(slot.id)} />
         ))}
       </div>
 
@@ -173,7 +158,7 @@ export default function Overview() {
           </DialogHeader>
           {slotStudents && slotStudents.length > 0 ? (
             <div className="space-y-2">
-              {slotStudents.map(s => {
+              {slotStudents.map((s: any) => {
                 const student = s.students;
                 if (!student) return null;
                 const courseName = student.courses?.name || student.custom_course_name || 'N/A';
@@ -184,12 +169,7 @@ export default function Overview() {
                   <div key={s.id} className="border rounded-lg p-3 bg-card">
                     <div className="flex items-center justify-between">
                       <p className="font-medium truncate">{student.full_name || 'Sem nome'}</p>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        className="ml-2 text-destructive border-destructive hover:bg-destructive hover:text-destructive-foreground"
-                        onClick={() => handleComplete(student)}
-                      >
+                      <Button size="sm" variant="outline" className="ml-2 text-destructive border-destructive hover:bg-destructive hover:text-destructive-foreground" onClick={() => handleComplete(s)}>
                         Finalizar
                       </Button>
                     </div>

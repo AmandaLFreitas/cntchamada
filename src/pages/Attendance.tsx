@@ -45,12 +45,11 @@ export default function Attendance() {
 
   const daySlots = timeSlots?.filter(s => s.day_of_week === selectedDay) ?? [];
 
-  const filteredStudents = slotStudents?.filter(s => {
+  const filteredStudents = (slotStudents ?? []).filter((s: any) => {
     const student = s.students;
     if (!student) return false;
-    if (!student.is_active) return false;
     return isEnrolledByDate(student.enrollment_date, isoDate);
-  }) ?? [];
+  });
 
   const getStatus = (studentId: string) => {
     return attendance?.find(a => a.student_id === studentId)?.status ?? null;
@@ -96,13 +95,7 @@ export default function Attendance() {
               </Button>
             </PopoverTrigger>
             <PopoverContent className="w-auto p-0" align="end">
-              <Calendar
-                mode="single"
-                selected={selectedDate}
-                onSelect={handleDateSelect}
-                initialFocus
-                className={cn("p-3 pointer-events-auto")}
-              />
+              <Calendar mode="single" selected={selectedDate} onSelect={handleDateSelect} initialFocus className={cn("p-3 pointer-events-auto")} />
             </PopoverContent>
           </Popover>
           <Button variant="outline" size="icon" onClick={() => navigateDate(1)}>
@@ -115,13 +108,7 @@ export default function Attendance() {
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 mt-4">
         {daySlots.map(slot => (
-          <TimeSlotCard
-            key={slot.id}
-            startTime={slot.start_time}
-            endTime={slot.end_time}
-            studentCount={slotCounts?.[slot.id] ?? 0}
-            onClick={() => setSelectedSlotId(slot.id)}
-          />
+          <TimeSlotCard key={slot.id} startTime={slot.start_time} endTime={slot.end_time} studentCount={slotCounts?.[slot.id] ?? 0} onClick={() => setSelectedSlotId(slot.id)} />
         ))}
       </div>
 
@@ -132,7 +119,7 @@ export default function Attendance() {
           </DialogHeader>
           {filteredStudents.length > 0 ? (
             <div className="space-y-2">
-              {filteredStudents.map(s => {
+              {filteredStudents.map((s: any) => {
                 const student = s.students;
                 if (!student) return null;
                 const status = getStatus(student.id);
@@ -144,31 +131,19 @@ export default function Attendance() {
                       <p className="text-sm text-muted-foreground">{courseName}</p>
                     </div>
                     <div className="flex gap-2 ml-2">
-                      <Button
-                        size="icon"
-                        variant={status === 'present' ? 'default' : 'outline'}
-                        className={status === 'present' ? 'bg-success hover:bg-success/90' : ''}
-                        onClick={() => markAttendance(student.id, 'present')}
-                        title="Presença"
-                      >
+                      <Button size="icon" variant={status === 'present' ? 'default' : 'outline'}
+                        className={status === 'present' ? 'bg-green-600 hover:bg-green-700' : ''}
+                        onClick={() => markAttendance(student.id, 'present')} title="Presença">
                         <Check className="h-4 w-4" />
                       </Button>
-                      <Button
-                        size="icon"
-                        variant={status === 'absent' ? 'default' : 'outline'}
+                      <Button size="icon" variant={status === 'absent' ? 'default' : 'outline'}
                         className={status === 'absent' ? 'bg-destructive hover:bg-destructive/90' : ''}
-                        onClick={() => markAttendance(student.id, 'absent')}
-                        title="Falta"
-                      >
+                        onClick={() => markAttendance(student.id, 'absent')} title="Falta">
                         <X className="h-4 w-4" />
                       </Button>
-                      <Button
-                        size="icon"
-                        variant={status === 'neutral' ? 'default' : 'outline'}
+                      <Button size="icon" variant={status === 'neutral' ? 'default' : 'outline'}
                         className={status === 'neutral' ? 'bg-muted-foreground hover:bg-muted-foreground/90 text-white' : ''}
-                        onClick={() => markAttendance(student.id, 'neutral')}
-                        title="Neutro (feriado/sem aula)"
-                      >
+                        onClick={() => markAttendance(student.id, 'neutral')} title="Neutro (feriado/sem aula)">
                         <Minus className="h-4 w-4" />
                       </Button>
                     </div>

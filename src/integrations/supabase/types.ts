@@ -118,26 +118,93 @@ export type Database = {
         }
         Relationships: []
       }
+      student_courses: {
+        Row: {
+          course_id: string | null
+          created_at: string
+          custom_course_name: string | null
+          enrollment_date: string | null
+          first_class_date: string | null
+          id: string
+          is_active: boolean
+          payment_method: string | null
+          status: string
+          student_id: string
+          workload: number
+        }
+        Insert: {
+          course_id?: string | null
+          created_at?: string
+          custom_course_name?: string | null
+          enrollment_date?: string | null
+          first_class_date?: string | null
+          id?: string
+          is_active?: boolean
+          payment_method?: string | null
+          status?: string
+          student_id: string
+          workload?: number
+        }
+        Update: {
+          course_id?: string | null
+          created_at?: string
+          custom_course_name?: string | null
+          enrollment_date?: string | null
+          first_class_date?: string | null
+          id?: string
+          is_active?: boolean
+          payment_method?: string | null
+          status?: string
+          student_id?: string
+          workload?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "student_courses_course_id_fkey"
+            columns: ["course_id"]
+            isOneToOne: false
+            referencedRelation: "courses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "student_courses_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "students"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       student_schedules: {
         Row: {
           created_at: string
           id: string
+          student_course_id: string | null
           student_id: string
           time_slot_id: string
         }
         Insert: {
           created_at?: string
           id?: string
+          student_course_id?: string | null
           student_id: string
           time_slot_id: string
         }
         Update: {
           created_at?: string
           id?: string
+          student_course_id?: string | null
           student_id?: string
           time_slot_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "student_schedules_student_course_id_fkey"
+            columns: ["student_course_id"]
+            isOneToOne: false
+            referencedRelation: "student_courses"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "student_schedules_student_id_fkey"
             columns: ["student_id"]
