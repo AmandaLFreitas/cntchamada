@@ -3,6 +3,7 @@ import { useStudents, useCourses, useTimeSlots, useCreateStudent, useUpdateStude
 import { supabase } from '@/integrations/supabase/client';
 import { DateInput } from '@/components/DateInput';
 import { useQuery } from '@tanstack/react-query';
+import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
