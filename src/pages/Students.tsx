@@ -167,6 +167,7 @@ export default function Students() {
       workload: student.workload ?? 48,
       status: (student as any).status || 'em_andamento',
       customScheduleMode: false,
+      payment_method: (student as any).payment_method ?? '',
     });
     setDialogOpen(true);
   };
