@@ -1,40 +1,27 @@
 import { useState } from 'react';
+import { format } from 'date-fns';
+import { ptBR } from 'date-fns/locale';
+import { CalendarIcon, ChevronLeft, ChevronRight } from 'lucide-react';
 import { DayTabs } from '@/components/DayTabs';
 import { TimeSlotCard } from '@/components/TimeSlotCard';
 import { useTimeSlots, useSlotCounts, useSlotStudents, useAttendance, useSaveAttendance } from '@/hooks/use-supabase-data';
-import { getTodayDayName } from '@/lib/constants';
+import { getTodayDayName, DAYS_OF_WEEK } from '@/lib/constants';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { Label } from '@/components/ui/label';
-import { DateInput } from '@/components/DateInput';
+import { Calendar } from '@/components/ui/calendar';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { cn } from '@/lib/utils';
 import { Check, X, Minus } from 'lucide-react';
 
-function parseDateInput(dateStr: string): string | null {
-  // Convert dd/mm/yyyy to yyyy-mm-dd
-  const parts = dateStr.split('/');
-  if (parts.length === 3 && parts[0].length === 2 && parts[1].length === 2 && parts[2].length === 4) {
-    return `${parts[2]}-${parts[1]}-${parts[0]}`;
-  }
-  return null;
-}
-
-function formatToDisplay(isoDate: string): string {
-  const parts = isoDate.split('-');
-  if (parts.length === 3) return `${parts[2]}/${parts[1]}/${parts[0]}`;
-  return isoDate;
-}
-
-function getDayNameFromDate(dateStr: string): string {
+const dayNameFromDate = (date: Date): string => {
   const days = ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado'];
-  const date = new Date(dateStr + 'T12:00:00');
   const name = days[date.getDay()];
   if (name === 'Domingo' || name === 'Sexta') return 'Segunda';
   return name;
-}
+};
 
 function isEnrolledByDate(enrollmentDate: string | null, checkDate: string): boolean {
-  if (!enrollmentDate) return true; // No enrollment date = show
-  // Parse enrollment date (could be dd/mm/yyyy or yyyy-mm-dd)
+  if (!enrollmentDate) return true;
   let isoEnrollment = enrollmentDate;
   const parts = enrollmentDate.split('/');
   if (parts.length === 3 && parts[2].length === 4) {
@@ -44,27 +31,25 @@ function isEnrolledByDate(enrollmentDate: string | null, checkDate: string): boo
 }
 
 export default function Attendance() {
-  const today = new Date().toISOString().split('T')[0];
-  const [selectedDate, setSelectedDate] = useState(today);
-  const [dateDisplay, setDateDisplay] = useState(formatToDisplay(today));
+  const [selectedDate, setSelectedDate] = useState<Date>(new Date());
+  const [selectedDay, setSelectedDay] = useState(getTodayDayName());
   const [selectedSlotId, setSelectedSlotId] = useState<string | null>(null);
 
-  const selectedDay = getDayNameFromDate(selectedDate);
+  const isoDate = format(selectedDate, 'yyyy-MM-dd');
 
   const { data: timeSlots } = useTimeSlots();
   const { data: slotCounts } = useSlotCounts();
   const { data: slotStudents } = useSlotStudents(selectedSlotId);
-  const { data: attendance } = useAttendance(selectedDate, selectedSlotId);
+  const { data: attendance } = useAttendance(isoDate, selectedSlotId);
   const saveAttendance = useSaveAttendance();
 
   const daySlots = timeSlots?.filter(s => s.day_of_week === selectedDay) ?? [];
 
-  // Filter students: only active and enrolled by selected
   const filteredStudents = slotStudents?.filter(s => {
     const student = s.students;
     if (!student) return false;
     if (!student.is_active) return false;
-    return isEnrolledByDate(student.enrollment_date, selectedDate);
+    return isEnrolledByDate(student.enrollment_date, isoDate);
   }) ?? [];
 
   const getStatus = (studentId: string) => {
@@ -73,37 +58,56 @@ export default function Attendance() {
 
   const markAttendance = (studentId: string, status: string) => {
     if (!selectedSlotId) return;
-    saveAttendance.mutate({ studentId, timeSlotId: selectedSlotId, date: selectedDate, status });
+    saveAttendance.mutate({ studentId, timeSlotId: selectedSlotId, date: isoDate, status });
   };
 
-  const handleDateChange = (display: string) => {
-    setDateDisplay(display);
-    const iso = parseDateInput(display);
-    if (iso) setSelectedDate(iso);
+  const handleDateSelect = (date: Date | undefined) => {
+    if (!date) return;
+    setSelectedDate(date);
+    const dayName = dayNameFromDate(date);
+    if (DAYS_OF_WEEK.includes(dayName as any)) {
+      setSelectedDay(dayName);
+    }
   };
 
   const handleDayChange = (day: string) => {
-    const current = new Date(selectedDate + 'T12:00:00');
-    const days = ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado'];
-    const targetDow = days.indexOf(day);
-    const currentDow = current.getDay();
-    let diff = targetDow - currentDow;
-    if (diff > 3) diff -= 7;
-    if (diff < -3) diff += 7;
-    const newDate = new Date(current);
-    newDate.setDate(newDate.getDate() + diff);
-    const iso = newDate.toISOString().split('T')[0];
-    setSelectedDate(iso);
-    setDateDisplay(formatToDisplay(iso));
+    setSelectedDay(day);
+  };
+
+  const navigateDate = (direction: number) => {
+    const newDate = new Date(selectedDate);
+    newDate.setDate(newDate.getDate() + direction);
+    handleDateSelect(newDate);
   };
 
   return (
     <div>
-      <div className="flex flex-col sm:flex-row sm:items-center gap-4 mb-4">
+      <div className="flex flex-col sm:flex-row sm:items-center gap-3 mb-4">
         <h1 className="text-2xl font-bold">Chamada</h1>
-        <div className="flex items-center gap-2">
-          <Label className="text-sm whitespace-nowrap">Data:</Label>
-          <DateInput value={dateDisplay} onChange={handleDateChange} className="w-36" />
+        <div className="flex items-center gap-2 ml-auto">
+          <Button variant="outline" size="icon" onClick={() => navigateDate(-1)}>
+            <ChevronLeft className="h-4 w-4" />
+          </Button>
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button variant="outline" className="min-w-[180px] justify-start text-left font-normal">
+                <CalendarIcon className="mr-2 h-4 w-4" />
+                {format(selectedDate, "dd 'de' MMMM, yyyy", { locale: ptBR })}
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-auto p-0" align="end">
+              <Calendar
+                mode="single"
+                selected={selectedDate}
+                onSelect={handleDateSelect}
+                initialFocus
+                className={cn("p-3 pointer-events-auto")}
+              />
+            </PopoverContent>
+          </Popover>
+          <Button variant="outline" size="icon" onClick={() => navigateDate(1)}>
+            <ChevronRight className="h-4 w-4" />
+          </Button>
         </div>
       </div>
 
@@ -124,7 +128,7 @@ export default function Attendance() {
       <Dialog open={!!selectedSlotId} onOpenChange={() => setSelectedSlotId(null)}>
         <DialogContent className="max-w-2xl max-h-[80vh] overflow-auto">
           <DialogHeader>
-            <DialogTitle>Chamada - {dateDisplay} ({selectedDay})</DialogTitle>
+            <DialogTitle>Chamada - {format(selectedDate, "dd/MM/yyyy")} ({selectedDay})</DialogTitle>
           </DialogHeader>
           {filteredStudents.length > 0 ? (
             <div className="space-y-2">

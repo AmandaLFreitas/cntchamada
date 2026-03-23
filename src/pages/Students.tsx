@@ -17,7 +17,7 @@ import { Switch } from '@/components/ui/switch';
 
 interface StudentForm {
   full_name: string; street: string; house_number: string; birth_date: string;
-  cpf: string; enrollment_date: string; course_id: string; custom_course_name: string;
+  cpf: string; enrollment_date: string; first_class_date: string; course_id: string; custom_course_name: string;
   guardian_name: string; guardian_phone: string;
   daySchedules: Record<string, string[]>;
   show_guardian: boolean; workload: number;
@@ -34,7 +34,7 @@ const PAYMENT_OPTIONS = [
 
 const emptyForm: StudentForm = {
   full_name: '', street: '', house_number: '', birth_date: '',
-  cpf: '', enrollment_date: '', course_id: '', custom_course_name: '',
+  cpf: '', enrollment_date: '', first_class_date: '', course_id: '', custom_course_name: '',
   guardian_name: '', guardian_phone: '',
   daySchedules: {},
   show_guardian: false, workload: 48,
@@ -158,6 +158,7 @@ export default function Students() {
       birth_date: student.birth_date ?? '',
       cpf: student.cpf ?? '',
       enrollment_date: student.enrollment_date ?? '',
+      first_class_date: student.first_class_date ?? '',
       course_id: student.course_id ?? '',
       custom_course_name: student.custom_course_name ?? '',
       guardian_name: student.guardian_name ?? '',
@@ -183,7 +184,60 @@ export default function Students() {
     return ids;
   };
 
+  const checkDuplicate = async (name: string): Promise<string | null> => {
+    if (!name.trim()) return null;
+    const { data } = await supabase
+      .from('students')
+      .select('id, full_name')
+      .ilike('full_name', name.trim())
+      .neq('id', editingId ?? '00000000-0000-0000-0000-000000000000');
+    if (data && data.length > 0) return data[0].id;
+    return null;
+  };
+
   const handleSave = async () => {
+    // Check for duplicate name
+    if (!editingId && form.full_name.trim()) {
+      const existingId = await checkDuplicate(form.full_name);
+      if (existingId) {
+        const confirmed = confirm(
+          `Já existe um aluno com o nome "${form.full_name}". Deseja atualizar o cadastro existente em vez de criar um novo?`
+        );
+        if (confirmed) {
+          // Update existing student instead
+          const schedules = computeScheduleIds(form.daySchedules);
+          const shouldDeactivate = form.status === 'finalizado' || form.status === 'desistiu';
+          const data: any = {
+            id: existingId,
+            full_name: form.full_name || null,
+            street: isAdmin ? (form.street || null) : undefined,
+            house_number: isAdmin ? (form.house_number || null) : undefined,
+            birth_date: form.birth_date || null,
+            cpf: isAdmin ? (form.cpf || null) : undefined,
+            enrollment_date: form.enrollment_date || null,
+            first_class_date: form.first_class_date || null,
+            course_id: form.course_id || null,
+            custom_course_name: form.custom_course_name || null,
+            guardian_name: form.show_guardian ? form.guardian_name || null : null,
+            guardian_phone: form.show_guardian ? form.guardian_phone || null : null,
+            schedules: shouldDeactivate ? [] : schedules,
+            workload: form.workload,
+            status: form.status,
+            is_active: !shouldDeactivate,
+            payment_method: isAdmin ? (form.payment_method || null) : undefined,
+          };
+          Object.keys(data).forEach(k => { if (data[k] === undefined) delete data[k]; });
+          updateStudent.mutate(data, {
+            onSuccess: () => { toast.success('Aluno atualizado!'); setDialogOpen(false); },
+            onError: () => toast.error('Erro ao atualizar aluno'),
+          });
+          return;
+        } else {
+          return; // Cancel
+        }
+      }
+    }
+
     const schedules = computeScheduleIds(form.daySchedules);
     const shouldDeactivate = form.status === 'finalizado' || form.status === 'desistiu';
     const data: any = {
@@ -193,6 +247,7 @@ export default function Students() {
       birth_date: form.birth_date || null,
       cpf: isAdmin ? (form.cpf || null) : undefined,
       enrollment_date: form.enrollment_date || null,
+      first_class_date: form.first_class_date || null,
       course_id: form.course_id || null,
       custom_course_name: form.custom_course_name || null,
       guardian_name: form.show_guardian ? form.guardian_name || null : null,
@@ -203,7 +258,6 @@ export default function Students() {
       is_active: !shouldDeactivate,
       payment_method: isAdmin ? (form.payment_method || null) : undefined,
     };
-    // Remove undefined keys so we don't overwrite admin-only fields
     Object.keys(data).forEach(k => { if (data[k] === undefined) delete data[k]; });
 
     if (editingId) {
@@ -227,7 +281,6 @@ export default function Students() {
     }
   };
 
-  // Auto-pairing: Segunda↔Quarta, Terça↔Quinta
   const getPairedDay = (day: string): string | null => {
     const pairs: Record<string, string> = {
       'Segunda': 'Quarta', 'Quarta': 'Segunda',
@@ -261,7 +314,6 @@ export default function Students() {
 
   const showGuardian = form.show_guardian || isMinor(form.birth_date);
 
-  // Course history for a student
   const studentCompletions = completions?.filter(c => c.student_id === historyStudentId) ?? [];
   const historyStudent = students?.find(s => s.id === historyStudentId);
 
@@ -360,7 +412,8 @@ export default function Students() {
               {isAdmin && <div><Label>Rua</Label><Input value={form.street} onChange={e => setForm(f => ({ ...f, street: e.target.value }))} /></div>}
               {isAdmin && <div><Label>Número</Label><Input value={form.house_number} onChange={e => setForm(f => ({ ...f, house_number: e.target.value }))} /></div>}
               <div><Label>Data de nascimento</Label><DateInput value={form.birth_date} onChange={v => setForm(f => ({ ...f, birth_date: v }))} /></div>
-              <div><Label>Data da matrícula</Label><DateInput value={form.enrollment_date} onChange={v => setForm(f => ({ ...f, enrollment_date: v }))} /></div>
+              {isAdmin && <div><Label>Data da matrícula</Label><DateInput value={form.enrollment_date} onChange={v => setForm(f => ({ ...f, enrollment_date: v }))} /></div>}
+              <div><Label>Data do primeiro dia de aula</Label><DateInput value={form.first_class_date} onChange={v => setForm(f => ({ ...f, first_class_date: v }))} /></div>
             </div>
 
             {showGuardian && (

@@ -162,6 +162,7 @@ export type Database = {
           created_at: string
           custom_course_name: string | null
           enrollment_date: string | null
+          first_class_date: string | null
           full_name: string | null
           guardian_name: string | null
           guardian_phone: string | null
@@ -181,6 +182,7 @@ export type Database = {
           created_at?: string
           custom_course_name?: string | null
           enrollment_date?: string | null
+          first_class_date?: string | null
           full_name?: string | null
           guardian_name?: string | null
           guardian_phone?: string | null
@@ -200,6 +202,7 @@ export type Database = {
           created_at?: string
           custom_course_name?: string | null
           enrollment_date?: string | null
+          first_class_date?: string | null
           full_name?: string | null
           guardian_name?: string | null
           guardian_phone?: string | null
