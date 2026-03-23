@@ -23,7 +23,14 @@ interface StudentForm {
   show_guardian: boolean; workload: number;
   status: string;
   customScheduleMode: boolean;
+  payment_method: string;
 }
+
+const PAYMENT_OPTIONS = [
+  { value: 'a_vista', label: 'À vista' },
+  { value: 'cartao', label: 'Cartão' },
+  { value: 'boleto', label: 'Boleto' },
+];
 
 const emptyForm: StudentForm = {
   full_name: '', street: '', house_number: '', birth_date: '',
