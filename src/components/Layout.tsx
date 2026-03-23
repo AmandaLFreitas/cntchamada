@@ -4,6 +4,7 @@ import { BirthdayNotification } from '@/components/BirthdayNotification';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { LogOut } from 'lucide-react';
+import { ChangePasswordDialog } from '@/components/ChangePasswordDialog';
 import logoImg from '@/assets/logo-cnt.png';
 
 export function Layout({ children }: { children: React.ReactNode }) {
@@ -24,6 +25,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
               {displayName && (
                 <span className="text-sm text-muted-foreground hidden sm:inline">Olá, {displayName}</span>
               )}
+              <ChangePasswordDialog />
               <Button variant="ghost" size="icon" onClick={signOut} title="Sair">
                 <LogOut className="h-4 w-4" />
               </Button>
