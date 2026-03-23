@@ -407,6 +407,19 @@ export default function Students() {
                   </SelectContent>
                 </Select>
               </div>
+              {isAdmin && (
+                <div>
+                  <Label>Forma de pagamento</Label>
+                  <Select value={form.payment_method} onValueChange={v => setForm(f => ({ ...f, payment_method: v }))}>
+                    <SelectTrigger><SelectValue placeholder="Selecionar" /></SelectTrigger>
+                    <SelectContent>
+                      {PAYMENT_OPTIONS.map(o => (
+                        <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
             </div>
 
             {/* Schedule Section */}
