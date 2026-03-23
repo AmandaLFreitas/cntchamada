@@ -83,6 +83,7 @@ function timeKey(start: string, end: string) {
 }
 
 export default function Students() {
+  const { isAdmin } = useAuth();
   const [search, setSearch] = useState('');
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
