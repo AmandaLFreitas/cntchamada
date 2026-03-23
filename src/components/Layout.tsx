@@ -25,6 +25,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
               {displayName && (
                 <span className="text-sm text-muted-foreground hidden sm:inline">Olá, {displayName}</span>
               )}
+              <ChangePasswordDialog />
               <Button variant="ghost" size="icon" onClick={signOut} title="Sair">
                 <LogOut className="h-4 w-4" />
               </Button>
