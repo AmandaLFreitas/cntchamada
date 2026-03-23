@@ -24,26 +24,27 @@ export default function Reports() {
   const [certOpen, setCertOpen] = useState(false);
   const [certData, setCertData] = useState<CertificateData | null>(null);
 
-  const { data: allStudents } = useQuery({
-    queryKey: ['all_students_with_courses'],
+  // Get all student_courses with student info for status filtering
+  const { data: allStudentCourses } = useQuery({
+    queryKey: ['all_student_courses_report'],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from('students')
-        .select('*, courses(name, workload)')
-        .order('full_name');
+      const { data, error } = await (supabase as any).from('student_courses')
+        .select('*, students(*, courses:courses(*)), courses(name, workload)')
+        .order('created_at', { ascending: false });
       if (error) throw error;
-      return data;
+      return data ?? [];
     },
   });
 
   const { data: statusCounts } = useQuery({
-    queryKey: ['student_status_counts'],
+    queryKey: ['student_course_status_counts'],
     queryFn: async () => {
-      const { data: all, error } = await supabase.from('students').select('status');
+      const { data: all, error } = await (supabase as any).from('student_courses')
+        .select('status');
       if (error) throw error;
       const counts = { em_andamento: 0, finalizado: 0, desistiu: 0 };
-      all?.forEach(s => {
-        const st = s.status || 'em_andamento';
+      (all ?? []).forEach((sc: any) => {
+        const st = sc.status || 'em_andamento';
         if (st in counts) counts[st as keyof typeof counts]++;
       });
       return counts;
@@ -96,12 +97,29 @@ export default function Reports() {
     setSearch('');
   };
 
-  const filteredByStatus = allStudents?.filter(s => (s.status || 'em_andamento') === statusFilter) ?? [];
-  const filteredStudents = filteredByStatus.filter(s =>
+  // Group student_courses by student for display
+  const filteredByStatus = (allStudentCourses ?? []).filter((sc: any) => (sc.status || 'em_andamento') === statusFilter);
+
+  // Deduplicate students - show each student once with their course info
+  const studentMap = new Map<string, any>();
+  filteredByStatus.forEach((sc: any) => {
+    const sid = sc.student_id;
+    if (!studentMap.has(sid)) {
+      studentMap.set(sid, {
+        ...sc.students,
+        courseName: sc.courses?.name || sc.custom_course_name || 'Sem curso',
+        workload: sc.workload,
+        studentCourseStatus: sc.status,
+      });
+    }
+  });
+  const uniqueStudents = Array.from(studentMap.values());
+
+  const filteredStudents = uniqueStudents.filter(s =>
     !search || s.full_name?.toLowerCase().includes(search.toLowerCase())
   );
 
-  const selectedStudent = allStudents?.find(s => s.id === selectedStudentId);
+  const selectedStudent = uniqueStudents.find((s: any) => s.id === selectedStudentId);
 
   return (
     <div>
@@ -143,13 +161,13 @@ export default function Reports() {
           </div>
 
           <div className="grid gap-2">
-            {filteredStudents.map(s => (
+            {filteredStudents.map((s: any) => (
               <button key={s.id} onClick={() => setSelectedStudentId(s.id)}
                 className="bg-card border rounded-lg p-3 flex items-center gap-3 hover:shadow-md transition-shadow cursor-pointer text-left w-full">
                 <User className="h-4 w-4 text-muted-foreground flex-shrink-0" />
                 <div className="min-w-0">
                   <p className="font-medium truncate">{s.full_name || 'Sem nome'}</p>
-                  <p className="text-sm text-muted-foreground">{(s.courses as any)?.name || s.custom_course_name || 'Sem curso'}</p>
+                  <p className="text-sm text-muted-foreground">{s.courseName}</p>
                 </div>
               </button>
             ))}
@@ -171,17 +189,9 @@ export default function Reports() {
                 <div><p className="text-muted-foreground">CPF</p><p className="font-medium">{selectedStudent.cpf || '-'}</p></div>
                 <div><p className="text-muted-foreground">Data de Nascimento</p><p className="font-medium">{selectedStudent.birth_date || '-'}</p></div>
                 <div><p className="text-muted-foreground">Endereço</p><p className="font-medium">{selectedStudent.street ? `${selectedStudent.street}, ${selectedStudent.house_number || 's/n'}` : '-'}</p></div>
-                <div><p className="text-muted-foreground">Matrícula</p><p className="font-medium">{selectedStudent.enrollment_date || '-'}</p></div>
-                <div><p className="text-muted-foreground">Primeiro dia de aula</p><p className="font-medium">{(selectedStudent as any).first_class_date || '-'}</p></div>
-                <div><p className="text-muted-foreground">Curso</p><p className="font-medium">{(selectedStudent.courses as any)?.name || selectedStudent.custom_course_name || '-'}</p></div>
+                <div><p className="text-muted-foreground">Curso</p><p className="font-medium">{selectedStudent.courseName}</p></div>
                 <div><p className="text-muted-foreground">Carga Horária</p><p className="font-medium">{selectedStudent.workload}h</p></div>
-                <div><p className="text-muted-foreground">Status</p><p className="font-medium capitalize">{selectedStudent.status?.replace('_', ' ') || 'Em andamento'}</p></div>
-                {selectedStudent.guardian_name && (
-                  <>
-                    <div><p className="text-muted-foreground">Responsável</p><p className="font-medium">{selectedStudent.guardian_name}</p></div>
-                    <div><p className="text-muted-foreground">Tel. Responsável</p><p className="font-medium">{selectedStudent.guardian_phone || '-'}</p></div>
-                  </>
-                )}
+                <div><p className="text-muted-foreground">Status</p><p className="font-medium capitalize">{selectedStudent.studentCourseStatus?.replace('_', ' ') || 'Em andamento'}</p></div>
               </div>
 
               {studentAttendance && (
@@ -208,15 +218,14 @@ export default function Reports() {
                 </div>
               )}
 
-              {selectedStudent.status === 'finalizado' && (
+              {selectedStudent.studentCourseStatus === 'finalizado' && (
                 <Button className="w-full gap-2" onClick={() => {
-                  const courseName = (selectedStudent.courses as any)?.name || selectedStudent.custom_course_name || 'N/A';
                   const today = new Date().toISOString().split('T')[0];
                   setCertData({
                     studentName: selectedStudent.full_name || 'Sem nome',
-                    courseName,
+                    courseName: selectedStudent.courseName,
                     workload: selectedStudent.workload ?? 48,
-                    startDate: selectedStudent.enrollment_date ?? null,
+                    startDate: null,
                     endDate: today,
                   });
                   setCertOpen(true);

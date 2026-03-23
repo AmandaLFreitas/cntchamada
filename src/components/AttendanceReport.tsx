@@ -16,13 +16,15 @@ export function AttendanceReport() {
 
   const { data: students } = useStudents();
 
-  const selectedStudent = students?.find(s => s.id === selectedStudentId);
+  const selectedStudent = students?.find((s: any) => s.id === selectedStudentId);
 
   const displayName = manualName || selectedStudent?.full_name || 'Sem nome';
 
+  // Get course name from student_courses
+  const activeCourse = selectedStudent?.student_courses?.find((sc: any) => sc.is_active);
   const courseName = selectedStudent
-    ? ((selectedStudent.courses as any)?.name || selectedStudent.custom_course_name || 'N/A')
-    : manualName ? '' : '';
+    ? (activeCourse?.courses?.name || activeCourse?.custom_course_name || 'N/A')
+    : '';
 
   const handleGenerate = () => {
     if (!selectedStudentId && !manualName) return;
@@ -65,7 +67,7 @@ export function AttendanceReport() {
           <Select value={selectedStudentId} onValueChange={(v) => { setSelectedStudentId(v); setManualName(''); }}>
             <SelectTrigger><SelectValue placeholder="Escolha um aluno" /></SelectTrigger>
             <SelectContent>
-              {students?.map(s => (
+              {students?.map((s: any) => (
                 <SelectItem key={s.id} value={s.id}>{s.full_name || 'Sem nome'}</SelectItem>
               ))}
             </SelectContent>

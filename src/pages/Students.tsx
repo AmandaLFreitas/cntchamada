@@ -11,19 +11,22 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Checkbox } from '@/components/ui/checkbox';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { DAYS_OF_WEEK } from '@/lib/constants';
-import { Plus, Pencil, Trash2, Search, History } from 'lucide-react';
+import { Plus, Pencil, Trash2, Search, History, BookOpen } from 'lucide-react';
 import { toast } from 'sonner';
 import { Switch } from '@/components/ui/switch';
+import { Badge } from '@/components/ui/badge';
 
 interface StudentForm {
   full_name: string; street: string; house_number: string; birth_date: string;
-  cpf: string; enrollment_date: string; first_class_date: string; course_id: string; custom_course_name: string;
-  guardian_name: string; guardian_phone: string;
+  cpf: string; guardian_name: string; guardian_phone: string;
+  // Course data
+  course_id: string; custom_course_name: string;
+  enrollment_date: string; first_class_date: string;
+  workload: number; status: string; payment_method: string;
+  // Schedules
   daySchedules: Record<string, string[]>;
-  show_guardian: boolean; workload: number;
-  status: string;
+  show_guardian: boolean;
   customScheduleMode: boolean;
-  payment_method: string;
 }
 
 const PAYMENT_OPTIONS = [
@@ -34,13 +37,13 @@ const PAYMENT_OPTIONS = [
 
 const emptyForm: StudentForm = {
   full_name: '', street: '', house_number: '', birth_date: '',
-  cpf: '', enrollment_date: '', first_class_date: '', course_id: '', custom_course_name: '',
-  guardian_name: '', guardian_phone: '',
+  cpf: '', guardian_name: '', guardian_phone: '',
+  course_id: '', custom_course_name: '',
+  enrollment_date: '', first_class_date: '',
+  workload: 48, status: 'em_andamento', payment_method: '',
   daySchedules: {},
-  show_guardian: false, workload: 48,
-  status: 'em_andamento',
+  show_guardian: false,
   customScheduleMode: false,
-  payment_method: '',
 };
 
 const WEEKDAY_TIMES = [
@@ -86,11 +89,13 @@ export default function Students() {
   const { isAdmin } = useAuth();
   const [search, setSearch] = useState('');
   const [dialogOpen, setDialogOpen] = useState(false);
-  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editingStudentId, setEditingStudentId] = useState<string | null>(null);
+  const [editingCourseId, setEditingCourseId] = useState<string | null>(null); // student_course id
   const [form, setForm] = useState<StudentForm>(emptyForm);
   const [historyStudentId, setHistoryStudentId] = useState<string | null>(null);
+  const [addCourseStudentId, setAddCourseStudentId] = useState<string | null>(null);
 
-  const { data: students } = useStudents();
+  const { data: students } = useStudents(false); // all students
   const { data: courses } = useCourses();
   const { data: timeSlots } = useTimeSlots();
   const { data: completions } = useCompletions();
@@ -114,17 +119,20 @@ export default function Students() {
     return map;
   }, [timeSlots]);
 
+  // Load schedules when editing a student_course
   const { data: editSchedules } = useQuery({
-    queryKey: ['edit_schedules', editingId],
-    enabled: !!editingId,
+    queryKey: ['edit_schedules_sc', editingCourseId],
+    enabled: !!editingCourseId,
     queryFn: async () => {
-      const { data } = await supabase.from('student_schedules').select('time_slot_id').eq('student_id', editingId!);
+      const { data } = await supabase.from('student_schedules')
+        .select('time_slot_id')
+        .eq('student_course_id', editingCourseId!);
       return data?.map(s => s.time_slot_id) ?? [];
     },
   });
 
   useEffect(() => {
-    if (editingId && editSchedules && Object.keys(reverseSlotLookup).length > 0) {
+    if (editingCourseId && editSchedules && Object.keys(reverseSlotLookup).length > 0) {
       const daySchedules: Record<string, string[]> = {};
       editSchedules.forEach(tsId => {
         const info = reverseSlotLookup[tsId];
@@ -137,38 +145,65 @@ export default function Students() {
       });
       setForm(f => ({ ...f, daySchedules }));
     }
-  }, [editingId, editSchedules, reverseSlotLookup]);
+  }, [editingCourseId, editSchedules, reverseSlotLookup]);
 
-  const filtered = students?.filter(s =>
-    !search || (s.full_name?.toLowerCase().includes(search.toLowerCase()))
-  ) ?? [];
+  // Filter students - show each student once
+  const filtered = useMemo(() => {
+    const list = students ?? [];
+    if (!search) return list;
+    return list.filter((s: any) =>
+      s.full_name?.toLowerCase().includes(search.toLowerCase())
+    );
+  }, [students, search]);
 
   const openNew = () => {
-    setEditingId(null);
+    setEditingStudentId(null);
+    setEditingCourseId(null);
+    setAddCourseStudentId(null);
     setForm(emptyForm);
     setDialogOpen(true);
   };
 
-  const openEdit = (student: any) => {
-    setEditingId(student.id);
+  const openAddCourse = (studentId: string, student: any) => {
+    setEditingStudentId(null);
+    setEditingCourseId(null);
+    setAddCourseStudentId(studentId);
+    setForm({
+      ...emptyForm,
+      full_name: student.full_name ?? '',
+      street: student.street ?? '',
+      house_number: student.house_number ?? '',
+      birth_date: student.birth_date ?? '',
+      cpf: student.cpf ?? '',
+      guardian_name: student.guardian_name ?? '',
+      guardian_phone: student.guardian_phone ?? '',
+      show_guardian: !!student.guardian_name || isMinor(student.birth_date ?? ''),
+    });
+    setDialogOpen(true);
+  };
+
+  const openEditCourse = (student: any, sc: any) => {
+    setEditingStudentId(student.id);
+    setEditingCourseId(sc.id);
+    setAddCourseStudentId(null);
     setForm({
       full_name: student.full_name ?? '',
       street: student.street ?? '',
       house_number: student.house_number ?? '',
       birth_date: student.birth_date ?? '',
       cpf: student.cpf ?? '',
-      enrollment_date: student.enrollment_date ?? '',
-      first_class_date: student.first_class_date ?? '',
-      course_id: student.course_id ?? '',
-      custom_course_name: student.custom_course_name ?? '',
       guardian_name: student.guardian_name ?? '',
       guardian_phone: student.guardian_phone ?? '',
+      course_id: sc.course_id ?? '',
+      custom_course_name: sc.custom_course_name ?? '',
+      enrollment_date: sc.enrollment_date ?? '',
+      first_class_date: sc.first_class_date ?? '',
+      workload: sc.workload ?? 48,
+      status: sc.status || 'em_andamento',
+      payment_method: sc.payment_method ?? '',
       daySchedules: {},
       show_guardian: !!student.guardian_name || isMinor(student.birth_date ?? ''),
-      workload: student.workload ?? 48,
-      status: (student as any).status || 'em_andamento',
       customScheduleMode: false,
-      payment_method: (student as any).payment_method ?? '',
     });
     setDialogOpen(true);
   };
@@ -184,97 +219,123 @@ export default function Students() {
     return ids;
   };
 
-  const checkDuplicate = async (name: string): Promise<string | null> => {
+  const checkDuplicate = async (name: string): Promise<{ id: string; student: any } | null> => {
     if (!name.trim()) return null;
     const { data } = await supabase
       .from('students')
-      .select('id, full_name')
-      .ilike('full_name', name.trim())
-      .neq('id', editingId ?? '00000000-0000-0000-0000-000000000000');
-    if (data && data.length > 0) return data[0].id;
+      .select('*')
+      .ilike('full_name', name.trim());
+    if (data && data.length > 0) return { id: data[0].id, student: data[0] };
     return null;
   };
 
   const handleSave = async () => {
-    // Check for duplicate name
-    if (!editingId && form.full_name.trim()) {
-      const existingId = await checkDuplicate(form.full_name);
-      if (existingId) {
+    const schedules = computeScheduleIds(form.daySchedules);
+    const shouldDeactivate = form.status === 'finalizado' || form.status === 'desistiu';
+
+    const personalData: any = {
+      full_name: form.full_name || null,
+      birth_date: form.birth_date || null,
+      guardian_name: form.show_guardian ? form.guardian_name || null : null,
+      guardian_phone: form.show_guardian ? form.guardian_phone || null : null,
+    };
+    if (isAdmin) {
+      personalData.street = form.street || null;
+      personalData.house_number = form.house_number || null;
+      personalData.cpf = form.cpf || null;
+    }
+
+    // Adding a new course to existing student
+    if (addCourseStudentId) {
+      createStudent.mutate({
+        ...personalData,
+        existingStudentId: addCourseStudentId,
+        course_id: form.course_id || null,
+        custom_course_name: form.custom_course_name || null,
+        enrollment_date: form.enrollment_date || null,
+        first_class_date: form.first_class_date || null,
+        workload: form.workload,
+        status: form.status,
+        payment_method: isAdmin ? form.payment_method || null : undefined,
+        schedules: shouldDeactivate ? [] : schedules,
+      }, {
+        onSuccess: () => { toast.success('Curso adicionado ao aluno!'); setDialogOpen(false); },
+        onError: () => toast.error('Erro ao adicionar curso'),
+      });
+      return;
+    }
+
+    // Editing existing student + course
+    if (editingStudentId && editingCourseId) {
+      updateStudent.mutate({
+        id: editingStudentId,
+        studentCourseId: editingCourseId,
+        ...personalData,
+        course_id: form.course_id || null,
+        custom_course_name: form.custom_course_name || null,
+        enrollment_date: form.enrollment_date || null,
+        first_class_date: form.first_class_date || null,
+        workload: form.workload,
+        status: form.status,
+        payment_method: isAdmin ? form.payment_method || null : undefined,
+        is_active: !shouldDeactivate,
+        schedules: shouldDeactivate ? [] : schedules,
+      }, {
+        onSuccess: () => { toast.success('Aluno atualizado!'); setDialogOpen(false); },
+        onError: () => toast.error('Erro ao atualizar aluno'),
+      });
+      return;
+    }
+
+    // Creating new student - check for duplicate
+    if (form.full_name.trim()) {
+      const existing = await checkDuplicate(form.full_name);
+      if (existing) {
         const confirmed = confirm(
-          `Já existe um aluno com o nome "${form.full_name}". Deseja atualizar o cadastro existente em vez de criar um novo?`
+          `Já existe um aluno com o nome "${form.full_name}". Deseja adicionar um novo curso a este aluno?`
         );
         if (confirmed) {
-          // Update existing student instead
-          const schedules = computeScheduleIds(form.daySchedules);
-          const shouldDeactivate = form.status === 'finalizado' || form.status === 'desistiu';
-          const data: any = {
-            id: existingId,
-            full_name: form.full_name || null,
-            street: isAdmin ? (form.street || null) : undefined,
-            house_number: isAdmin ? (form.house_number || null) : undefined,
-            birth_date: form.birth_date || null,
-            cpf: isAdmin ? (form.cpf || null) : undefined,
-            enrollment_date: form.enrollment_date || null,
-            first_class_date: form.first_class_date || null,
+          createStudent.mutate({
+            ...personalData,
+            existingStudentId: existing.id,
             course_id: form.course_id || null,
             custom_course_name: form.custom_course_name || null,
-            guardian_name: form.show_guardian ? form.guardian_name || null : null,
-            guardian_phone: form.show_guardian ? form.guardian_phone || null : null,
-            schedules: shouldDeactivate ? [] : schedules,
+            enrollment_date: form.enrollment_date || null,
+            first_class_date: form.first_class_date || null,
             workload: form.workload,
             status: form.status,
-            is_active: !shouldDeactivate,
-            payment_method: isAdmin ? (form.payment_method || null) : undefined,
-          };
-          Object.keys(data).forEach(k => { if (data[k] === undefined) delete data[k]; });
-          updateStudent.mutate(data, {
-            onSuccess: () => { toast.success('Aluno atualizado!'); setDialogOpen(false); },
-            onError: () => toast.error('Erro ao atualizar aluno'),
+            payment_method: isAdmin ? form.payment_method || null : undefined,
+            schedules: shouldDeactivate ? [] : schedules,
+          }, {
+            onSuccess: () => { toast.success('Curso adicionado ao aluno existente!'); setDialogOpen(false); },
+            onError: () => toast.error('Erro ao adicionar curso'),
           });
           return;
         } else {
-          return; // Cancel
+          return;
         }
       }
     }
 
-    const schedules = computeScheduleIds(form.daySchedules);
-    const shouldDeactivate = form.status === 'finalizado' || form.status === 'desistiu';
-    const data: any = {
-      full_name: form.full_name || null,
-      street: isAdmin ? (form.street || null) : undefined,
-      house_number: isAdmin ? (form.house_number || null) : undefined,
-      birth_date: form.birth_date || null,
-      cpf: isAdmin ? (form.cpf || null) : undefined,
-      enrollment_date: form.enrollment_date || null,
-      first_class_date: form.first_class_date || null,
+    // Create new student + course
+    createStudent.mutate({
+      ...personalData,
       course_id: form.course_id || null,
       custom_course_name: form.custom_course_name || null,
-      guardian_name: form.show_guardian ? form.guardian_name || null : null,
-      guardian_phone: form.show_guardian ? form.guardian_phone || null : null,
-      schedules: shouldDeactivate ? [] : schedules,
+      enrollment_date: form.enrollment_date || null,
+      first_class_date: form.first_class_date || null,
       workload: form.workload,
       status: form.status,
-      is_active: !shouldDeactivate,
-      payment_method: isAdmin ? (form.payment_method || null) : undefined,
-    };
-    Object.keys(data).forEach(k => { if (data[k] === undefined) delete data[k]; });
-
-    if (editingId) {
-      updateStudent.mutate({ id: editingId, ...data }, {
-        onSuccess: () => { toast.success('Aluno atualizado!'); setDialogOpen(false); },
-        onError: () => toast.error('Erro ao atualizar aluno'),
-      });
-    } else {
-      createStudent.mutate(data, {
-        onSuccess: () => { toast.success('Aluno cadastrado!'); setDialogOpen(false); },
-        onError: () => toast.error('Erro ao cadastrar aluno'),
-      });
-    }
+      payment_method: isAdmin ? form.payment_method || null : undefined,
+      schedules: shouldDeactivate ? [] : schedules,
+    }, {
+      onSuccess: () => { toast.success('Aluno cadastrado!'); setDialogOpen(false); },
+      onError: () => toast.error('Erro ao cadastrar aluno'),
+    });
   };
 
   const handleDelete = (id: string) => {
-    if (confirm('Tem certeza que deseja excluir este aluno?')) {
+    if (confirm('Tem certeza que deseja excluir este aluno e todos os seus cursos?')) {
       deleteStudent.mutate(id, {
         onSuccess: () => toast.success('Aluno excluído!'),
       });
@@ -314,8 +375,8 @@ export default function Students() {
 
   const showGuardian = form.show_guardian || isMinor(form.birth_date);
 
+  const historyStudent = students?.find((s: any) => s.id === historyStudentId);
   const studentCompletions = completions?.filter(c => c.student_id === historyStudentId) ?? [];
-  const historyStudent = students?.find(s => s.id === historyStudentId);
 
   const getStatusLabel = (status: string) => {
     return STATUS_OPTIONS.find(o => o.value === status)?.label || status;
@@ -323,7 +384,7 @@ export default function Students() {
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'finalizado': return 'text-success';
+      case 'finalizado': return 'text-green-600';
       case 'desistiu': return 'text-destructive';
       default: return 'text-primary';
     }
@@ -342,26 +403,53 @@ export default function Students() {
       </div>
 
       <div className="grid gap-3">
-        {filtered.map(s => (
-          <div key={s.id} className="bg-card border rounded-lg p-4 flex items-center justify-between">
-            <div>
-              <div className="flex items-center gap-2">
-                <p className="font-medium">{s.full_name || 'Sem nome'}</p>
-                <span className={`text-xs font-medium ${getStatusColor((s as any).status || 'em_andamento')}`}>
-                  ({getStatusLabel((s as any).status || 'em_andamento')})
-                </span>
+        {filtered.map((s: any) => {
+          const activeCourses = (s.student_courses ?? []).filter((sc: any) => sc.is_active);
+          const allCourses = s.student_courses ?? [];
+          return (
+            <div key={s.id} className="bg-card border rounded-lg p-4">
+              <div className="flex items-center justify-between mb-2">
+                <div>
+                  <p className="font-medium">{s.full_name || 'Sem nome'}</p>
+                </div>
+                <div className="flex gap-1">
+                  <Button size="icon" variant="ghost" onClick={() => openAddCourse(s.id, s)} title="Adicionar curso">
+                    <Plus className="h-4 w-4" />
+                  </Button>
+                  <Button size="icon" variant="ghost" onClick={() => setHistoryStudentId(s.id)} title="Histórico">
+                    <History className="h-4 w-4" />
+                  </Button>
+                  <Button size="icon" variant="ghost" onClick={() => handleDelete(s.id)}>
+                    <Trash2 className="h-4 w-4 text-destructive" />
+                  </Button>
+                </div>
               </div>
-              <p className="text-sm text-muted-foreground">{(s.courses as any)?.name || s.custom_course_name || 'Sem curso'}</p>
+              {allCourses.length > 0 ? (
+                <div className="space-y-1">
+                  {allCourses.map((sc: any) => {
+                    const courseName = sc.courses?.name || sc.custom_course_name || 'Sem curso';
+                    return (
+                      <div key={sc.id} className="flex items-center justify-between bg-muted/30 rounded px-3 py-1.5">
+                        <div className="flex items-center gap-2">
+                          <BookOpen className="h-3.5 w-3.5 text-muted-foreground" />
+                          <span className="text-sm">{courseName}</span>
+                          <span className={`text-xs font-medium ${getStatusColor(sc.status)}`}>
+                            ({getStatusLabel(sc.status)})
+                          </span>
+                        </div>
+                        <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => openEditCourse(s, sc)}>
+                          <Pencil className="h-3.5 w-3.5" />
+                        </Button>
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : (
+                <p className="text-sm text-muted-foreground">Nenhum curso vinculado</p>
+              )}
             </div>
-            <div className="flex gap-2">
-              <Button size="icon" variant="ghost" onClick={() => setHistoryStudentId(s.id)} title="Histórico de cursos">
-                <History className="h-4 w-4" />
-              </Button>
-              <Button size="icon" variant="ghost" onClick={() => openEdit(s)}><Pencil className="h-4 w-4" /></Button>
-              <Button size="icon" variant="ghost" onClick={() => handleDelete(s.id)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
-            </div>
-          </div>
-        ))}
+          );
+        })}
         {filtered.length === 0 && <p className="text-muted-foreground text-center py-8">Nenhum aluno encontrado.</p>}
       </div>
 
@@ -369,31 +457,41 @@ export default function Students() {
       <Dialog open={!!historyStudentId} onOpenChange={() => setHistoryStudentId(null)}>
         <DialogContent className="max-w-lg">
           <DialogHeader>
-            <DialogTitle>Histórico de Cursos - {historyStudent?.full_name || 'Aluno'}</DialogTitle>
+            <DialogTitle>Histórico - {historyStudent?.full_name || 'Aluno'}</DialogTitle>
           </DialogHeader>
           <div className="space-y-3">
-            {historyStudent && (
-              <div className="border rounded-lg p-3 bg-primary/5">
-                <p className="text-sm font-medium">Curso Atual</p>
-                <p className="font-semibold">{(historyStudent.courses as any)?.name || historyStudent.custom_course_name || 'Sem curso'}</p>
-                <p className="text-xs text-muted-foreground">Carga horária: {historyStudent.workload}h</p>
-              </div>
-            )}
-            {studentCompletions.length > 0 && (
+            {historyStudent?.student_courses?.filter((sc: any) => sc.is_active).length > 0 && (
               <>
-                <p className="text-sm font-medium text-muted-foreground">Cursos Anteriores</p>
-                {studentCompletions.map(c => (
-                  <div key={c.id} className="border rounded-lg p-3">
-                    <p className="font-medium">{c.course_name || 'N/A'}</p>
-                    <p className="text-xs text-muted-foreground">
-                      {c.start_date ?? '-'} → {c.end_date}
-                    </p>
+                <p className="text-sm font-medium text-muted-foreground">Cursos Ativos</p>
+                {historyStudent.student_courses.filter((sc: any) => sc.is_active).map((sc: any) => (
+                  <div key={sc.id} className="border rounded-lg p-3 bg-primary/5">
+                    <p className="font-semibold">{sc.courses?.name || sc.custom_course_name || 'Sem curso'}</p>
+                    <p className="text-xs text-muted-foreground">Carga horária: {sc.workload}h</p>
                   </div>
                 ))}
               </>
             )}
-            {studentCompletions.length === 0 && (
-              <p className="text-muted-foreground text-sm">Nenhum curso anterior registrado.</p>
+            {historyStudent?.student_courses?.filter((sc: any) => !sc.is_active).length > 0 && (
+              <>
+                <p className="text-sm font-medium text-muted-foreground">Cursos Inativos</p>
+                {historyStudent.student_courses.filter((sc: any) => !sc.is_active).map((sc: any) => (
+                  <div key={sc.id} className="border rounded-lg p-3">
+                    <p className="font-medium">{sc.courses?.name || sc.custom_course_name || 'Sem curso'}</p>
+                    <p className="text-xs text-muted-foreground">Status: {getStatusLabel(sc.status)}</p>
+                  </div>
+                ))}
+              </>
+            )}
+            {studentCompletions.length > 0 && (
+              <>
+                <p className="text-sm font-medium text-muted-foreground">Cursos Concluídos (histórico)</p>
+                {studentCompletions.map(c => (
+                  <div key={c.id} className="border rounded-lg p-3">
+                    <p className="font-medium">{c.course_name || 'N/A'}</p>
+                    <p className="text-xs text-muted-foreground">{c.start_date ?? '-'} → {c.end_date}</p>
+                  </div>
+                ))}
+              </>
             )}
           </div>
         </DialogContent>
@@ -403,11 +501,14 @@ export default function Students() {
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-auto">
           <DialogHeader>
-            <DialogTitle>{editingId ? 'Editar Aluno' : 'Novo Aluno'}</DialogTitle>
+            <DialogTitle>
+              {addCourseStudentId ? 'Adicionar Curso' : editingStudentId ? 'Editar Aluno / Curso' : 'Novo Aluno'}
+            </DialogTitle>
           </DialogHeader>
           <div className="grid gap-4">
+            {/* Personal Data */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div><Label>Nome completo</Label><Input value={form.full_name} onChange={e => setForm(f => ({ ...f, full_name: e.target.value }))} /></div>
+              <div><Label>Nome completo</Label><Input value={form.full_name} onChange={e => setForm(f => ({ ...f, full_name: e.target.value }))} disabled={!!addCourseStudentId} /></div>
               {isAdmin && <div><Label>CPF</Label><Input value={form.cpf} onChange={e => setForm(f => ({ ...f, cpf: e.target.value }))} /></div>}
               {isAdmin && <div><Label>Rua</Label><Input value={form.street} onChange={e => setForm(f => ({ ...f, street: e.target.value }))} /></div>}
               {isAdmin && <div><Label>Número</Label><Input value={form.house_number} onChange={e => setForm(f => ({ ...f, house_number: e.target.value }))} /></div>}
@@ -431,48 +532,52 @@ export default function Students() {
               </Button>
             )}
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div>
-                <Label>Curso</Label>
-                <Select value={form.course_id} onValueChange={v => setForm(f => ({ ...f, course_id: v === 'custom' ? '' : v, custom_course_name: v === 'custom' ? f.custom_course_name : '' }))}>
-                  <SelectTrigger><SelectValue placeholder="Selecionar curso" /></SelectTrigger>
-                  <SelectContent>
-                    {courses?.map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
-                    <SelectItem value="custom">Outro (digitar)</SelectItem>
-                  </SelectContent>
-                </Select>
-                {!form.course_id && form.custom_course_name !== undefined && (
-                  <Input className="mt-2" placeholder="Nome do curso" value={form.custom_course_name} onChange={e => setForm(f => ({ ...f, custom_course_name: e.target.value }))} />
-                )}
-              </div>
-              <div>
-                <Label>Carga Horária (horas)</Label>
-                <Input type="number" min={1} value={form.workload} onChange={e => setForm(f => ({ ...f, workload: parseInt(e.target.value) || 48 }))} />
-              </div>
-              <div>
-                <Label>Status</Label>
-                <Select value={form.status} onValueChange={v => setForm(f => ({ ...f, status: v }))}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    {STATUS_OPTIONS.map(o => (
-                      <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              {isAdmin && (
+            {/* Course Data */}
+            <div className="border-t pt-4">
+              <h3 className="font-semibold mb-3">Dados do Curso</h3>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div>
-                  <Label>Forma de pagamento</Label>
-                  <Select value={form.payment_method} onValueChange={v => setForm(f => ({ ...f, payment_method: v }))}>
-                    <SelectTrigger><SelectValue placeholder="Selecionar" /></SelectTrigger>
+                  <Label>Curso</Label>
+                  <Select value={form.course_id} onValueChange={v => setForm(f => ({ ...f, course_id: v === 'custom' ? '' : v, custom_course_name: v === 'custom' ? f.custom_course_name : '' }))}>
+                    <SelectTrigger><SelectValue placeholder="Selecionar curso" /></SelectTrigger>
                     <SelectContent>
-                      {PAYMENT_OPTIONS.map(o => (
+                      {courses?.map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
+                      <SelectItem value="custom">Outro (digitar)</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  {!form.course_id && form.custom_course_name !== undefined && (
+                    <Input className="mt-2" placeholder="Nome do curso" value={form.custom_course_name} onChange={e => setForm(f => ({ ...f, custom_course_name: e.target.value }))} />
+                  )}
+                </div>
+                <div>
+                  <Label>Carga Horária (horas)</Label>
+                  <Input type="number" min={1} value={form.workload} onChange={e => setForm(f => ({ ...f, workload: parseInt(e.target.value) || 48 }))} />
+                </div>
+                <div>
+                  <Label>Status</Label>
+                  <Select value={form.status} onValueChange={v => setForm(f => ({ ...f, status: v }))}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      {STATUS_OPTIONS.map(o => (
                         <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
                 </div>
-              )}
+                {isAdmin && (
+                  <div>
+                    <Label>Forma de pagamento</Label>
+                    <Select value={form.payment_method} onValueChange={v => setForm(f => ({ ...f, payment_method: v }))}>
+                      <SelectTrigger><SelectValue placeholder="Selecionar" /></SelectTrigger>
+                      <SelectContent>
+                        {PAYMENT_OPTIONS.map(o => (
+                          <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
+              </div>
             </div>
 
             {/* Schedule Section */}
@@ -572,7 +677,7 @@ export default function Students() {
             </div>
 
             <Button onClick={handleSave} disabled={createStudent.isPending || updateStudent.isPending}>
-              {editingId ? 'Salvar Alterações' : 'Cadastrar Aluno'}
+              {addCourseStudentId ? 'Adicionar Curso' : editingStudentId ? 'Salvar Alterações' : 'Cadastrar Aluno'}
             </Button>
           </div>
         </DialogContent>

@@ -13,38 +13,36 @@ export default function Completed() {
   const [certOpen, setCertOpen] = useState(false);
   const [certData, setCertData] = useState<CertificateData | null>(null);
 
-  // Only finalized students (not desistiu)
-  const { data: finalizedStudents } = useQuery({
-    queryKey: ['finalized_students_for_cert'],
+  // Get finalized student_courses with student info
+  const { data: finalizedCourses } = useQuery({
+    queryKey: ['finalized_student_courses'],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from('students')
-        .select('*, courses(name, workload)')
+      const { data, error } = await (supabase as any).from('student_courses')
+        .select('*, students(id, full_name), courses(name, workload)')
         .eq('status', 'finalizado')
-        .order('full_name');
+        .order('created_at', { ascending: false });
       if (error) throw error;
-      return data;
+      return data ?? [];
     },
   });
 
   if (isLoading) return <p className="text-muted-foreground">Carregando...</p>;
 
-  // Search in finalized students and completions
   const searchResults = search.trim().length > 0
-    ? (finalizedStudents ?? []).filter(s =>
-        s.full_name?.toLowerCase().includes(search.toLowerCase())
+    ? (finalizedCourses ?? []).filter((sc: any) =>
+        sc.students?.full_name?.toLowerCase().includes(search.toLowerCase())
       )
-    : (finalizedStudents ?? []);
+    : (finalizedCourses ?? []);
 
-  const openCert = (s: any) => {
-    const completion = completions?.find(c => c.student_id === s.id);
-    const courseName = (s.courses as any)?.name || s.custom_course_name || completion?.course_name || 'N/A';
+  const openCert = (sc: any) => {
+    const completion = completions?.find(c => c.student_id === sc.student_id);
+    const courseName = sc.courses?.name || sc.custom_course_name || completion?.course_name || 'N/A';
     const today = new Date().toISOString().split('T')[0];
     setCertData({
-      studentName: s.full_name || 'Sem nome',
+      studentName: sc.students?.full_name || 'Sem nome',
       courseName,
-      workload: s.workload ?? 48,
-      startDate: s.enrollment_date ?? completion?.start_date ?? null,
+      workload: sc.workload ?? 48,
+      startDate: sc.enrollment_date ?? completion?.start_date ?? null,
       endDate: completion?.end_date ?? today,
     });
     setCertOpen(true);
@@ -57,26 +55,18 @@ export default function Completed() {
 
       <div className="relative mb-4 max-w-sm">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-        <Input
-          placeholder="Buscar aluno pelo nome..."
-          value={search}
-          onChange={e => setSearch(e.target.value)}
-          className="pl-9"
-        />
+        <Input placeholder="Buscar aluno pelo nome..." value={search} onChange={e => setSearch(e.target.value)} className="pl-9" />
       </div>
 
       {searchResults.length > 0 ? (
         <div className="space-y-2">
-          {searchResults.map(s => {
-            const courseName = (s.courses as any)?.name || s.custom_course_name || 'Sem curso';
+          {searchResults.map((sc: any) => {
+            const courseName = sc.courses?.name || sc.custom_course_name || 'Sem curso';
             return (
-              <button
-                key={s.id}
-                onClick={() => openCert(s)}
-                className="w-full bg-card border rounded-lg p-3 text-left hover:shadow-md transition-shadow cursor-pointer flex items-center justify-between"
-              >
+              <button key={sc.id} onClick={() => openCert(sc)}
+                className="w-full bg-card border rounded-lg p-3 text-left hover:shadow-md transition-shadow cursor-pointer flex items-center justify-between">
                 <div>
-                  <p className="font-medium">{s.full_name || 'Sem nome'}</p>
+                  <p className="font-medium">{sc.students?.full_name || 'Sem nome'}</p>
                   <p className="text-sm text-muted-foreground">{courseName}</p>
                 </div>
                 <span className="text-xs bg-green-100 text-green-800 px-2 py-1 rounded">Finalizado</span>

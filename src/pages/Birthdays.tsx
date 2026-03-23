@@ -1,5 +1,5 @@
-import { useMemo, useState } from 'react';
-import { useStudents, useCourses } from '@/hooks/use-supabase-data';
+import { useMemo } from 'react';
+import { useStudents } from '@/hooks/use-supabase-data';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Cake } from 'lucide-react';
 
@@ -22,13 +22,6 @@ interface BirthdayStudent {
 
 export default function Birthdays() {
   const { data: students } = useStudents();
-  const { data: courses } = useCourses();
-
-  const courseLookup = useMemo(() => {
-    const map: Record<string, string> = {};
-    courses?.forEach(c => { map[c.id] = c.name; });
-    return map;
-  }, [courses]);
 
   const { today, week, month } = useMemo(() => {
     const today: BirthdayStudent[] = [];
@@ -41,10 +34,12 @@ export default function Birthdays() {
     const startOfWeek = new Date(now); startOfWeek.setDate(now.getDate() - now.getDay());
     const endOfWeek = new Date(startOfWeek); endOfWeek.setDate(startOfWeek.getDate() + 6);
 
-    students.forEach(s => {
+    students.forEach((s: any) => {
       const bd = parseBirthDate(s.birth_date ?? null);
       if (!bd) return;
-      const courseName = (s.course_id ? courseLookup[s.course_id] : null) || s.custom_course_name || 'Sem curso';
+      // Get course from student_courses
+      const activeSc = s.student_courses?.find((sc: any) => sc.is_active);
+      const courseName = activeSc?.courses?.name || activeSc?.custom_course_name || 'Sem curso';
       const dateLabel = `${String(bd.day).padStart(2, '0')}/${String(bd.month).padStart(2, '0')}`;
       const entry: BirthdayStudent = { id: s.id, name: s.full_name || 'Sem nome', birth_date: s.birth_date || '', course: courseName, dateLabel };
 
@@ -69,7 +64,7 @@ export default function Birthdays() {
     });
 
     return { today, week, month };
-  }, [students, courseLookup]);
+  }, [students]);
 
   const renderList = (list: BirthdayStudent[], emptyMsg: string) => (
     list.length === 0 ? (
