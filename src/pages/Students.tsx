@@ -402,54 +402,32 @@ export default function Students() {
         <Input placeholder="Buscar aluno..." value={search} onChange={e => setSearch(e.target.value)} className="pl-9" />
       </div>
 
-      <div className="grid gap-3">
-        {filtered.map((s: any) => {
-          const activeCourses = (s.student_courses ?? []).filter((sc: any) => sc.is_active);
-          const allCourses = s.student_courses ?? [];
-          return (
-            <div key={s.id} className="bg-card border rounded-lg p-4">
-              <div className="flex items-center justify-between mb-2">
-                <div>
-                  <p className="font-medium">{s.full_name || 'Sem nome'}</p>
-                </div>
-                <div className="flex gap-1">
-                  <Button size="icon" variant="ghost" onClick={() => openAddCourse(s.id, s)} title="Adicionar curso">
-                    <Plus className="h-4 w-4" />
-                  </Button>
-                  <Button size="icon" variant="ghost" onClick={() => setHistoryStudentId(s.id)} title="Histórico">
-                    <History className="h-4 w-4" />
-                  </Button>
-                  <Button size="icon" variant="ghost" onClick={() => handleDelete(s.id)}>
-                    <Trash2 className="h-4 w-4 text-destructive" />
-                  </Button>
-                </div>
-              </div>
-              {allCourses.length > 0 ? (
-                <div className="space-y-1">
-                  {allCourses.map((sc: any) => {
-                    const courseName = sc.courses?.name || sc.custom_course_name || 'Sem curso';
-                    return (
-                      <div key={sc.id} className="flex items-center justify-between bg-muted/30 rounded px-3 py-1.5">
-                        <div className="flex items-center gap-2">
-                          <BookOpen className="h-3.5 w-3.5 text-muted-foreground" />
-                          <span className="text-sm">{courseName}</span>
-                          <span className={`text-xs font-medium ${getStatusColor(sc.status)}`}>
-                            ({getStatusLabel(sc.status)})
-                          </span>
-                        </div>
-                        <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => openEditCourse(s, sc)}>
-                          <Pencil className="h-3.5 w-3.5" />
-                        </Button>
-                      </div>
-                    );
-                  })}
-                </div>
-              ) : (
-                <p className="text-sm text-muted-foreground">Nenhum curso vinculado</p>
-              )}
+      <div className="grid gap-2">
+        {filtered.map((s: any) => (
+          <div key={s.id} className="bg-card border rounded-lg px-4 py-3 flex items-center justify-between">
+            <p className="font-medium">{s.full_name || 'Sem nome'}</p>
+            <div className="flex gap-1">
+              <Button size="icon" variant="ghost" onClick={() => setHistoryStudentId(s.id)} title="Histórico">
+                <History className="h-4 w-4" />
+              </Button>
+              <Button size="icon" variant="ghost" onClick={() => {
+                const activeSc = (s.student_courses ?? []).find((sc: any) => sc.is_active);
+                if (activeSc) {
+                  openEditCourse(s, activeSc);
+                } else if (s.student_courses?.length > 0) {
+                  openEditCourse(s, s.student_courses[0]);
+                } else {
+                  openAddCourse(s.id, s);
+                }
+              }} title="Editar">
+                <Pencil className="h-4 w-4" />
+              </Button>
+              <Button size="icon" variant="ghost" onClick={() => handleDelete(s.id)} title="Excluir">
+                <Trash2 className="h-4 w-4 text-destructive" />
+              </Button>
             </div>
-          );
-        })}
+          </div>
+        ))}
         {filtered.length === 0 && <p className="text-muted-foreground text-center py-8">Nenhum aluno encontrado.</p>}
       </div>
 
