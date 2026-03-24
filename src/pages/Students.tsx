@@ -409,6 +409,9 @@ export default function Students() {
           <div key={s.id} className="bg-card border rounded-lg px-4 py-3 flex items-center justify-between">
             <p className="font-medium">{s.full_name || 'Sem nome'}</p>
             <div className="flex gap-1">
+              <Button size="icon" variant="ghost" onClick={() => setFrequencyStudentId(s.id)} title="Frequência">
+                <BarChart3 className="h-4 w-4" />
+              </Button>
               <Button size="icon" variant="ghost" onClick={() => setHistoryStudentId(s.id)} title="Histórico">
                 <History className="h-4 w-4" />
               </Button>
