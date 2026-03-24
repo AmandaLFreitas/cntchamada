@@ -95,6 +95,7 @@ export default function Students() {
   const [form, setForm] = useState<StudentForm>(emptyForm);
   const [historyStudentId, setHistoryStudentId] = useState<string | null>(null);
   const [addCourseStudentId, setAddCourseStudentId] = useState<string | null>(null);
+  const [frequencyStudentId, setFrequencyStudentId] = useState<string | null>(null);
 
   const { data: students } = useStudents(false); // all students
   const { data: courses } = useCourses();
