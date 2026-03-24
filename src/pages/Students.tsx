@@ -11,7 +11,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Checkbox } from '@/components/ui/checkbox';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { DAYS_OF_WEEK } from '@/lib/constants';
-import { Plus, Pencil, Trash2, Search, History, BookOpen } from 'lucide-react';
+import { Plus, Pencil, Trash2, Search, History, BookOpen, BarChart3 } from 'lucide-react';
+import { StudentFrequencyDialog } from '@/components/StudentFrequencyDialog';
 import { toast } from 'sonner';
 import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
@@ -94,6 +95,7 @@ export default function Students() {
   const [form, setForm] = useState<StudentForm>(emptyForm);
   const [historyStudentId, setHistoryStudentId] = useState<string | null>(null);
   const [addCourseStudentId, setAddCourseStudentId] = useState<string | null>(null);
+  const [frequencyStudentId, setFrequencyStudentId] = useState<string | null>(null);
 
   const { data: students } = useStudents(false); // all students
   const { data: courses } = useCourses();
@@ -407,6 +409,9 @@ export default function Students() {
           <div key={s.id} className="bg-card border rounded-lg px-4 py-3 flex items-center justify-between">
             <p className="font-medium">{s.full_name || 'Sem nome'}</p>
             <div className="flex gap-1">
+              <Button size="icon" variant="ghost" onClick={() => setFrequencyStudentId(s.id)} title="Frequência">
+                <BarChart3 className="h-4 w-4" />
+              </Button>
               <Button size="icon" variant="ghost" onClick={() => setHistoryStudentId(s.id)} title="Histórico">
                 <History className="h-4 w-4" />
               </Button>
@@ -660,6 +665,14 @@ export default function Students() {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Frequency Dialog */}
+      <StudentFrequencyDialog
+        open={!!frequencyStudentId}
+        onOpenChange={() => setFrequencyStudentId(null)}
+        studentId={frequencyStudentId}
+        studentName={students?.find((s: any) => s.id === frequencyStudentId)?.full_name || 'Aluno'}
+      />
     </div>
   );
 }
