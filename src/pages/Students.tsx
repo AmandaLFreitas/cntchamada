@@ -665,6 +665,14 @@ export default function Students() {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Frequency Dialog */}
+      <StudentFrequencyDialog
+        open={!!frequencyStudentId}
+        onOpenChange={() => setFrequencyStudentId(null)}
+        studentId={frequencyStudentId}
+        studentName={students?.find((s: any) => s.id === frequencyStudentId)?.full_name || 'Aluno'}
+      />
     </div>
   );
 }
