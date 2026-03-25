@@ -340,11 +340,32 @@ export function useUpdateStudent() {
 
         // Update schedules for this student_course
         if (schedules !== undefined) {
-          await supabase.from('student_schedules').delete().eq('student_course_id', studentCourseId);
+          // Delete ALL schedules for this student_course first
+          const { error: delError } = await supabase
+            .from('student_schedules')
+            .delete()
+            .eq('student_course_id', studentCourseId);
+          if (delError) throw delError;
+
+          // Also delete any orphan schedules for this student + same time slots (prevents conflicts)
           if (schedules.length > 0) {
-            const { error: schedError } = await supabase.from('student_schedules').insert(
-              schedules.map(tsId => ({ student_id: id, time_slot_id: tsId, student_course_id: studentCourseId }))
-            );
+            for (const tsId of schedules) {
+              await supabase
+                .from('student_schedules')
+                .delete()
+                .eq('student_id', id)
+                .eq('time_slot_id', tsId)
+                .eq('student_course_id', studentCourseId);
+            }
+          }
+
+          // Insert new schedules
+          if (schedules.length > 0) {
+            const { error: schedError } = await supabase
+              .from('student_schedules')
+              .insert(
+                schedules.map(tsId => ({ student_id: id, time_slot_id: tsId, student_course_id: studentCourseId }))
+              );
             if (schedError) throw schedError;
           }
         }
