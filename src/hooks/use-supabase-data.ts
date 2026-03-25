@@ -340,31 +340,32 @@ export function useUpdateStudent() {
 
         // Update schedules for this student_course
         if (schedules !== undefined) {
-          // Delete ALL schedules for this student_course first
+          // Deduplicate schedule list
+          const uniqueSchedules = [...new Set(schedules)];
+
+          // STEP 1: Delete all schedules for this student_course
           const { error: delError } = await supabase
             .from('student_schedules')
             .delete()
             .eq('student_course_id', studentCourseId);
           if (delError) throw delError;
 
-          // Also delete any orphan schedules for this student + same time slots (prevents conflicts)
-          if (schedules.length > 0) {
-            for (const tsId of schedules) {
-              await supabase
-                .from('student_schedules')
-                .delete()
-                .eq('student_id', id)
-                .eq('time_slot_id', tsId)
-                .eq('student_course_id', studentCourseId);
-            }
+          // STEP 2: Delete any conflicting orphan records for the same student + time_slots
+          if (uniqueSchedules.length > 0) {
+            const { error: delOrphanError } = await supabase
+              .from('student_schedules')
+              .delete()
+              .eq('student_id', id)
+              .in('time_slot_id', uniqueSchedules);
+            if (delOrphanError) throw delOrphanError;
           }
 
-          // Insert new schedules
-          if (schedules.length > 0) {
+          // STEP 3: Insert new schedules
+          if (uniqueSchedules.length > 0) {
             const { error: schedError } = await supabase
               .from('student_schedules')
               .insert(
-                schedules.map(tsId => ({ student_id: id, time_slot_id: tsId, student_course_id: studentCourseId }))
+                uniqueSchedules.map(tsId => ({ student_id: id, time_slot_id: tsId, student_course_id: studentCourseId }))
               );
             if (schedError) throw schedError;
           }
