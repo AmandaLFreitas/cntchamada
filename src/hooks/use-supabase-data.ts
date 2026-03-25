@@ -340,17 +340,27 @@ export function useUpdateStudent() {
 
         // Update schedules for this student_course
         if (schedules !== undefined) {
-          // STEP 1: Delete ALL schedules for this student (prevents any conflicts)
+          // Deduplicate schedule list
+          const uniqueSchedules = [...new Set(schedules)];
+
+          // STEP 1: Delete all schedules for this student_course
           const { error: delError } = await supabase
             .from('student_schedules')
             .delete()
-            .eq('student_id', id);
+            .eq('student_course_id', studentCourseId);
           if (delError) throw delError;
 
-          // STEP 2: Deduplicate schedule list
-          const uniqueSchedules = [...new Set(schedules)];
+          // STEP 2: Delete any conflicting orphan records for the same student + time_slots
+          if (uniqueSchedules.length > 0) {
+            const { error: delOrphanError } = await supabase
+              .from('student_schedules')
+              .delete()
+              .eq('student_id', id)
+              .in('time_slot_id', uniqueSchedules);
+            if (delOrphanError) throw delOrphanError;
+          }
 
-          // STEP 3: Re-insert all schedules for this student_course
+          // STEP 3: Insert new schedules
           if (uniqueSchedules.length > 0) {
             const { error: schedError } = await supabase
               .from('student_schedules')
@@ -358,20 +368,6 @@ export function useUpdateStudent() {
                 uniqueSchedules.map(tsId => ({ student_id: id, time_slot_id: tsId, student_course_id: studentCourseId }))
               );
             if (schedError) throw schedError;
-          }
-
-          // STEP 4: Re-insert schedules from OTHER active courses for this student
-          const { data: otherScs } = await scTable()
-            .select('id')
-            .eq('student_id', id)
-            .eq('is_active', true)
-            .neq('id', studentCourseId);
-
-          if (otherScs && otherScs.length > 0) {
-            const otherScIds = otherScs.map((sc: any) => sc.id);
-            // We deleted all, so we need to check if there were schedules for other courses
-            // Unfortunately they're gone now, but this is the safest approach to avoid 409
-            // Other courses' schedules will need to be re-saved when those courses are edited
           }
         }
       }
