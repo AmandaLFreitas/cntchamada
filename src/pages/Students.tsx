@@ -720,6 +720,11 @@ export default function Students() {
         onOpenChange={() => setFrequencyStudentId(null)}
         studentId={frequencyStudentId}
         studentName={students?.find((s: any) => s.id === frequencyStudentId)?.full_name || 'Aluno'}
+        courseName={(() => {
+          const s = students?.find((st: any) => st.id === frequencyStudentId);
+          const activeSc = s?.student_courses?.find((sc: any) => sc.is_active);
+          return activeSc?.courses?.name || activeSc?.custom_course_name || undefined;
+        })()}
       />
     </div>
   );

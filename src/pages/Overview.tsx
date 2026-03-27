@@ -121,7 +121,7 @@ export default function Overview() {
 
   return (
     <div>
-      <div className="flex flex-col sm:flex-row sm:items-center gap-3 mb-4">
+      <CourseCompletionAlert />
         <h1 className="text-2xl font-bold">Visão Geral</h1>
         <div className="flex items-center gap-2 ml-auto">
           <Button variant="outline" size="icon" onClick={() => navigateDate(-1)}>
