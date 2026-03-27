@@ -12,6 +12,9 @@ import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { cn } from '@/lib/utils';
 import { Check, X, Minus } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
+import { supabase } from '@/integrations/supabase/client';
+import { useQuery } from '@tanstack/react-query';
 
 const dayNameFromDate = (date: Date): string => {
   const days = ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado'];
@@ -50,6 +53,40 @@ export default function Attendance() {
     if (!student) return false;
     return isEnrolledByDate(student.enrollment_date, isoDate);
   });
+
+  // Check which students have never had attendance
+  const studentIdsInSlot = filteredStudents.map((s: any) => s.students?.id).filter(Boolean);
+  const { data: existingAttendance } = useQuery({
+    queryKey: ['has_any_attendance', studentIdsInSlot],
+    enabled: studentIdsInSlot.length > 0,
+    queryFn: async () => {
+      const { data } = await supabase
+        .from('attendance')
+        .select('student_id')
+        .in('student_id', studentIdsInSlot)
+        .eq('status', 'present')
+        .limit(1000);
+      const set = new Set<string>();
+      data?.forEach(r => set.add(r.student_id));
+      return set;
+    },
+  });
+
+  const isNewStudent = (studentId: string, enrollmentDate: string | null): boolean => {
+    if (!existingAttendance) return false;
+    if (existingAttendance.has(studentId)) return false;
+    // Only show "Novo" if enrollment is within 14 days
+    if (!enrollmentDate) return true;
+    let isoDate = enrollmentDate;
+    const parts = enrollmentDate.split('/');
+    if (parts.length === 3 && parts[2].length === 4) {
+      isoDate = `${parts[2]}-${parts[1]}-${parts[0]}`;
+    }
+    const enrollDate = new Date(isoDate);
+    const now = new Date();
+    const diffDays = (now.getTime() - enrollDate.getTime()) / (1000 * 60 * 60 * 24);
+    return diffDays <= 30;
+  };
 
   const getStatus = (studentId: string) => {
     return attendance?.find(a => a.student_id === studentId)?.status ?? null;
@@ -127,7 +164,12 @@ export default function Attendance() {
                 return (
                   <div key={s.id} className="flex items-center justify-between border rounded-lg p-3 bg-card">
                     <div className="min-w-0 flex-1">
-                      <p className="font-medium truncate">{student.full_name || 'Sem nome'}</p>
+                      <div className="flex items-center gap-2">
+                        <p className="font-medium truncate">{student.full_name || 'Sem nome'}</p>
+                        {isNewStudent(student.id, student.enrollment_date) && (
+                          <Badge className="bg-blue-500 text-white text-[10px] px-1.5 py-0">Novo</Badge>
+                        )}
+                      </div>
                       <p className="text-sm text-muted-foreground">{courseName}</p>
                     </div>
                     <div className="flex gap-2 ml-2">

@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useCallback } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -6,23 +6,25 @@ import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
-import { Check, X, Minus, Calendar } from 'lucide-react';
+import { Check, X, Minus, Calendar, FileText } from 'lucide-react';
 import { format, startOfMonth, endOfMonth, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar as CalendarComponent } from '@/components/ui/calendar';
 import { cn } from '@/lib/utils';
+import jsPDF from 'jspdf';
 
 interface Props {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   studentId: string | null;
   studentName: string;
+  courseName?: string;
 }
 
 type FilterMode = 'current_month' | 'all' | 'custom';
 
-export function StudentFrequencyDialog({ open, onOpenChange, studentId, studentName }: Props) {
+export function StudentFrequencyDialog({ open, onOpenChange, studentId, studentName, courseName }: Props) {
   const [filterMode, setFilterMode] = useState<FilterMode>('current_month');
   const [customStart, setCustomStart] = useState<Date | undefined>();
   const [customEnd, setCustomEnd] = useState<Date | undefined>();
@@ -99,6 +101,71 @@ export function StudentFrequencyDialog({ open, onOpenChange, studentId, studentN
     return <Minus className="h-4 w-4 text-muted-foreground" />;
   };
 
+  const generatePDF = useCallback(() => {
+    const doc = new jsPDF('p', 'mm', 'a4');
+    const pageWidth = doc.internal.pageSize.getWidth();
+    let y = 20;
+
+    doc.setFontSize(18);
+    doc.text('Relatório de Frequência', pageWidth / 2, y, { align: 'center' });
+    y += 12;
+
+    doc.setFontSize(12);
+    doc.text(`Aluno: ${studentName}`, 20, y);
+    y += 7;
+    if (courseName) {
+      doc.text(`Curso: ${courseName}`, 20, y);
+      y += 7;
+    }
+    doc.text(`Período: ${filterMode === 'current_month' ? 'Mês atual' : filterMode === 'all' ? 'Todo o período' : 'Personalizado'}`, 20, y);
+    y += 7;
+    doc.text(`Data do relatório: ${format(new Date(), 'dd/MM/yyyy')}`, 20, y);
+    y += 12;
+
+    // Summary
+    doc.setFontSize(14);
+    doc.text('Resumo', 20, y);
+    y += 8;
+    doc.setFontSize(11);
+    doc.text(`Presenças: ${stats.present}`, 20, y); y += 6;
+    doc.text(`Faltas: ${stats.absent}`, 20, y); y += 6;
+    doc.text(`Total de aulas válidas: ${stats.total}`, 20, y); y += 6;
+    doc.text(`Frequência: ${stats.pct}%`, 20, y); y += 12;
+
+    // Detail table
+    if (detailRecords.length > 0) {
+      doc.setFontSize(14);
+      doc.text('Detalhamento por dia', 20, y);
+      y += 8;
+
+      doc.setFontSize(9);
+      doc.setFont('helvetica', 'bold');
+      doc.text('Data', 20, y);
+      doc.text('Status', 90, y);
+      doc.text('Horário', 140, y);
+      y += 5;
+      doc.line(20, y, pageWidth - 20, y);
+      y += 4;
+
+      doc.setFont('helvetica', 'normal');
+      detailRecords.forEach((r: any) => {
+        if (y > 270) {
+          doc.addPage();
+          y = 20;
+        }
+        const dateStr = format(parseISO(r.date), 'dd/MM/yyyy (EEEE)', { locale: ptBR });
+        const statusStr = r.status === 'present' ? 'Presente' : r.status === 'absent' ? 'Falta' : 'Neutro';
+        const timeStr = r.time_slots ? `${r.time_slots.start_time} - ${r.time_slots.end_time}` : '';
+        doc.text(dateStr, 20, y);
+        doc.text(statusStr, 90, y);
+        doc.text(timeStr, 140, y);
+        y += 5;
+      });
+    }
+
+    doc.save(`frequencia_${studentName.replace(/\s+/g, '_')}.pdf`);
+  }, [studentName, courseName, filterMode, stats, detailRecords]);
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-lg max-h-[85vh] overflow-auto">
@@ -170,10 +237,15 @@ export function StudentFrequencyDialog({ open, onOpenChange, studentId, studentN
           </div>
         </div>
 
-        {/* Details toggle */}
-        <Button variant="outline" size="sm" onClick={() => setShowDetails(!showDetails)} className="mb-2 w-full">
-          {showDetails ? 'Ocultar detalhes' : 'Ver detalhes por dia'}
-        </Button>
+        {/* PDF + Details buttons */}
+        <div className="flex gap-2 mb-2">
+          <Button variant="outline" size="sm" onClick={() => setShowDetails(!showDetails)} className="flex-1">
+            {showDetails ? 'Ocultar detalhes' : 'Ver detalhes por dia'}
+          </Button>
+          <Button variant="outline" size="sm" onClick={generatePDF} className="flex-1">
+            <FileText className="h-4 w-4 mr-1" /> Gerar PDF
+          </Button>
+        </div>
 
         {showDetails && (
           <div className="space-y-1 max-h-[300px] overflow-auto">
