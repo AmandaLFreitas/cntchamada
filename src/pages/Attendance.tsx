@@ -48,11 +48,39 @@ export default function Attendance() {
 
   const daySlots = timeSlots?.filter(s => s.day_of_week === selectedDay) ?? [];
 
-  const filteredStudents = (slotStudents ?? []).filter((s: any) => {
-    const student = s.students;
-    if (!student) return false;
-    return isEnrolledByDate(student.enrollment_date, isoDate);
+  // Check which students have never had attendance
+  const studentIdsInSlot = filteredStudents.map((s: any) => s.students?.id).filter(Boolean);
+  const { data: existingAttendance } = useQuery({
+    queryKey: ['has_any_attendance', studentIdsInSlot],
+    enabled: studentIdsInSlot.length > 0,
+    queryFn: async () => {
+      const { data } = await supabase
+        .from('attendance')
+        .select('student_id')
+        .in('student_id', studentIdsInSlot)
+        .eq('status', 'present')
+        .limit(1000);
+      const set = new Set<string>();
+      data?.forEach(r => set.add(r.student_id));
+      return set;
+    },
   });
+
+  const isNewStudent = (studentId: string, enrollmentDate: string | null): boolean => {
+    if (!existingAttendance) return false;
+    if (existingAttendance.has(studentId)) return false;
+    // Only show "Novo" if enrollment is within 14 days
+    if (!enrollmentDate) return true;
+    let isoDate = enrollmentDate;
+    const parts = enrollmentDate.split('/');
+    if (parts.length === 3 && parts[2].length === 4) {
+      isoDate = `${parts[2]}-${parts[1]}-${parts[0]}`;
+    }
+    const enrollDate = new Date(isoDate);
+    const now = new Date();
+    const diffDays = (now.getTime() - enrollDate.getTime()) / (1000 * 60 * 60 * 24);
+    return diffDays <= 30;
+  };
 
   const getStatus = (studentId: string) => {
     return attendance?.find(a => a.student_id === studentId)?.status ?? null;
