@@ -164,7 +164,12 @@ export default function Attendance() {
                 return (
                   <div key={s.id} className="flex items-center justify-between border rounded-lg p-3 bg-card">
                     <div className="min-w-0 flex-1">
-                      <p className="font-medium truncate">{student.full_name || 'Sem nome'}</p>
+                      <div className="flex items-center gap-2">
+                        <p className="font-medium truncate">{student.full_name || 'Sem nome'}</p>
+                        {isNewStudent(student.id, student.enrollment_date) && (
+                          <Badge className="bg-blue-500 text-white text-[10px] px-1.5 py-0">Novo</Badge>
+                        )}
+                      </div>
                       <p className="text-sm text-muted-foreground">{courseName}</p>
                     </div>
                     <div className="flex gap-2 ml-2">
