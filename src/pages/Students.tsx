@@ -438,18 +438,46 @@ export default function Students() {
 
       {/* Course History Dialog */}
       <Dialog open={!!historyStudentId} onOpenChange={() => setHistoryStudentId(null)}>
-        <DialogContent className="max-w-lg">
+        <DialogContent className="max-w-lg max-h-[85vh] overflow-auto">
           <DialogHeader>
             <DialogTitle>Histórico - {historyStudent?.full_name || 'Aluno'}</DialogTitle>
           </DialogHeader>
           <div className="space-y-3">
+            <Button size="sm" variant="outline" onClick={() => { if (historyStudentId && historyStudent) { openAddCourse(historyStudentId, historyStudent); setHistoryStudentId(null); } }}>
+              <Plus className="h-4 w-4 mr-1" /> Adicionar Curso
+            </Button>
+
             {historyStudent?.student_courses?.filter((sc: any) => sc.is_active).length > 0 && (
               <>
                 <p className="text-sm font-medium text-muted-foreground">Cursos Ativos</p>
                 {historyStudent.student_courses.filter((sc: any) => sc.is_active).map((sc: any) => (
                   <div key={sc.id} className="border rounded-lg p-3 bg-primary/5">
-                    <p className="font-semibold">{sc.courses?.name || sc.custom_course_name || 'Sem curso'}</p>
-                    <p className="text-xs text-muted-foreground">Carga horária: {sc.workload}h</p>
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="font-semibold">{sc.courses?.name || sc.custom_course_name || 'Sem curso'}</p>
+                        <p className="text-xs text-muted-foreground">Carga horária: {sc.workload}h</p>
+                        {sc.enrollment_date && <p className="text-xs text-muted-foreground">Matrícula: {sc.enrollment_date}</p>}
+                        {sc.first_class_date && <p className="text-xs text-muted-foreground">Início: {sc.first_class_date}</p>}
+                        <p className={`text-xs font-medium ${getStatusColor(sc.status)}`}>{getStatusLabel(sc.status)}</p>
+                      </div>
+                      <div className="flex gap-1">
+                        <Button size="icon" variant="ghost" onClick={() => { openEditCourse(historyStudent, sc); setHistoryStudentId(null); }} title="Editar">
+                          <Pencil className="h-4 w-4" />
+                        </Button>
+                        <Button size="icon" variant="ghost" onClick={async () => {
+                          if (!confirm('Remover este curso do histórico?')) return;
+                          // Delete schedules first, then student_course
+                          await supabase.from('student_schedules').delete().eq('student_course_id', sc.id);
+                          const scTableDyn = (supabase as any).from('student_courses');
+                          await scTableDyn.delete().eq('id', sc.id);
+                          toast.success('Curso removido!');
+                          // Force refetch
+                          window.location.reload();
+                        }} title="Remover">
+                          <Trash2 className="h-4 w-4 text-destructive" />
+                        </Button>
+                      </div>
+                    </div>
                   </div>
                 ))}
               </>
@@ -459,8 +487,28 @@ export default function Students() {
                 <p className="text-sm font-medium text-muted-foreground">Cursos Inativos</p>
                 {historyStudent.student_courses.filter((sc: any) => !sc.is_active).map((sc: any) => (
                   <div key={sc.id} className="border rounded-lg p-3">
-                    <p className="font-medium">{sc.courses?.name || sc.custom_course_name || 'Sem curso'}</p>
-                    <p className="text-xs text-muted-foreground">Status: {getStatusLabel(sc.status)}</p>
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="font-medium">{sc.courses?.name || sc.custom_course_name || 'Sem curso'}</p>
+                        <p className={`text-xs font-medium ${getStatusColor(sc.status)}`}>{getStatusLabel(sc.status)}</p>
+                        {sc.enrollment_date && <p className="text-xs text-muted-foreground">Matrícula: {sc.enrollment_date}</p>}
+                      </div>
+                      <div className="flex gap-1">
+                        <Button size="icon" variant="ghost" onClick={() => { openEditCourse(historyStudent, sc); setHistoryStudentId(null); }} title="Editar">
+                          <Pencil className="h-4 w-4" />
+                        </Button>
+                        <Button size="icon" variant="ghost" onClick={async () => {
+                          if (!confirm('Remover este curso do histórico?')) return;
+                          await supabase.from('student_schedules').delete().eq('student_course_id', sc.id);
+                          const scTableDyn = (supabase as any).from('student_courses');
+                          await scTableDyn.delete().eq('id', sc.id);
+                          toast.success('Curso removido!');
+                          window.location.reload();
+                        }} title="Remover">
+                          <Trash2 className="h-4 w-4 text-destructive" />
+                        </Button>
+                      </div>
+                    </div>
                   </div>
                 ))}
               </>
