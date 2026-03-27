@@ -48,6 +48,12 @@ export default function Attendance() {
 
   const daySlots = timeSlots?.filter(s => s.day_of_week === selectedDay) ?? [];
 
+  const filteredStudents = (slotStudents ?? []).filter((s: any) => {
+    const student = s.students;
+    if (!student) return false;
+    return isEnrolledByDate(student.enrollment_date, isoDate);
+  });
+
   // Check which students have never had attendance
   const studentIdsInSlot = filteredStudents.map((s: any) => s.students?.id).filter(Boolean);
   const { data: existingAttendance } = useQuery({
