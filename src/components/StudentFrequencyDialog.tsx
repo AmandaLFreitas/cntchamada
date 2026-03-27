@@ -19,6 +19,7 @@ interface Props {
   onOpenChange: (open: boolean) => void;
   studentId: string | null;
   studentName: string;
+  courseName?: string;
 }
 
 type FilterMode = 'current_month' | 'all' | 'custom';
