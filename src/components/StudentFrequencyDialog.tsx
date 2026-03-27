@@ -24,7 +24,7 @@ interface Props {
 
 type FilterMode = 'current_month' | 'all' | 'custom';
 
-export function StudentFrequencyDialog({ open, onOpenChange, studentId, studentName }: Props) {
+export function StudentFrequencyDialog({ open, onOpenChange, studentId, studentName, courseName }: Props) {
   const [filterMode, setFilterMode] = useState<FilterMode>('current_month');
   const [customStart, setCustomStart] = useState<Date | undefined>();
   const [customEnd, setCustomEnd] = useState<Date | undefined>();
