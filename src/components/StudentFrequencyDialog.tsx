@@ -237,10 +237,15 @@ export function StudentFrequencyDialog({ open, onOpenChange, studentId, studentN
           </div>
         </div>
 
-        {/* Details toggle */}
-        <Button variant="outline" size="sm" onClick={() => setShowDetails(!showDetails)} className="mb-2 w-full">
-          {showDetails ? 'Ocultar detalhes' : 'Ver detalhes por dia'}
-        </Button>
+        {/* PDF + Details buttons */}
+        <div className="flex gap-2 mb-2">
+          <Button variant="outline" size="sm" onClick={() => setShowDetails(!showDetails)} className="flex-1">
+            {showDetails ? 'Ocultar detalhes' : 'Ver detalhes por dia'}
+          </Button>
+          <Button variant="outline" size="sm" onClick={generatePDF} className="flex-1">
+            <FileText className="h-4 w-4 mr-1" /> Gerar PDF
+          </Button>
+        </div>
 
         {showDetails && (
           <div className="space-y-1 max-h-[300px] overflow-auto">
