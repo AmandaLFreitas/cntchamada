@@ -203,9 +203,9 @@ export default function Students() {
       workload: sc.workload ?? 48,
       status: sc.status || 'em_andamento',
       payment_method: sc.payment_method ?? '',
-      daySchedules: {},
+      daySchedules: {}, // Will be populated by useEffect from editSchedules
       show_guardian: !!student.guardian_name || isMinor(student.birth_date ?? ''),
-      customScheduleMode: false,
+      customScheduleMode: false, // Will be auto-detected by useEffect
     });
     setDialogOpen(true);
   };
