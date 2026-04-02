@@ -99,6 +99,8 @@ export default function Students() {
   const [historyStudentId, setHistoryStudentId] = useState<string | null>(null);
   const [addCourseStudentId, setAddCourseStudentId] = useState<string | null>(null);
   const [frequencyStudentId, setFrequencyStudentId] = useState<string | null>(null);
+  const [uploadingPhoto, setUploadingPhoto] = useState(false);
+  const photoInputRef = useRef<HTMLInputElement>(null);
 
   const { data: students } = useStudents(false); // all students
   const { data: courses } = useCourses();
