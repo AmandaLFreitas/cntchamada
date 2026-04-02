@@ -101,6 +101,7 @@ export default function Students() {
   const [addCourseStudentId, setAddCourseStudentId] = useState<string | null>(null);
   const [frequencyStudentId, setFrequencyStudentId] = useState<string | null>(null);
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
+  const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
   const photoInputRef = useRef<HTMLInputElement>(null);
 
   const { data: students } = useStudents(false); // all students
