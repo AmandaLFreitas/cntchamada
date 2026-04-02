@@ -462,7 +462,13 @@ export default function Students() {
       <div className="grid gap-2">
         {filtered.map((s: any) => (
           <div key={s.id} className="bg-card border rounded-lg px-4 py-3 flex items-center justify-between">
-            <p className="font-medium">{s.full_name || 'Sem nome'}</p>
+            <div className="flex items-center gap-3 min-w-0">
+              <Avatar className="h-8 w-8 shrink-0">
+                {s.photo_url && <AvatarImage src={s.photo_url} alt={s.full_name} />}
+                <AvatarFallback className="text-xs">{(s.full_name || '?')[0]?.toUpperCase()}</AvatarFallback>
+              </Avatar>
+              <p className="font-medium truncate">{s.full_name || 'Sem nome'}</p>
+            </div>
             <div className="flex gap-1">
               <Button size="icon" variant="ghost" onClick={() => setFrequencyStudentId(s.id)} title="Frequência">
                 <BarChart3 className="h-4 w-4" />
