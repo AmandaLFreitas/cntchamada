@@ -603,7 +603,7 @@ export default function Students() {
             {/* Personal Data */}
             {/* Photo Upload */}
             <div className="flex items-center gap-4 mb-2">
-              <Avatar className="h-16 w-16">
+              <Avatar className="h-16 w-16 cursor-pointer" onClick={() => form.photo_url && setLightboxUrl(form.photo_url)}>
                 {form.photo_url && <AvatarImage src={form.photo_url} alt="Foto" />}
                 <AvatarFallback><Camera className="h-6 w-6 text-muted-foreground" /></AvatarFallback>
               </Avatar>
