@@ -501,7 +501,7 @@ export default function Students() {
 
       {/* Course History Dialog */}
       <Dialog open={!!historyStudentId} onOpenChange={() => setHistoryStudentId(null)}>
-        <DialogContent className="max-w-lg max-h-[85vh] overflow-auto">
+        <DialogContent className="max-w-lg w-[95vw] max-h-[85vh] overflow-auto">
           <DialogHeader>
             <DialogTitle>Histórico - {historyStudent?.full_name || 'Aluno'}</DialogTitle>
           </DialogHeader>
