@@ -451,12 +451,12 @@ export default function Students() {
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-4">
-        <h1 className="text-2xl font-bold">Alunos</h1>
-        <Button onClick={openNew}><Plus className="h-4 w-4 mr-1" /> Novo Aluno</Button>
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-4 gap-2">
+        <h1 className="text-xl sm:text-2xl font-bold">Alunos</h1>
+        <Button onClick={openNew} className="w-full sm:w-auto"><Plus className="h-4 w-4 mr-1" /> Novo Aluno</Button>
       </div>
 
-      <div className="relative mb-4 max-w-sm">
+      <div className="relative mb-4">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
         <Input placeholder="Buscar aluno..." value={search} onChange={e => setSearch(e.target.value)} className="pl-9" />
       </div>
