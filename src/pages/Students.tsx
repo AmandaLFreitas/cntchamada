@@ -599,6 +599,25 @@ export default function Students() {
           </DialogHeader>
           <div className="grid gap-4">
             {/* Personal Data */}
+            {/* Photo Upload */}
+            <div className="flex items-center gap-4 mb-2">
+              <Avatar className="h-16 w-16">
+                {form.photo_url && <AvatarImage src={form.photo_url} alt="Foto" />}
+                <AvatarFallback><Camera className="h-6 w-6 text-muted-foreground" /></AvatarFallback>
+              </Avatar>
+              <div>
+                <input type="file" accept="image/*" ref={photoInputRef} onChange={handlePhotoUpload} className="hidden" />
+                <Button type="button" variant="outline" size="sm" onClick={() => photoInputRef.current?.click()} disabled={uploadingPhoto}>
+                  {uploadingPhoto ? 'Enviando...' : form.photo_url ? 'Trocar foto' : 'Adicionar foto'}
+                </Button>
+                {form.photo_url && (
+                  <Button type="button" variant="ghost" size="sm" className="ml-2 text-destructive" onClick={() => setForm(f => ({ ...f, photo_url: '' }))}>
+                    Remover
+                  </Button>
+                )}
+              </div>
+            </div>
+
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div><Label>Nome completo</Label><Input value={form.full_name} onChange={e => setForm(f => ({ ...f, full_name: e.target.value }))} disabled={!!addCourseStudentId} /></div>
               {isAdmin && <div><Label>CPF</Label><Input value={form.cpf} onChange={e => setForm(f => ({ ...f, cpf: e.target.value }))} /></div>}
