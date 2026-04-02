@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { useStudents, useCourses, useTimeSlots, useCreateStudent, useUpdateStudent, useDeleteStudent, useCompletions } from '@/hooks/use-supabase-data';
 import { supabase } from '@/integrations/supabase/client';
 import { DateInput } from '@/components/DateInput';
