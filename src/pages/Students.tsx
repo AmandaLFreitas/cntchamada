@@ -225,6 +225,7 @@ export default function Students() {
       cpf: student.cpf ?? '',
       guardian_name: student.guardian_name ?? '',
       guardian_phone: student.guardian_phone ?? '',
+      photo_url: student.photo_url ?? '',
       course_id: sc.course_id ?? '',
       custom_course_name: sc.custom_course_name ?? '',
       enrollment_date: sc.enrollment_date ?? '',
