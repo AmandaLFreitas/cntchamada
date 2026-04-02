@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { useStudents, useCourses, useTimeSlots, useCreateStudent, useUpdateStudent, useDeleteStudent, useCompletions } from '@/hooks/use-supabase-data';
 import { supabase } from '@/integrations/supabase/client';
 import { DateInput } from '@/components/DateInput';
@@ -11,15 +11,17 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Checkbox } from '@/components/ui/checkbox';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { DAYS_OF_WEEK } from '@/lib/constants';
-import { Plus, Pencil, Trash2, Search, History, BookOpen, BarChart3 } from 'lucide-react';
+import { Plus, Pencil, Trash2, Search, History, BookOpen, BarChart3, Camera } from 'lucide-react';
 import { StudentFrequencyDialog } from '@/components/StudentFrequencyDialog';
 import { toast } from 'sonner';
 import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
+import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 
 interface StudentForm {
   full_name: string; street: string; house_number: string; birth_date: string;
   cpf: string; guardian_name: string; guardian_phone: string;
+  photo_url: string;
   // Course data
   course_id: string; custom_course_name: string;
   enrollment_date: string; first_class_date: string;
@@ -39,6 +41,7 @@ const PAYMENT_OPTIONS = [
 const emptyForm: StudentForm = {
   full_name: '', street: '', house_number: '', birth_date: '',
   cpf: '', guardian_name: '', guardian_phone: '',
+  photo_url: '',
   course_id: '', custom_course_name: '',
   enrollment_date: '', first_class_date: '',
   workload: 48, status: 'em_andamento', payment_method: '',
@@ -96,6 +99,8 @@ export default function Students() {
   const [historyStudentId, setHistoryStudentId] = useState<string | null>(null);
   const [addCourseStudentId, setAddCourseStudentId] = useState<string | null>(null);
   const [frequencyStudentId, setFrequencyStudentId] = useState<string | null>(null);
+  const [uploadingPhoto, setUploadingPhoto] = useState(false);
+  const photoInputRef = useRef<HTMLInputElement>(null);
 
   const { data: students } = useStudents(false); // all students
   const { data: courses } = useCourses();
@@ -145,7 +150,33 @@ export default function Students() {
           }
         }
       });
-      setForm(f => ({ ...f, daySchedules }));
+
+      // Auto-detect if custom schedule mode is needed
+      // Check if paired days have matching times (Segunda↔Quarta, Terça↔Quinta)
+      const pairs: [string, string][] = [['Segunda', 'Quarta'], ['Terça', 'Quinta']];
+      let isCustom = false;
+      for (const [a, b] of pairs) {
+        const timesA = (daySchedules[a] || []).sort().join(',');
+        const timesB = (daySchedules[b] || []).sort().join(',');
+        if (timesA !== timesB) {
+          isCustom = true;
+          break;
+        }
+      }
+      // If any non-paired day has schedules (e.g., only Sábado without matching pair structure)
+      const hasSabado = (daySchedules['Sábado'] || []).length > 0;
+      const hasWeekday = Object.keys(daySchedules).some(d => d !== 'Sábado');
+      // Check if only one day of a pair has schedules
+      for (const [a, b] of pairs) {
+        const hasA = (daySchedules[a] || []).length > 0;
+        const hasB = (daySchedules[b] || []).length > 0;
+        if (hasA !== hasB) {
+          isCustom = true;
+          break;
+        }
+      }
+
+      setForm(f => ({ ...f, daySchedules, customScheduleMode: isCustom }));
     }
   }, [editingCourseId, editSchedules, reverseSlotLookup]);
 
@@ -196,6 +227,7 @@ export default function Students() {
       cpf: student.cpf ?? '',
       guardian_name: student.guardian_name ?? '',
       guardian_phone: student.guardian_phone ?? '',
+      photo_url: student.photo_url ?? '',
       course_id: sc.course_id ?? '',
       custom_course_name: sc.custom_course_name ?? '',
       enrollment_date: sc.enrollment_date ?? '',
@@ -203,9 +235,9 @@ export default function Students() {
       workload: sc.workload ?? 48,
       status: sc.status || 'em_andamento',
       payment_method: sc.payment_method ?? '',
-      daySchedules: {},
+      daySchedules: {}, // Will be populated by useEffect from editSchedules
       show_guardian: !!student.guardian_name || isMinor(student.birth_date ?? ''),
-      customScheduleMode: false,
+      customScheduleMode: false, // Will be auto-detected by useEffect
     });
     setDialogOpen(true);
   };
@@ -240,6 +272,7 @@ export default function Students() {
       birth_date: form.birth_date || null,
       guardian_name: form.show_guardian ? form.guardian_name || null : null,
       guardian_phone: form.show_guardian ? form.guardian_phone || null : null,
+      photo_url: form.photo_url || null,
     };
     if (isAdmin) {
       personalData.street = form.street || null;
@@ -344,6 +377,28 @@ export default function Students() {
     }
   };
 
+  const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploadingPhoto(true);
+    try {
+      const ext = file.name.split('.').pop();
+      const fileName = `${Date.now()}_${Math.random().toString(36).slice(2)}.${ext}`;
+      const { error: uploadError } = await supabase.storage
+        .from('student-photos')
+        .upload(fileName, file, { upsert: true });
+      if (uploadError) throw uploadError;
+      const { data: urlData } = supabase.storage.from('student-photos').getPublicUrl(fileName);
+      setForm(f => ({ ...f, photo_url: urlData.publicUrl }));
+      toast.success('Foto enviada!');
+    } catch (err) {
+      toast.error('Erro ao enviar foto');
+    } finally {
+      setUploadingPhoto(false);
+      if (photoInputRef.current) photoInputRef.current.value = '';
+    }
+  };
+
   const getPairedDay = (day: string): string | null => {
     const pairs: Record<string, string> = {
       'Segunda': 'Quarta', 'Quarta': 'Segunda',
@@ -407,7 +462,13 @@ export default function Students() {
       <div className="grid gap-2">
         {filtered.map((s: any) => (
           <div key={s.id} className="bg-card border rounded-lg px-4 py-3 flex items-center justify-between">
-            <p className="font-medium">{s.full_name || 'Sem nome'}</p>
+            <div className="flex items-center gap-3 min-w-0">
+              <Avatar className="h-8 w-8 shrink-0">
+                {s.photo_url && <AvatarImage src={s.photo_url} alt={s.full_name} />}
+                <AvatarFallback className="text-xs">{(s.full_name || '?')[0]?.toUpperCase()}</AvatarFallback>
+              </Avatar>
+              <p className="font-medium truncate">{s.full_name || 'Sem nome'}</p>
+            </div>
             <div className="flex gap-1">
               <Button size="icon" variant="ghost" onClick={() => setFrequencyStudentId(s.id)} title="Frequência">
                 <BarChart3 className="h-4 w-4" />
@@ -538,6 +599,25 @@ export default function Students() {
           </DialogHeader>
           <div className="grid gap-4">
             {/* Personal Data */}
+            {/* Photo Upload */}
+            <div className="flex items-center gap-4 mb-2">
+              <Avatar className="h-16 w-16">
+                {form.photo_url && <AvatarImage src={form.photo_url} alt="Foto" />}
+                <AvatarFallback><Camera className="h-6 w-6 text-muted-foreground" /></AvatarFallback>
+              </Avatar>
+              <div>
+                <input type="file" accept="image/*" ref={photoInputRef} onChange={handlePhotoUpload} className="hidden" />
+                <Button type="button" variant="outline" size="sm" onClick={() => photoInputRef.current?.click()} disabled={uploadingPhoto}>
+                  {uploadingPhoto ? 'Enviando...' : form.photo_url ? 'Trocar foto' : 'Adicionar foto'}
+                </Button>
+                {form.photo_url && (
+                  <Button type="button" variant="ghost" size="sm" className="ml-2 text-destructive" onClick={() => setForm(f => ({ ...f, photo_url: '' }))}>
+                    Remover
+                  </Button>
+                )}
+              </div>
+            </div>
+
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div><Label>Nome completo</Label><Input value={form.full_name} onChange={e => setForm(f => ({ ...f, full_name: e.target.value }))} disabled={!!addCourseStudentId} /></div>
               {isAdmin && <div><Label>CPF</Label><Input value={form.cpf} onChange={e => setForm(f => ({ ...f, cpf: e.target.value }))} /></div>}

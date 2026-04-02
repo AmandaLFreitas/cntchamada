@@ -108,6 +108,18 @@ export default function Attendance() {
 
   const handleDayChange = (day: string) => {
     setSelectedDay(day);
+    // Find the nearest date matching this day
+    const dayIndex = ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado'].indexOf(day);
+    if (dayIndex >= 0) {
+      const current = new Date(selectedDate);
+      const currentDayIndex = current.getDay();
+      let diff = dayIndex - currentDayIndex;
+      if (diff > 0) diff -= 7; // go to the most recent past occurrence
+      if (diff === 0) return; // same day, keep date
+      const newDate = new Date(current);
+      newDate.setDate(current.getDate() + diff);
+      setSelectedDate(newDate);
+    }
   };
 
   const navigateDate = (direction: number) => {

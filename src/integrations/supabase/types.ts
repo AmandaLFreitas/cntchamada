@@ -237,6 +237,7 @@ export type Database = {
           id: string
           is_active: boolean
           payment_method: string | null
+          photo_url: string | null
           status: string
           street: string | null
           updated_at: string
@@ -257,6 +258,7 @@ export type Database = {
           id?: string
           is_active?: boolean
           payment_method?: string | null
+          photo_url?: string | null
           status?: string
           street?: string | null
           updated_at?: string
@@ -277,6 +279,7 @@ export type Database = {
           id?: string
           is_active?: boolean
           payment_method?: string | null
+          photo_url?: string | null
           status?: string
           street?: string | null
           updated_at?: string
