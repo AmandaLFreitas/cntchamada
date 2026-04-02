@@ -463,15 +463,15 @@ export default function Students() {
 
       <div className="grid gap-2">
         {filtered.map((s: any) => (
-          <div key={s.id} className="bg-card border rounded-lg px-4 py-3 flex items-center justify-between">
-            <div className="flex items-center gap-3 min-w-0">
-              <Avatar className="h-8 w-8 shrink-0">
+          <div key={s.id} className="bg-card border rounded-lg px-3 sm:px-4 py-3 flex flex-col sm:flex-row sm:items-center gap-2">
+            <div className="flex items-center gap-3 min-w-0 flex-1">
+              <Avatar className="h-8 w-8 shrink-0 cursor-pointer" onClick={() => s.photo_url && setLightboxUrl(s.photo_url)}>
                 {s.photo_url && <AvatarImage src={s.photo_url} alt={s.full_name} />}
                 <AvatarFallback className="text-xs">{(s.full_name || '?')[0]?.toUpperCase()}</AvatarFallback>
               </Avatar>
-              <p className="font-medium truncate">{s.full_name || 'Sem nome'}</p>
+              <p className="font-medium truncate text-sm sm:text-base">{s.full_name || 'Sem nome'}</p>
             </div>
-            <div className="flex gap-1">
+            <div className="flex gap-1 ml-auto">
               <Button size="icon" variant="ghost" onClick={() => setFrequencyStudentId(s.id)} title="Frequência">
                 <BarChart3 className="h-4 w-4" />
               </Button>
