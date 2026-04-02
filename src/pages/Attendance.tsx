@@ -174,10 +174,10 @@ export default function Attendance() {
                 const status = getStatus(student.id);
                 const courseName = student.courses?.name || student.custom_course_name || 'N/A';
                 return (
-                  <div key={s.id} className="flex items-center justify-between border rounded-lg p-3 bg-card">
+                  <div key={s.id} className="flex flex-col sm:flex-row sm:items-center justify-between border rounded-lg p-3 bg-card gap-2">
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-2">
-                        <p className="font-medium truncate">{student.full_name || 'Sem nome'}</p>
+                        <p className="font-medium truncate text-sm sm:text-base">{student.full_name || 'Sem nome'}</p>
                         {isNewStudent(student.id, student.enrollment_date) && (
                           <Badge className="bg-blue-500 text-white text-[10px] px-1.5 py-0">Novo</Badge>
                         )}
