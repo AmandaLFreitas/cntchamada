@@ -272,6 +272,7 @@ export default function Students() {
       birth_date: form.birth_date || null,
       guardian_name: form.show_guardian ? form.guardian_name || null : null,
       guardian_phone: form.show_guardian ? form.guardian_phone || null : null,
+      photo_url: form.photo_url || null,
     };
     if (isAdmin) {
       personalData.street = form.street || null;
