@@ -377,6 +377,28 @@ export default function Students() {
     }
   };
 
+  const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploadingPhoto(true);
+    try {
+      const ext = file.name.split('.').pop();
+      const fileName = `${Date.now()}_${Math.random().toString(36).slice(2)}.${ext}`;
+      const { error: uploadError } = await supabase.storage
+        .from('student-photos')
+        .upload(fileName, file, { upsert: true });
+      if (uploadError) throw uploadError;
+      const { data: urlData } = supabase.storage.from('student-photos').getPublicUrl(fileName);
+      setForm(f => ({ ...f, photo_url: urlData.publicUrl }));
+      toast.success('Foto enviada!');
+    } catch (err) {
+      toast.error('Erro ao enviar foto');
+    } finally {
+      setUploadingPhoto(false);
+      if (photoInputRef.current) photoInputRef.current.value = '';
+    }
+  };
+
   const getPairedDay = (day: string): string | null => {
     const pairs: Record<string, string> = {
       'Segunda': 'Quarta', 'Quarta': 'Segunda',
