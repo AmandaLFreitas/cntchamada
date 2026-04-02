@@ -145,7 +145,33 @@ export default function Students() {
           }
         }
       });
-      setForm(f => ({ ...f, daySchedules }));
+
+      // Auto-detect if custom schedule mode is needed
+      // Check if paired days have matching times (Segunda↔Quarta, Terça↔Quinta)
+      const pairs: [string, string][] = [['Segunda', 'Quarta'], ['Terça', 'Quinta']];
+      let isCustom = false;
+      for (const [a, b] of pairs) {
+        const timesA = (daySchedules[a] || []).sort().join(',');
+        const timesB = (daySchedules[b] || []).sort().join(',');
+        if (timesA !== timesB) {
+          isCustom = true;
+          break;
+        }
+      }
+      // If any non-paired day has schedules (e.g., only Sábado without matching pair structure)
+      const hasSabado = (daySchedules['Sábado'] || []).length > 0;
+      const hasWeekday = Object.keys(daySchedules).some(d => d !== 'Sábado');
+      // Check if only one day of a pair has schedules
+      for (const [a, b] of pairs) {
+        const hasA = (daySchedules[a] || []).length > 0;
+        const hasB = (daySchedules[b] || []).length > 0;
+        if (hasA !== hasB) {
+          isCustom = true;
+          break;
+        }
+      }
+
+      setForm(f => ({ ...f, daySchedules, customScheduleMode: isCustom }));
     }
   }, [editingCourseId, editSchedules, reverseSlotLookup]);
 
