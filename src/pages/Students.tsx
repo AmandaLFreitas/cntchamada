@@ -808,6 +808,13 @@ export default function Students() {
           return activeSc?.courses?.name || activeSc?.custom_course_name || undefined;
         })()}
       />
+
+      <PhotoLightbox
+        open={!!lightboxUrl}
+        onOpenChange={() => setLightboxUrl(null)}
+        src={lightboxUrl || ''}
+        alt="Foto do aluno"
+      />
     </div>
   );
 }

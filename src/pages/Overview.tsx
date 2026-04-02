@@ -154,7 +154,7 @@ export default function Overview() {
       </div>
 
       <Dialog open={!!selectedSlotId} onOpenChange={() => setSelectedSlotId(null)}>
-        <DialogContent className="max-w-2xl max-h-[80vh] overflow-auto">
+        <DialogContent className="max-w-2xl w-[95vw] max-h-[85vh] overflow-auto">
           <DialogHeader>
             <DialogTitle>Alunos do Horário</DialogTitle>
           </DialogHeader>
