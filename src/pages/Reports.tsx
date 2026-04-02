@@ -179,7 +179,7 @@ export default function Reports() {
       )}
 
       <Dialog open={!!selectedStudentId} onOpenChange={() => setSelectedStudentId(null)}>
-        <DialogContent className="max-w-lg max-h-[80vh] overflow-auto">
+        <DialogContent className="max-w-lg w-[95vw] max-h-[85vh] overflow-auto">
           <DialogHeader>
             <DialogTitle>{selectedStudent?.full_name || 'Aluno'}</DialogTitle>
           </DialogHeader>

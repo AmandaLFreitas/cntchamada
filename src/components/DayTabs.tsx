@@ -9,10 +9,11 @@ interface DayTabsProps {
 export function DayTabs({ value, onChange }: DayTabsProps) {
   return (
     <Tabs value={value} onValueChange={onChange}>
-      <TabsList className="w-full justify-start">
+      <TabsList className="w-full overflow-x-auto flex justify-start gap-0">
         {DAYS_OF_WEEK.map(day => (
-          <TabsTrigger key={day} value={day} className="flex-1 md:flex-none">
-            {day}
+          <TabsTrigger key={day} value={day} className="flex-shrink-0 text-xs sm:text-sm px-2 sm:px-3">
+            <span className="sm:hidden">{day.slice(0, 3)}</span>
+            <span className="hidden sm:inline">{day}</span>
           </TabsTrigger>
         ))}
       </TabsList>

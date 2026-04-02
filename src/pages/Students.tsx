@@ -17,6 +17,7 @@ import { toast } from 'sonner';
 import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
+import { PhotoLightbox } from '@/components/PhotoLightbox';
 
 interface StudentForm {
   full_name: string; street: string; house_number: string; birth_date: string;
@@ -100,6 +101,7 @@ export default function Students() {
   const [addCourseStudentId, setAddCourseStudentId] = useState<string | null>(null);
   const [frequencyStudentId, setFrequencyStudentId] = useState<string | null>(null);
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
+  const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
   const photoInputRef = useRef<HTMLInputElement>(null);
 
   const { data: students } = useStudents(false); // all students
@@ -449,27 +451,27 @@ export default function Students() {
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-4">
-        <h1 className="text-2xl font-bold">Alunos</h1>
-        <Button onClick={openNew}><Plus className="h-4 w-4 mr-1" /> Novo Aluno</Button>
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-4 gap-2">
+        <h1 className="text-xl sm:text-2xl font-bold">Alunos</h1>
+        <Button onClick={openNew} className="w-full sm:w-auto"><Plus className="h-4 w-4 mr-1" /> Novo Aluno</Button>
       </div>
 
-      <div className="relative mb-4 max-w-sm">
+      <div className="relative mb-4">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
         <Input placeholder="Buscar aluno..." value={search} onChange={e => setSearch(e.target.value)} className="pl-9" />
       </div>
 
       <div className="grid gap-2">
         {filtered.map((s: any) => (
-          <div key={s.id} className="bg-card border rounded-lg px-4 py-3 flex items-center justify-between">
-            <div className="flex items-center gap-3 min-w-0">
-              <Avatar className="h-8 w-8 shrink-0">
+          <div key={s.id} className="bg-card border rounded-lg px-3 sm:px-4 py-3 flex flex-col sm:flex-row sm:items-center gap-2">
+            <div className="flex items-center gap-3 min-w-0 flex-1">
+              <Avatar className="h-8 w-8 shrink-0 cursor-pointer" onClick={() => s.photo_url && setLightboxUrl(s.photo_url)}>
                 {s.photo_url && <AvatarImage src={s.photo_url} alt={s.full_name} />}
                 <AvatarFallback className="text-xs">{(s.full_name || '?')[0]?.toUpperCase()}</AvatarFallback>
               </Avatar>
-              <p className="font-medium truncate">{s.full_name || 'Sem nome'}</p>
+              <p className="font-medium truncate text-sm sm:text-base">{s.full_name || 'Sem nome'}</p>
             </div>
-            <div className="flex gap-1">
+            <div className="flex gap-1 ml-auto">
               <Button size="icon" variant="ghost" onClick={() => setFrequencyStudentId(s.id)} title="Frequência">
                 <BarChart3 className="h-4 w-4" />
               </Button>
@@ -499,7 +501,7 @@ export default function Students() {
 
       {/* Course History Dialog */}
       <Dialog open={!!historyStudentId} onOpenChange={() => setHistoryStudentId(null)}>
-        <DialogContent className="max-w-lg max-h-[85vh] overflow-auto">
+        <DialogContent className="max-w-lg w-[95vw] max-h-[85vh] overflow-auto">
           <DialogHeader>
             <DialogTitle>Histórico - {historyStudent?.full_name || 'Aluno'}</DialogTitle>
           </DialogHeader>
@@ -591,7 +593,7 @@ export default function Students() {
 
       {/* Student Form Dialog */}
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-auto">
+        <DialogContent className="max-w-2xl w-[95vw] max-h-[90vh] overflow-auto">
           <DialogHeader>
             <DialogTitle>
               {addCourseStudentId ? 'Adicionar Curso' : editingStudentId ? 'Editar Aluno / Curso' : 'Novo Aluno'}
@@ -601,7 +603,7 @@ export default function Students() {
             {/* Personal Data */}
             {/* Photo Upload */}
             <div className="flex items-center gap-4 mb-2">
-              <Avatar className="h-16 w-16">
+              <Avatar className="h-16 w-16 cursor-pointer" onClick={() => form.photo_url && setLightboxUrl(form.photo_url)}>
                 {form.photo_url && <AvatarImage src={form.photo_url} alt="Foto" />}
                 <AvatarFallback><Camera className="h-6 w-6 text-muted-foreground" /></AvatarFallback>
               </Avatar>
@@ -805,6 +807,13 @@ export default function Students() {
           const activeSc = s?.student_courses?.find((sc: any) => sc.is_active);
           return activeSc?.courses?.name || activeSc?.custom_course_name || undefined;
         })()}
+      />
+
+      <PhotoLightbox
+        open={!!lightboxUrl}
+        onOpenChange={() => setLightboxUrl(null)}
+        src={lightboxUrl || ''}
+        alt="Foto do aluno"
       />
     </div>
   );

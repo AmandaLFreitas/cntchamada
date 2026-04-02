@@ -155,14 +155,14 @@ export default function Attendance() {
 
       <DayTabs value={selectedDay} onChange={handleDayChange} />
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 mt-4">
+      <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-4 mt-4">
         {daySlots.map(slot => (
           <TimeSlotCard key={slot.id} startTime={slot.start_time} endTime={slot.end_time} studentCount={slotCounts?.[slot.id] ?? 0} onClick={() => setSelectedSlotId(slot.id)} />
         ))}
       </div>
 
       <Dialog open={!!selectedSlotId} onOpenChange={() => setSelectedSlotId(null)}>
-        <DialogContent className="max-w-2xl max-h-[80vh] overflow-auto">
+        <DialogContent className="max-w-2xl w-[95vw] max-h-[85vh] overflow-auto">
           <DialogHeader>
             <DialogTitle>Chamada - {format(selectedDate, "dd/MM/yyyy")} ({selectedDay})</DialogTitle>
           </DialogHeader>
@@ -174,17 +174,17 @@ export default function Attendance() {
                 const status = getStatus(student.id);
                 const courseName = student.courses?.name || student.custom_course_name || 'N/A';
                 return (
-                  <div key={s.id} className="flex items-center justify-between border rounded-lg p-3 bg-card">
+                  <div key={s.id} className="flex flex-col sm:flex-row sm:items-center justify-between border rounded-lg p-3 bg-card gap-2">
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-2">
-                        <p className="font-medium truncate">{student.full_name || 'Sem nome'}</p>
+                        <p className="font-medium truncate text-sm sm:text-base">{student.full_name || 'Sem nome'}</p>
                         {isNewStudent(student.id, student.enrollment_date) && (
                           <Badge className="bg-blue-500 text-white text-[10px] px-1.5 py-0">Novo</Badge>
                         )}
                       </div>
                       <p className="text-sm text-muted-foreground">{courseName}</p>
                     </div>
-                    <div className="flex gap-2 ml-2">
+                    <div className="flex gap-2 ml-auto sm:ml-2">
                       <Button size="icon" variant={status === 'present' ? 'default' : 'outline'}
                         className={status === 'present' ? 'bg-green-600 hover:bg-green-700' : ''}
                         onClick={() => markAttendance(student.id, 'present')} title="Presença">
