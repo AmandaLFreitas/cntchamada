@@ -184,7 +184,7 @@ export default function Attendance() {
                       </div>
                       <p className="text-sm text-muted-foreground">{courseName}</p>
                     </div>
-                    <div className="flex gap-2 ml-2">
+                    <div className="flex gap-2 ml-auto sm:ml-2">
                       <Button size="icon" variant={status === 'present' ? 'default' : 'outline'}
                         className={status === 'present' ? 'bg-green-600 hover:bg-green-700' : ''}
                         onClick={() => markAttendance(student.id, 'present')} title="Presença">
