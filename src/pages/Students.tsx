@@ -234,6 +234,7 @@ export default function Students() {
       guardian_name: student.guardian_name ?? '',
       guardian_phone: student.guardian_phone ?? '',
       photo_url: student.photo_url ?? '',
+      material_sent: (student as any).material_sent ?? false,
       course_id: sc.course_id ?? '',
       custom_course_name: sc.custom_course_name ?? '',
       enrollment_date: sc.enrollment_date ?? '',
