@@ -11,7 +11,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Checkbox } from '@/components/ui/checkbox';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { DAYS_OF_WEEK } from '@/lib/constants';
-import { Plus, Pencil, Trash2, Search, History, BookOpen, BarChart3, Camera } from 'lucide-react';
+import { Plus, Pencil, Trash2, Search, History, BookOpen, BarChart3, Camera, MessageSquare } from 'lucide-react';
+import { StudentObservationsDialog } from '@/components/StudentObservationsDialog';
 import { StudentFrequencyDialog } from '@/components/StudentFrequencyDialog';
 import { toast } from 'sonner';
 import { Switch } from '@/components/ui/switch';
@@ -100,6 +101,7 @@ export default function Students() {
   const [historyStudentId, setHistoryStudentId] = useState<string | null>(null);
   const [addCourseStudentId, setAddCourseStudentId] = useState<string | null>(null);
   const [frequencyStudentId, setFrequencyStudentId] = useState<string | null>(null);
+  const [observationsStudentId, setObservationsStudentId] = useState<string | null>(null);
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
   const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
   const photoInputRef = useRef<HTMLInputElement>(null);
