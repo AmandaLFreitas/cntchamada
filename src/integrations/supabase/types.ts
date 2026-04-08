@@ -175,6 +175,38 @@ export type Database = {
           },
         ]
       }
+      student_observations: {
+        Row: {
+          created_at: string
+          id: string
+          observation: string
+          source: string | null
+          student_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          observation: string
+          source?: string | null
+          student_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          observation?: string
+          source?: string | null
+          student_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "student_observations_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "students"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       student_schedules: {
         Row: {
           created_at: string
@@ -236,6 +268,7 @@ export type Database = {
           house_number: string | null
           id: string
           is_active: boolean
+          material_sent: boolean
           payment_method: string | null
           photo_url: string | null
           status: string
@@ -257,6 +290,7 @@ export type Database = {
           house_number?: string | null
           id?: string
           is_active?: boolean
+          material_sent?: boolean
           payment_method?: string | null
           photo_url?: string | null
           status?: string
@@ -278,6 +312,7 @@ export type Database = {
           house_number?: string | null
           id?: string
           is_active?: boolean
+          material_sent?: boolean
           payment_method?: string | null
           photo_url?: string | null
           status?: string

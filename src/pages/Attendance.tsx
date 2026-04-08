@@ -11,10 +11,12 @@ import { Button } from '@/components/ui/button';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { cn } from '@/lib/utils';
-import { Check, X, Minus } from 'lucide-react';
+import { Check, X, Minus, MessageSquare, Send } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { supabase } from '@/integrations/supabase/client';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { Textarea } from '@/components/ui/textarea';
+import { toast } from 'sonner';
 
 const dayNameFromDate = (date: Date): string => {
   const days = ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado'];
@@ -37,6 +39,9 @@ export default function Attendance() {
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   const [selectedDay, setSelectedDay] = useState(getTodayDayName());
   const [selectedSlotId, setSelectedSlotId] = useState<string | null>(null);
+  const [obsOpenId, setObsOpenId] = useState<string | null>(null);
+  const [obsText, setObsText] = useState('');
+  const qc = useQueryClient();
 
   const isoDate = format(selectedDate, 'yyyy-MM-dd');
 
@@ -95,6 +100,23 @@ export default function Attendance() {
   const markAttendance = (studentId: string, status: string) => {
     if (!selectedSlotId) return;
     saveAttendance.mutate({ studentId, timeSlotId: selectedSlotId, date: isoDate, status });
+  };
+
+  const saveObservation = async (studentId: string) => {
+    if (!obsText.trim()) return;
+    try {
+      await supabase.from('student_observations' as any).insert({
+        student_id: studentId,
+        observation: obsText.trim(),
+        source: 'chamada',
+      } as any);
+      toast.success('Observação salva!');
+      setObsText('');
+      setObsOpenId(null);
+      qc.invalidateQueries({ queryKey: ['student_observations', studentId] });
+    } catch {
+      toast.error('Erro ao salvar observação');
+    }
   };
 
   const handleDateSelect = (date: Date | undefined) => {
@@ -174,33 +196,53 @@ export default function Attendance() {
                 const status = getStatus(student.id);
                 const courseName = student.courses?.name || student.custom_course_name || 'N/A';
                 return (
-                  <div key={s.id} className="flex flex-col sm:flex-row sm:items-center justify-between border rounded-lg p-3 bg-card gap-2">
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-center gap-2">
-                        <p className="font-medium truncate text-sm sm:text-base">{student.full_name || 'Sem nome'}</p>
-                        {isNewStudent(student.id, student.enrollment_date) && (
-                          <Badge className="bg-blue-500 text-white text-[10px] px-1.5 py-0">Novo</Badge>
-                        )}
+                  <div key={s.id} className="border rounded-lg p-3 bg-card space-y-2">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-2">
+                          <p className="font-medium truncate text-sm sm:text-base">{student.full_name || 'Sem nome'}</p>
+                          {isNewStudent(student.id, student.enrollment_date) && (
+                            <Badge className="bg-blue-500 text-white text-[10px] px-1.5 py-0">Novo</Badge>
+                          )}
+                        </div>
+                        <p className="text-sm text-muted-foreground">{courseName}</p>
                       </div>
-                      <p className="text-sm text-muted-foreground">{courseName}</p>
+                      <div className="flex gap-2 ml-auto sm:ml-2">
+                        <Button size="icon" variant="ghost" className="h-8 w-8"
+                          onClick={() => { setObsOpenId(obsOpenId === student.id ? null : student.id); setObsText(''); }}
+                          title="Observação">
+                          <MessageSquare className="h-4 w-4" />
+                        </Button>
+                        <Button size="icon" variant={status === 'present' ? 'default' : 'outline'}
+                          className={status === 'present' ? 'bg-green-600 hover:bg-green-700' : ''}
+                          onClick={() => markAttendance(student.id, 'present')} title="Presença">
+                          <Check className="h-4 w-4" />
+                        </Button>
+                        <Button size="icon" variant={status === 'absent' ? 'default' : 'outline'}
+                          className={status === 'absent' ? 'bg-destructive hover:bg-destructive/90' : ''}
+                          onClick={() => markAttendance(student.id, 'absent')} title="Falta">
+                          <X className="h-4 w-4" />
+                        </Button>
+                        <Button size="icon" variant={status === 'neutral' ? 'default' : 'outline'}
+                          className={status === 'neutral' ? 'bg-muted-foreground hover:bg-muted-foreground/90 text-white' : ''}
+                          onClick={() => markAttendance(student.id, 'neutral')} title="Neutro (feriado/sem aula)">
+                          <Minus className="h-4 w-4" />
+                        </Button>
+                      </div>
                     </div>
-                    <div className="flex gap-2 ml-auto sm:ml-2">
-                      <Button size="icon" variant={status === 'present' ? 'default' : 'outline'}
-                        className={status === 'present' ? 'bg-green-600 hover:bg-green-700' : ''}
-                        onClick={() => markAttendance(student.id, 'present')} title="Presença">
-                        <Check className="h-4 w-4" />
-                      </Button>
-                      <Button size="icon" variant={status === 'absent' ? 'default' : 'outline'}
-                        className={status === 'absent' ? 'bg-destructive hover:bg-destructive/90' : ''}
-                        onClick={() => markAttendance(student.id, 'absent')} title="Falta">
-                        <X className="h-4 w-4" />
-                      </Button>
-                      <Button size="icon" variant={status === 'neutral' ? 'default' : 'outline'}
-                        className={status === 'neutral' ? 'bg-muted-foreground hover:bg-muted-foreground/90 text-white' : ''}
-                        onClick={() => markAttendance(student.id, 'neutral')} title="Neutro (feriado/sem aula)">
-                        <Minus className="h-4 w-4" />
-                      </Button>
-                    </div>
+                    {obsOpenId === student.id && (
+                      <div className="flex gap-2">
+                        <Textarea
+                          placeholder="Escreva uma observação..."
+                          value={obsText}
+                          onChange={e => setObsText(e.target.value)}
+                          className="min-h-[50px] text-sm"
+                        />
+                        <Button size="icon" className="shrink-0 self-end" onClick={() => saveObservation(student.id)} disabled={!obsText.trim()}>
+                          <Send className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    )}
                   </div>
                 );
               })}

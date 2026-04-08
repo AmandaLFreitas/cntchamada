@@ -11,7 +11,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Checkbox } from '@/components/ui/checkbox';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { DAYS_OF_WEEK } from '@/lib/constants';
-import { Plus, Pencil, Trash2, Search, History, BookOpen, BarChart3, Camera } from 'lucide-react';
+import { Plus, Pencil, Trash2, Search, History, BookOpen, BarChart3, Camera, MessageSquare } from 'lucide-react';
+import { StudentObservationsDialog } from '@/components/StudentObservationsDialog';
 import { StudentFrequencyDialog } from '@/components/StudentFrequencyDialog';
 import { toast } from 'sonner';
 import { Switch } from '@/components/ui/switch';
@@ -23,6 +24,7 @@ interface StudentForm {
   full_name: string; street: string; house_number: string; birth_date: string;
   cpf: string; guardian_name: string; guardian_phone: string;
   photo_url: string;
+  material_sent: boolean;
   // Course data
   course_id: string; custom_course_name: string;
   enrollment_date: string; first_class_date: string;
@@ -43,6 +45,7 @@ const emptyForm: StudentForm = {
   full_name: '', street: '', house_number: '', birth_date: '',
   cpf: '', guardian_name: '', guardian_phone: '',
   photo_url: '',
+  material_sent: false,
   course_id: '', custom_course_name: '',
   enrollment_date: '', first_class_date: '',
   workload: 48, status: 'em_andamento', payment_method: '',
@@ -100,6 +103,7 @@ export default function Students() {
   const [historyStudentId, setHistoryStudentId] = useState<string | null>(null);
   const [addCourseStudentId, setAddCourseStudentId] = useState<string | null>(null);
   const [frequencyStudentId, setFrequencyStudentId] = useState<string | null>(null);
+  const [observationsStudentId, setObservationsStudentId] = useState<string | null>(null);
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
   const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
   const photoInputRef = useRef<HTMLInputElement>(null);
@@ -230,6 +234,7 @@ export default function Students() {
       guardian_name: student.guardian_name ?? '',
       guardian_phone: student.guardian_phone ?? '',
       photo_url: student.photo_url ?? '',
+      material_sent: (student as any).material_sent ?? false,
       course_id: sc.course_id ?? '',
       custom_course_name: sc.custom_course_name ?? '',
       enrollment_date: sc.enrollment_date ?? '',
@@ -275,6 +280,7 @@ export default function Students() {
       guardian_name: form.show_guardian ? form.guardian_name || null : null,
       guardian_phone: form.show_guardian ? form.guardian_phone || null : null,
       photo_url: form.photo_url || null,
+      material_sent: form.material_sent,
     };
     if (isAdmin) {
       personalData.street = form.street || null;
@@ -472,6 +478,9 @@ export default function Students() {
               <p className="font-medium truncate text-sm sm:text-base">{s.full_name || 'Sem nome'}</p>
             </div>
             <div className="flex gap-1 ml-auto">
+              <Button size="icon" variant="ghost" onClick={() => setObservationsStudentId(s.id)} title="Observações">
+                <MessageSquare className="h-4 w-4" />
+              </Button>
               <Button size="icon" variant="ghost" onClick={() => setFrequencyStudentId(s.id)} title="Frequência">
                 <BarChart3 className="h-4 w-4" />
               </Button>
@@ -789,6 +798,12 @@ export default function Students() {
               )}
             </div>
 
+            {/* Material Sent */}
+            <label className="flex items-center gap-2 cursor-pointer">
+              <Checkbox checked={form.material_sent} onCheckedChange={v => setForm(f => ({ ...f, material_sent: !!v }))} />
+              <span className="text-sm">Material enviado</span>
+            </label>
+
             <Button onClick={handleSave} disabled={createStudent.isPending || updateStudent.isPending}>
               {addCourseStudentId ? 'Adicionar Curso' : editingStudentId ? 'Salvar Alterações' : 'Cadastrar Aluno'}
             </Button>
@@ -814,6 +829,13 @@ export default function Students() {
         onOpenChange={() => setLightboxUrl(null)}
         src={lightboxUrl || ''}
         alt="Foto do aluno"
+      />
+
+      <StudentObservationsDialog
+        open={!!observationsStudentId}
+        onOpenChange={() => setObservationsStudentId(null)}
+        studentId={observationsStudentId}
+        studentName={students?.find((s: any) => s.id === observationsStudentId)?.full_name || 'Aluno'}
       />
     </div>
   );
