@@ -24,6 +24,7 @@ interface StudentForm {
   full_name: string; street: string; house_number: string; birth_date: string;
   cpf: string; guardian_name: string; guardian_phone: string;
   photo_url: string;
+  material_sent: boolean;
   // Course data
   course_id: string; custom_course_name: string;
   enrollment_date: string; first_class_date: string;
@@ -44,6 +45,7 @@ const emptyForm: StudentForm = {
   full_name: '', street: '', house_number: '', birth_date: '',
   cpf: '', guardian_name: '', guardian_phone: '',
   photo_url: '',
+  material_sent: false,
   course_id: '', custom_course_name: '',
   enrollment_date: '', first_class_date: '',
   workload: 48, status: 'em_andamento', payment_method: '',
