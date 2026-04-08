@@ -474,6 +474,9 @@ export default function Students() {
               <p className="font-medium truncate text-sm sm:text-base">{s.full_name || 'Sem nome'}</p>
             </div>
             <div className="flex gap-1 ml-auto">
+              <Button size="icon" variant="ghost" onClick={() => setObservationsStudentId(s.id)} title="Observações">
+                <MessageSquare className="h-4 w-4" />
+              </Button>
               <Button size="icon" variant="ghost" onClick={() => setFrequencyStudentId(s.id)} title="Frequência">
                 <BarChart3 className="h-4 w-4" />
               </Button>
