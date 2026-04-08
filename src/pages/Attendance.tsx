@@ -196,33 +196,53 @@ export default function Attendance() {
                 const status = getStatus(student.id);
                 const courseName = student.courses?.name || student.custom_course_name || 'N/A';
                 return (
-                  <div key={s.id} className="flex flex-col sm:flex-row sm:items-center justify-between border rounded-lg p-3 bg-card gap-2">
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-center gap-2">
-                        <p className="font-medium truncate text-sm sm:text-base">{student.full_name || 'Sem nome'}</p>
-                        {isNewStudent(student.id, student.enrollment_date) && (
-                          <Badge className="bg-blue-500 text-white text-[10px] px-1.5 py-0">Novo</Badge>
-                        )}
+                  <div key={s.id} className="border rounded-lg p-3 bg-card space-y-2">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-2">
+                          <p className="font-medium truncate text-sm sm:text-base">{student.full_name || 'Sem nome'}</p>
+                          {isNewStudent(student.id, student.enrollment_date) && (
+                            <Badge className="bg-blue-500 text-white text-[10px] px-1.5 py-0">Novo</Badge>
+                          )}
+                        </div>
+                        <p className="text-sm text-muted-foreground">{courseName}</p>
                       </div>
-                      <p className="text-sm text-muted-foreground">{courseName}</p>
+                      <div className="flex gap-2 ml-auto sm:ml-2">
+                        <Button size="icon" variant="ghost" className="h-8 w-8"
+                          onClick={() => { setObsOpenId(obsOpenId === student.id ? null : student.id); setObsText(''); }}
+                          title="Observação">
+                          <MessageSquare className="h-4 w-4" />
+                        </Button>
+                        <Button size="icon" variant={status === 'present' ? 'default' : 'outline'}
+                          className={status === 'present' ? 'bg-green-600 hover:bg-green-700' : ''}
+                          onClick={() => markAttendance(student.id, 'present')} title="Presença">
+                          <Check className="h-4 w-4" />
+                        </Button>
+                        <Button size="icon" variant={status === 'absent' ? 'default' : 'outline'}
+                          className={status === 'absent' ? 'bg-destructive hover:bg-destructive/90' : ''}
+                          onClick={() => markAttendance(student.id, 'absent')} title="Falta">
+                          <X className="h-4 w-4" />
+                        </Button>
+                        <Button size="icon" variant={status === 'neutral' ? 'default' : 'outline'}
+                          className={status === 'neutral' ? 'bg-muted-foreground hover:bg-muted-foreground/90 text-white' : ''}
+                          onClick={() => markAttendance(student.id, 'neutral')} title="Neutro (feriado/sem aula)">
+                          <Minus className="h-4 w-4" />
+                        </Button>
+                      </div>
                     </div>
-                    <div className="flex gap-2 ml-auto sm:ml-2">
-                      <Button size="icon" variant={status === 'present' ? 'default' : 'outline'}
-                        className={status === 'present' ? 'bg-green-600 hover:bg-green-700' : ''}
-                        onClick={() => markAttendance(student.id, 'present')} title="Presença">
-                        <Check className="h-4 w-4" />
-                      </Button>
-                      <Button size="icon" variant={status === 'absent' ? 'default' : 'outline'}
-                        className={status === 'absent' ? 'bg-destructive hover:bg-destructive/90' : ''}
-                        onClick={() => markAttendance(student.id, 'absent')} title="Falta">
-                        <X className="h-4 w-4" />
-                      </Button>
-                      <Button size="icon" variant={status === 'neutral' ? 'default' : 'outline'}
-                        className={status === 'neutral' ? 'bg-muted-foreground hover:bg-muted-foreground/90 text-white' : ''}
-                        onClick={() => markAttendance(student.id, 'neutral')} title="Neutro (feriado/sem aula)">
-                        <Minus className="h-4 w-4" />
-                      </Button>
-                    </div>
+                    {obsOpenId === student.id && (
+                      <div className="flex gap-2">
+                        <Textarea
+                          placeholder="Escreva uma observação..."
+                          value={obsText}
+                          onChange={e => setObsText(e.target.value)}
+                          className="min-h-[50px] text-sm"
+                        />
+                        <Button size="icon" className="shrink-0 self-end" onClick={() => saveObservation(student.id)} disabled={!obsText.trim()}>
+                          <Send className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    )}
                   </div>
                 );
               })}
