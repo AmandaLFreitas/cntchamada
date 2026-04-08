@@ -798,6 +798,12 @@ export default function Students() {
               )}
             </div>
 
+            {/* Material Sent */}
+            <label className="flex items-center gap-2 cursor-pointer">
+              <Checkbox checked={form.material_sent} onCheckedChange={v => setForm(f => ({ ...f, material_sent: !!v }))} />
+              <span className="text-sm">Material enviado</span>
+            </label>
+
             <Button onClick={handleSave} disabled={createStudent.isPending || updateStudent.isPending}>
               {addCourseStudentId ? 'Adicionar Curso' : editingStudentId ? 'Salvar Alterações' : 'Cadastrar Aluno'}
             </Button>
