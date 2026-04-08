@@ -1,8 +1,8 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { useStudents } from '@/hooks/use-supabase-data';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-import { AlertTriangle } from 'lucide-react';
+import { AlertTriangle, X, ChevronUp } from 'lucide-react';
 
 export function CourseCompletionAlert() {
   const { data: students } = useStudents(true);
