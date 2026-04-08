@@ -280,6 +280,7 @@ export default function Students() {
       guardian_name: form.show_guardian ? form.guardian_name || null : null,
       guardian_phone: form.show_guardian ? form.guardian_phone || null : null,
       photo_url: form.photo_url || null,
+      material_sent: form.material_sent,
     };
     if (isAdmin) {
       personalData.street = form.street || null;
