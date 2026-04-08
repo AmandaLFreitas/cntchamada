@@ -830,6 +830,13 @@ export default function Students() {
         src={lightboxUrl || ''}
         alt="Foto do aluno"
       />
+
+      <StudentObservationsDialog
+        open={!!observationsStudentId}
+        onOpenChange={() => setObservationsStudentId(null)}
+        studentId={observationsStudentId}
+        studentName={students?.find((s: any) => s.id === observationsStudentId)?.full_name || 'Aluno'}
+      />
     </div>
   );
 }
