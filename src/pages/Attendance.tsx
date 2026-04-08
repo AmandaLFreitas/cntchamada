@@ -39,6 +39,9 @@ export default function Attendance() {
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   const [selectedDay, setSelectedDay] = useState(getTodayDayName());
   const [selectedSlotId, setSelectedSlotId] = useState<string | null>(null);
+  const [obsOpenId, setObsOpenId] = useState<string | null>(null);
+  const [obsText, setObsText] = useState('');
+  const qc = useQueryClient();
 
   const isoDate = format(selectedDate, 'yyyy-MM-dd');
 
