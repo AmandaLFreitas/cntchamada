@@ -102,6 +102,23 @@ export default function Attendance() {
     saveAttendance.mutate({ studentId, timeSlotId: selectedSlotId, date: isoDate, status });
   };
 
+  const saveObservation = async (studentId: string) => {
+    if (!obsText.trim()) return;
+    try {
+      await supabase.from('student_observations' as any).insert({
+        student_id: studentId,
+        observation: obsText.trim(),
+        source: 'chamada',
+      } as any);
+      toast.success('Observação salva!');
+      setObsText('');
+      setObsOpenId(null);
+      qc.invalidateQueries({ queryKey: ['student_observations', studentId] });
+    } catch {
+      toast.error('Erro ao salvar observação');
+    }
+  };
+
   const handleDateSelect = (date: Date | undefined) => {
     if (!date) return;
     setSelectedDate(date);
