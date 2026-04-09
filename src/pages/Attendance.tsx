@@ -205,15 +205,11 @@ export default function Attendance() {
                       </div>
                       <div className="flex gap-2 ml-auto sm:ml-2">
                         <Button size="icon" variant="ghost" className="h-8 w-8 relative"
-                          onClick={() => { 
-                            setObsOpenId(obsOpenId === student.id ? null : student.id); 
-                            setObsText(''); 
-                            setViewedObs(prev => new Set(prev).add(student.id));
-                          }}
+                          onClick={() => setObsDialogStudentId(student.id)}
                           title="Observação">
                           <MessageSquare className="h-4 w-4" />
-                          {(obsCounts?.get(student.id) ?? 0) > 0 && !viewedObs.has(student.id) && (
-                            <span className="absolute -top-0.5 -right-0.5 h-3 w-3 rounded-full bg-orange-500 border-2 border-card" />
+                          {(obsCounts?.get(student.id) ?? 0) > 0 && (
+                            <span className="absolute -top-0.5 -right-0.5 h-3 w-3 rounded-full bg-destructive border-2 border-card" />
                           )}
                         </Button>
                         <Button size="icon" variant={status === 'present' ? 'default' : 'outline'}
@@ -233,19 +229,6 @@ export default function Attendance() {
                         </Button>
                       </div>
                     </div>
-                    {obsOpenId === student.id && (
-                      <div className="flex gap-2">
-                        <Textarea
-                          placeholder="Escreva uma observação..."
-                          value={obsText}
-                          onChange={e => setObsText(e.target.value)}
-                          className="min-h-[50px] text-sm"
-                        />
-                        <Button size="icon" className="shrink-0 self-end" onClick={() => saveObservation(student.id)} disabled={!obsText.trim()}>
-                          <Send className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    )}
                   </div>
                 );
               })}
@@ -255,6 +238,13 @@ export default function Attendance() {
           )}
         </DialogContent>
       </Dialog>
+
+      <StudentObservationsDialog
+        open={!!obsDialogStudentId}
+        onOpenChange={(open) => { if (!open) setObsDialogStudentId(null); }}
+        studentId={obsDialogStudentId}
+        studentName={filteredStudents.find((s: any) => s.students?.id === obsDialogStudentId)?.students?.full_name || 'Aluno'}
+      />
     </div>
   );
 }
