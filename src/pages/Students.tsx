@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo, useRef } from 'react';
 import { useStudents, useCourses, useTimeSlots, useCreateStudent, useUpdateStudent, useDeleteStudent, useCompletions } from '@/hooks/use-supabase-data';
 import { supabase } from '@/integrations/supabase/client';
 import { DateInput } from '@/components/DateInput';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -115,6 +115,23 @@ export default function Students() {
   const createStudent = useCreateStudent();
   const updateStudent = useUpdateStudent();
   const deleteStudent = useDeleteStudent();
+  const qc = useQueryClient();
+
+  // Fetch which students have observations
+  const studentIds = students?.map((s: any) => s.id) ?? [];
+  const { data: studentsWithObs } = useQuery({
+    queryKey: ['students_with_obs', studentIds],
+    enabled: studentIds.length > 0,
+    queryFn: async () => {
+      const { data } = await supabase
+        .from('student_observations')
+        .select('student_id')
+        .in('student_id', studentIds);
+      const set = new Set<string>();
+      data?.forEach(r => set.add(r.student_id));
+      return set;
+    },
+  });
 
   const slotLookup = useMemo(() => {
     const map: Record<string, string> = {};
@@ -478,8 +495,11 @@ export default function Students() {
               <p className="font-medium truncate text-sm sm:text-base">{s.full_name || 'Sem nome'}</p>
             </div>
             <div className="flex gap-1 ml-auto">
-              <Button size="icon" variant="ghost" onClick={() => setObservationsStudentId(s.id)} title="Observações">
+              <Button size="icon" variant="ghost" className="relative" onClick={() => setObservationsStudentId(s.id)} title="Observações">
                 <MessageSquare className="h-4 w-4" />
+                {studentsWithObs?.has(s.id) && (
+                  <span className="absolute -top-0.5 -right-0.5 h-3 w-3 rounded-full bg-destructive border-2 border-card" />
+                )}
               </Button>
               <Button size="icon" variant="ghost" onClick={() => setFrequencyStudentId(s.id)} title="Frequência">
                 <BarChart3 className="h-4 w-4" />

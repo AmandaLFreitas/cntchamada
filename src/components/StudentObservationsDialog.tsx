@@ -48,6 +48,8 @@ export function StudentObservationsDialog({ open, onOpenChange, studentId, stude
       setText('');
       toast.success('Observação adicionada!');
       qc.invalidateQueries({ queryKey: ['student_observations', studentId] });
+      qc.invalidateQueries({ queryKey: ['obs_counts'] });
+      qc.invalidateQueries({ queryKey: ['students_with_obs'] });
     } catch {
       toast.error('Erro ao salvar observação');
     } finally {
@@ -59,6 +61,8 @@ export function StudentObservationsDialog({ open, onOpenChange, studentId, stude
     const { error } = await supabase.from('student_observations').delete().eq('id', id);
     if (error) { toast.error('Erro ao excluir'); return; }
     qc.invalidateQueries({ queryKey: ['student_observations', studentId] });
+    qc.invalidateQueries({ queryKey: ['obs_counts'] });
+    qc.invalidateQueries({ queryKey: ['students_with_obs'] });
   };
 
   return (

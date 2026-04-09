@@ -11,12 +11,11 @@ import { Button } from '@/components/ui/button';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { cn } from '@/lib/utils';
-import { Check, X, Minus, MessageSquare, Send } from 'lucide-react';
+import { Check, X, Minus, MessageSquare } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { supabase } from '@/integrations/supabase/client';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { Textarea } from '@/components/ui/textarea';
-import { toast } from 'sonner';
+import { StudentObservationsDialog } from '@/components/StudentObservationsDialog';
 
 const dayNameFromDate = (date: Date): string => {
   const days = ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado'];
@@ -39,9 +38,7 @@ export default function Attendance() {
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   const [selectedDay, setSelectedDay] = useState(getTodayDayName());
   const [selectedSlotId, setSelectedSlotId] = useState<string | null>(null);
-  const [obsOpenId, setObsOpenId] = useState<string | null>(null);
-  const [obsText, setObsText] = useState('');
-  const [viewedObs, setViewedObs] = useState<Set<string>>(new Set());
+  const [obsDialogStudentId, setObsDialogStudentId] = useState<string | null>(null);
   const qc = useQueryClient();
 
   const isoDate = format(selectedDate, 'yyyy-MM-dd');
@@ -116,24 +113,6 @@ export default function Attendance() {
   const markAttendance = (studentId: string, status: string) => {
     if (!selectedSlotId) return;
     saveAttendance.mutate({ studentId, timeSlotId: selectedSlotId, date: isoDate, status });
-  };
-
-  const saveObservation = async (studentId: string) => {
-    if (!obsText.trim()) return;
-    try {
-      await supabase.from('student_observations').insert({
-        student_id: studentId,
-        observation: obsText.trim(),
-        source: 'chamada',
-      });
-      toast.success('Observação salva!');
-      setObsText('');
-      setObsOpenId(null);
-      qc.invalidateQueries({ queryKey: ['student_observations', studentId] });
-      qc.invalidateQueries({ queryKey: ['obs_counts'] });
-    } catch {
-      toast.error('Erro ao salvar observação');
-    }
   };
 
   const handleDateSelect = (date: Date | undefined) => {
@@ -226,15 +205,11 @@ export default function Attendance() {
                       </div>
                       <div className="flex gap-2 ml-auto sm:ml-2">
                         <Button size="icon" variant="ghost" className="h-8 w-8 relative"
-                          onClick={() => { 
-                            setObsOpenId(obsOpenId === student.id ? null : student.id); 
-                            setObsText(''); 
-                            setViewedObs(prev => new Set(prev).add(student.id));
-                          }}
+                          onClick={() => setObsDialogStudentId(student.id)}
                           title="Observação">
                           <MessageSquare className="h-4 w-4" />
-                          {(obsCounts?.get(student.id) ?? 0) > 0 && !viewedObs.has(student.id) && (
-                            <span className="absolute -top-0.5 -right-0.5 h-3 w-3 rounded-full bg-orange-500 border-2 border-card" />
+                          {(obsCounts?.get(student.id) ?? 0) > 0 && (
+                            <span className="absolute -top-0.5 -right-0.5 h-3 w-3 rounded-full bg-destructive border-2 border-card" />
                           )}
                         </Button>
                         <Button size="icon" variant={status === 'present' ? 'default' : 'outline'}
@@ -254,19 +229,6 @@ export default function Attendance() {
                         </Button>
                       </div>
                     </div>
-                    {obsOpenId === student.id && (
-                      <div className="flex gap-2">
-                        <Textarea
-                          placeholder="Escreva uma observação..."
-                          value={obsText}
-                          onChange={e => setObsText(e.target.value)}
-                          className="min-h-[50px] text-sm"
-                        />
-                        <Button size="icon" className="shrink-0 self-end" onClick={() => saveObservation(student.id)} disabled={!obsText.trim()}>
-                          <Send className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    )}
                   </div>
                 );
               })}
@@ -276,6 +238,13 @@ export default function Attendance() {
           )}
         </DialogContent>
       </Dialog>
+
+      <StudentObservationsDialog
+        open={!!obsDialogStudentId}
+        onOpenChange={(open) => { if (!open) setObsDialogStudentId(null); }}
+        studentId={obsDialogStudentId}
+        studentName={filteredStudents.find((s: any) => s.students?.id === obsDialogStudentId)?.students?.full_name || 'Aluno'}
+      />
     </div>
   );
 }
