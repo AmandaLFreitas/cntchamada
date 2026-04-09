@@ -26,12 +26,12 @@ export function StudentObservationsDialog({ open, onOpenChange, studentId, stude
     enabled: !!studentId && open,
     queryFn: async () => {
       const { data, error } = await supabase
-        .from('student_observations' as any)
+        .from('student_observations')
         .select('*')
         .eq('student_id', studentId!)
         .order('created_at', { ascending: false });
       if (error) throw error;
-      return data as any[];
+      return data;
     },
   });
 
@@ -39,11 +39,11 @@ export function StudentObservationsDialog({ open, onOpenChange, studentId, stude
     if (!text.trim() || !studentId) return;
     setSaving(true);
     try {
-      const { error } = await supabase.from('student_observations' as any).insert({
+      const { error } = await supabase.from('student_observations').insert({
         student_id: studentId,
         observation: text.trim(),
         source: 'manual',
-      } as any);
+      });
       if (error) throw error;
       setText('');
       toast.success('Observação adicionada!');
@@ -56,7 +56,7 @@ export function StudentObservationsDialog({ open, onOpenChange, studentId, stude
   };
 
   const handleDelete = async (id: string) => {
-    const { error } = await supabase.from('student_observations' as any).delete().eq('id', id);
+    const { error } = await supabase.from('student_observations').delete().eq('id', id);
     if (error) { toast.error('Erro ao excluir'); return; }
     qc.invalidateQueries({ queryKey: ['student_observations', studentId] });
   };
