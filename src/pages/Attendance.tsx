@@ -41,6 +41,7 @@ export default function Attendance() {
   const [selectedSlotId, setSelectedSlotId] = useState<string | null>(null);
   const [obsOpenId, setObsOpenId] = useState<string | null>(null);
   const [obsText, setObsText] = useState('');
+  const [viewedObs, setViewedObs] = useState<Set<string>>(new Set());
   const qc = useQueryClient();
 
   const isoDate = format(selectedDate, 'yyyy-MM-dd');
@@ -77,6 +78,21 @@ export default function Attendance() {
     },
   });
 
+  // Fetch observation counts for students in the slot
+  const { data: obsCounts } = useQuery({
+    queryKey: ['obs_counts', studentIdsInSlot],
+    enabled: studentIdsInSlot.length > 0,
+    queryFn: async () => {
+      const { data } = await supabase
+        .from('student_observations')
+        .select('student_id')
+        .in('student_id', studentIdsInSlot);
+      const counts = new Map<string, number>();
+      data?.forEach(r => counts.set(r.student_id, (counts.get(r.student_id) || 0) + 1));
+      return counts;
+    },
+  });
+
   const isNewStudent = (studentId: string, enrollmentDate: string | null): boolean => {
     if (!existingAttendance) return false;
     if (existingAttendance.has(studentId)) return false;
@@ -105,15 +121,16 @@ export default function Attendance() {
   const saveObservation = async (studentId: string) => {
     if (!obsText.trim()) return;
     try {
-      await supabase.from('student_observations' as any).insert({
+      await supabase.from('student_observations').insert({
         student_id: studentId,
         observation: obsText.trim(),
         source: 'chamada',
-      } as any);
+      });
       toast.success('Observação salva!');
       setObsText('');
       setObsOpenId(null);
       qc.invalidateQueries({ queryKey: ['student_observations', studentId] });
+      qc.invalidateQueries({ queryKey: ['obs_counts'] });
     } catch {
       toast.error('Erro ao salvar observação');
     }
@@ -208,10 +225,17 @@ export default function Attendance() {
                         <p className="text-sm text-muted-foreground">{courseName}</p>
                       </div>
                       <div className="flex gap-2 ml-auto sm:ml-2">
-                        <Button size="icon" variant="ghost" className="h-8 w-8"
-                          onClick={() => { setObsOpenId(obsOpenId === student.id ? null : student.id); setObsText(''); }}
+                        <Button size="icon" variant="ghost" className="h-8 w-8 relative"
+                          onClick={() => { 
+                            setObsOpenId(obsOpenId === student.id ? null : student.id); 
+                            setObsText(''); 
+                            setViewedObs(prev => new Set(prev).add(student.id));
+                          }}
                           title="Observação">
                           <MessageSquare className="h-4 w-4" />
+                          {(obsCounts?.get(student.id) ?? 0) > 0 && !viewedObs.has(student.id) && (
+                            <span className="absolute -top-0.5 -right-0.5 h-3 w-3 rounded-full bg-orange-500 border-2 border-card" />
+                          )}
                         </Button>
                         <Button size="icon" variant={status === 'present' ? 'default' : 'outline'}
                           className={status === 'present' ? 'bg-green-600 hover:bg-green-700' : ''}
