@@ -13,6 +13,10 @@ export const TIME_SLOTS = [
 export const SATURDAY_SLOTS = [
   { start: '08:00', end: '10:00', label: '08:00 - 10:00' },
   { start: '10:00', end: '12:00', label: '10:00 - 12:00' },
+  { start: '08:00', end: '09:00', label: '08:00 - 09:00' },
+  { start: '09:00', end: '10:00', label: '09:00 - 10:00' },
+  { start: '10:00', end: '11:00', label: '10:00 - 11:00' },
+  { start: '11:00', end: '12:00', label: '11:00 - 12:00' },
 ] as const;
 
 export const MAX_STUDENTS_PER_SLOT = 20;
