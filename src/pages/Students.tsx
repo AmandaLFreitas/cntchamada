@@ -492,7 +492,17 @@ export default function Students() {
                 {s.photo_url && <AvatarImage src={s.photo_url} alt={s.full_name} />}
                 <AvatarFallback className="text-xs">{(s.full_name || '?')[0]?.toUpperCase()}</AvatarFallback>
               </Avatar>
-              <p className="font-medium truncate text-sm sm:text-base">{s.full_name || 'Sem nome'}</p>
+              <button
+                type="button"
+                onClick={() => setObservationsStudentId(s.id)}
+                className="font-medium truncate text-sm sm:text-base text-left hover:underline flex items-center gap-1.5 min-w-0"
+                title="Ver observações"
+              >
+                <span className="truncate">{s.full_name || 'Sem nome'}</span>
+                {studentsWithObs?.has(s.id) && (
+                  <span className="shrink-0 h-2 w-2 rounded-full bg-destructive" title="Possui observações" />
+                )}
+              </button>
             </div>
             <div className="flex gap-1 ml-auto">
               <Button size="icon" variant="ghost" className="relative" onClick={() => setObservationsStudentId(s.id)} title="Observações">
