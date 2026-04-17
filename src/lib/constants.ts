@@ -11,8 +11,6 @@ export const TIME_SLOTS = [
 ] as const;
 
 export const SATURDAY_SLOTS = [
-  { start: '08:00', end: '10:00', label: '08:00 - 10:00' },
-  { start: '10:00', end: '12:00', label: '10:00 - 12:00' },
   { start: '08:00', end: '09:00', label: '08:00 - 09:00' },
   { start: '09:00', end: '10:00', label: '09:00 - 10:00' },
   { start: '10:00', end: '11:00', label: '10:00 - 11:00' },
