@@ -16,6 +16,7 @@ import { Badge } from '@/components/ui/badge';
 import { supabase } from '@/integrations/supabase/client';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { StudentObservationsDialog } from '@/components/StudentObservationsDialog';
+import { ConsecutiveAbsencesAlert } from '@/components/ConsecutiveAbsencesAlert';
 
 const dayNameFromDate = (date: Date): string => {
   const days = ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado'];
@@ -148,6 +149,7 @@ export default function Attendance() {
 
   return (
     <div>
+      <ConsecutiveAbsencesAlert />
       <div className="flex flex-col sm:flex-row sm:items-center gap-3 mb-4">
         <h1 className="text-2xl font-bold">Chamada</h1>
         <div className="flex items-center gap-2 ml-auto">
