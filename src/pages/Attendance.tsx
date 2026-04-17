@@ -195,8 +195,18 @@ export default function Attendance() {
                   <div key={s.id} className="border rounded-lg p-3 bg-card space-y-2">
                     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                       <div className="min-w-0 flex-1">
-                        <div className="flex items-center gap-2">
-                          <p className="font-medium truncate text-sm sm:text-base">{student.full_name || 'Sem nome'}</p>
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <button
+                            type="button"
+                            onClick={() => setObsDialogStudentId(student.id)}
+                            className="font-medium truncate text-sm sm:text-base text-left hover:underline flex items-center gap-1.5"
+                            title="Ver observações"
+                          >
+                            <span className="truncate">{student.full_name || 'Sem nome'}</span>
+                            {(obsCounts?.get(student.id) ?? 0) > 0 && (
+                              <span className="shrink-0 h-2 w-2 rounded-full bg-destructive" title="Possui observações" />
+                            )}
+                          </button>
                           {isNewStudent(student.id, student.enrollment_date) && (
                             <Badge className="bg-blue-500 text-white text-[10px] px-1.5 py-0">Novo</Badge>
                           )}
