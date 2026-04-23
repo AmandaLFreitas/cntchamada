@@ -63,10 +63,13 @@ export function CourseCompletionAlert() {
         const pct = Math.round((hoursCompleted / workload) * 100);
 
         if (pct >= 80 && pct < 100) {
+          const remainingHours = Math.max(workload - hoursCompleted, 0);
+          const aulasRestantes = Math.ceil(remainingHours / Math.max(hoursPerSession, 1));
           result.push({
             name: s.full_name || 'Sem nome',
             course: sc.courses?.name || sc.custom_course_name || 'N/A',
             pct,
+            aulasRestantes,
           });
         }
       });
