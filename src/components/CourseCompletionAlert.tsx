@@ -52,7 +52,7 @@ export function CourseCompletionAlert() {
 
   const alerts = useMemo(() => {
     if (!students || !attendanceCounts || !scheduleCounts) return [];
-    const result: { name: string; course: string; pct: number }[] = [];
+    const result: { name: string; course: string; pct: number; aulasRestantes: number }[] = [];
 
     (students as any[]).forEach(s => {
       (s.student_courses ?? []).filter((sc: any) => sc.is_active).forEach((sc: any) => {
@@ -115,7 +115,7 @@ export function CourseCompletionAlert() {
           <AlertTriangle className="h-5 w-5 text-yellow-600 shrink-0" />
           <p className="text-sm">
             <span className="font-semibold">{a.name}</span> está finalizando o curso de{' '}
-            <span className="font-semibold">{a.course}</span> ({a.pct}% concluído)
+            <span className="font-semibold">{a.course}</span> ({a.pct}% concluído — faltam {a.aulasRestantes} {a.aulasRestantes === 1 ? 'aula' : 'aulas'})
           </p>
         </div>
       ))}
