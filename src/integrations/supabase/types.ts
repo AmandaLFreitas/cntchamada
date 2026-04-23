@@ -354,6 +354,42 @@ export type Database = {
         }
         Relationships: []
       }
+      trial_lessons: {
+        Row: {
+          course: string | null
+          created_at: string
+          id: string
+          lesson_date: string
+          phone: string | null
+          status: string
+          student_name: string
+          time_slot: string | null
+          updated_at: string
+        }
+        Insert: {
+          course?: string | null
+          created_at?: string
+          id?: string
+          lesson_date?: string
+          phone?: string | null
+          status?: string
+          student_name: string
+          time_slot?: string | null
+          updated_at?: string
+        }
+        Update: {
+          course?: string | null
+          created_at?: string
+          id?: string
+          lesson_date?: string
+          phone?: string | null
+          status?: string
+          student_name?: string
+          time_slot?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       user_roles: {
         Row: {
           display_name: string
