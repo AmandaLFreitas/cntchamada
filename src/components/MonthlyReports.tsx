@@ -264,6 +264,46 @@ export function MonthlyReports() {
         </div>
       </div>
 
+      <div className="flex flex-wrap gap-2 print:hidden">
+        <Button variant="outline" size="sm" onClick={() => {
+          const rows = [
+            { Categoria: 'Ativos (Em Andamento)', Total: stats?.active ?? 0 },
+            { Categoria: 'Finalizados', Total: stats?.finalized ?? 0 },
+            { Categoria: 'Desistentes', Total: stats?.dropouts ?? 0 },
+            { Categoria: `Presenças - ${MONTHS[month]} ${year}`, Total: stats?.totalPresencas ?? 0 },
+            { Categoria: `Faltas - ${MONTHS[month]} ${year}`, Total: stats?.totalFaltas ?? 0 },
+          ];
+          const ws = XLSX.utils.json_to_sheet(rows);
+          ws['!cols'] = [{ wch: 30 }, { wch: 10 }];
+          const wb = XLSX.utils.book_new();
+          XLSX.utils.book_append_sheet(wb, ws, 'Resumo');
+          XLSX.writeFile(wb, `Relatorio_Mensal_${MONTHS[month]}_${year}.xlsx`);
+        }}>
+          <FileSpreadsheet className="h-4 w-4 mr-1" /> Exportar Excel
+        </Button>
+        <Button variant="outline" size="sm" onClick={async () => {
+          const pdf = new jsPDF('p', 'mm', 'a4');
+          const w = pdf.internal.pageSize.getWidth();
+          pdf.setFontSize(16);
+          pdf.text(`Relatório Mensal - ${MONTHS[month]} ${year}`, 14, 20);
+          pdf.setFontSize(12);
+          const lines = [
+            `Ativos (Em Andamento): ${stats?.active ?? 0}`,
+            `Finalizados: ${stats?.finalized ?? 0}`,
+            `Desistentes: ${stats?.dropouts ?? 0}`,
+            `Presenças no mês: ${stats?.totalPresencas ?? 0}`,
+            `Faltas no mês: ${stats?.totalFaltas ?? 0}`,
+          ];
+          lines.forEach((l, i) => pdf.text(l, 14, 35 + i * 8));
+          pdf.save(`Relatorio_Mensal_${MONTHS[month]}_${year}.pdf`);
+        }}>
+          <Download className="h-4 w-4 mr-1" /> Exportar PDF
+        </Button>
+        <Button variant="outline" size="sm" onClick={handlePrintReport}>
+          <Printer className="h-4 w-4 mr-1" /> Imprimir
+        </Button>
+      </div>
+
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
         <button onClick={() => { setDetailView('active'); setSearch(''); }} className="bg-card border rounded-lg p-4 text-center hover:shadow-md transition-shadow cursor-pointer">
           <p className="text-sm text-muted-foreground">Ativos</p>
