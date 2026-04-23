@@ -9,7 +9,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { Label } from '@/components/ui/label';
 import { Plus, Pencil, Trash2, Search } from 'lucide-react';
 import { toast } from 'sonner';
-import { format } from 'date-fns';
+import { DateInput } from '@/components/DateInput';
 
 const STATUSES = ['PENDENTE', 'OK', 'OK.FECHOU', 'NÃO VEIO', 'DESMARCOU', 'REMARCOU'] as const;
 
@@ -23,12 +23,35 @@ interface TrialLesson {
   status: string;
 }
 
+const formatPhone = (value: string) => {
+  const digits = value.replace(/\D/g, '').slice(0, 11);
+  if (digits.length <= 2) return digits.length ? `(${digits}` : '';
+  if (digits.length <= 7) return `(${digits.slice(0, 2)}) ${digits.slice(2)}`;
+  return `(${digits.slice(0, 2)}) ${digits.slice(2, 7)}-${digits.slice(7)}`;
+};
+
+const todayDDMMYYYY = (() => {
+  const d = new Date();
+  return `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}/${d.getFullYear()}`;
+})();
+
+const ddmmyyyyToISO = (v: string) => {
+  const parts = v.split('/');
+  if (parts.length !== 3 || parts[2].length !== 4) return null;
+  return `${parts[2]}-${parts[1]}-${parts[0]}`;
+};
+
+const isoToDDMMYYYY = (v: string) => {
+  const [y, m, d] = v.split('-');
+  return `${d}/${m}/${y}`;
+};
+
 const emptyForm = {
   student_name: '',
   phone: '',
   course: '',
   time_slot: '',
-  lesson_date: format(new Date(), 'yyyy-MM-dd'),
+  lesson_date: todayDDMMYYYY,
   status: 'PENDENTE',
 };
 
@@ -52,14 +75,25 @@ export default function TrialLessons() {
     },
   });
 
+  const { data: courses = [] } = useQuery({
+    queryKey: ['courses'],
+    queryFn: async () => {
+      const { data, error } = await supabase.from('courses').select('*').order('name');
+      if (error) throw error;
+      return data;
+    },
+  });
+
   const upsert = useMutation({
     mutationFn: async (values: typeof emptyForm & { id?: string }) => {
+      const isoDate = ddmmyyyyToISO(values.lesson_date);
+      if (!isoDate) throw new Error('Data inválida');
       const payload = {
         student_name: values.student_name,
-        phone: values.phone || null,
+        phone: values.phone.replace(/\D/g, '') || null,
         course: values.course || null,
         time_slot: values.time_slot || null,
-        lesson_date: values.lesson_date,
+        lesson_date: isoDate,
         status: values.status,
       };
       if (values.id) {
@@ -107,10 +141,10 @@ export default function TrialLessons() {
     setEditingId(lesson.id);
     setForm({
       student_name: lesson.student_name,
-      phone: lesson.phone || '',
+      phone: lesson.phone ? formatPhone(lesson.phone) : '',
       course: lesson.course || '',
       time_slot: lesson.time_slot || '',
-      lesson_date: lesson.lesson_date,
+      lesson_date: isoToDDMMYYYY(lesson.lesson_date),
       status: lesson.status,
     });
     setDialogOpen(true);
@@ -119,7 +153,7 @@ export default function TrialLessons() {
   const filtered = useMemo(() => {
     return lessons.filter(l => {
       const matchName = !search || l.student_name.toLowerCase().includes(search.toLowerCase());
-      const matchDate = !dateFilter || l.lesson_date === dateFilter;
+      const matchDate = !dateFilter || isoToDDMMYYYY(l.lesson_date).includes(dateFilter);
       return matchName && matchDate;
     });
   }, [lessons, search, dateFilter]);
@@ -129,12 +163,11 @@ export default function TrialLessons() {
       toast.error('Nome do aluno é obrigatório');
       return;
     }
+    if (!ddmmyyyyToISO(form.lesson_date)) {
+      toast.error('Data inválida. Use o formato dd/mm/aaaa');
+      return;
+    }
     upsert.mutate(editingId ? { ...form, id: editingId } : form);
-  };
-
-  const formatDate = (d: string) => {
-    const [y, m, day] = d.split('-');
-    return `${day}/${m}/${y}`;
   };
 
   return (
@@ -156,12 +189,11 @@ export default function TrialLessons() {
             className="pl-9"
           />
         </div>
-        <Input
-          type="date"
+        <DateInput
           value={dateFilter}
-          onChange={e => setDateFilter(e.target.value)}
-          className="w-auto"
+          onChange={setDateFilter}
           placeholder="Filtrar por data"
+          className="w-auto"
         />
         {dateFilter && (
           <Button variant="ghost" size="sm" onClick={() => setDateFilter('')}>Limpar data</Button>
@@ -190,10 +222,10 @@ export default function TrialLessons() {
               {filtered.map(l => (
                 <TableRow key={l.id}>
                   <TableCell className="font-medium">{l.student_name}</TableCell>
-                  <TableCell className="hidden sm:table-cell">{l.phone || '—'}</TableCell>
+                  <TableCell className="hidden sm:table-cell">{l.phone ? formatPhone(l.phone) : '—'}</TableCell>
                   <TableCell className="hidden sm:table-cell">{l.course || '—'}</TableCell>
                   <TableCell className="hidden md:table-cell">{l.time_slot || '—'}</TableCell>
-                  <TableCell>{formatDate(l.lesson_date)}</TableCell>
+                  <TableCell>{isoToDDMMYYYY(l.lesson_date)}</TableCell>
                   <TableCell>
                     <Select
                       value={l.status}
@@ -238,11 +270,25 @@ export default function TrialLessons() {
             </div>
             <div>
               <Label>Telefone</Label>
-              <Input value={form.phone} onChange={e => setForm(f => ({ ...f, phone: e.target.value }))} />
+              <Input
+                value={form.phone}
+                onChange={e => setForm(f => ({ ...f, phone: formatPhone(e.target.value) }))}
+                inputMode="numeric"
+                placeholder="(00) 00000-0000"
+              />
             </div>
             <div>
               <Label>Curso</Label>
-              <Input value={form.course} onChange={e => setForm(f => ({ ...f, course: e.target.value }))} />
+              <Select value={form.course} onValueChange={val => setForm(f => ({ ...f, course: val }))}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecionar curso" />
+                </SelectTrigger>
+                <SelectContent>
+                  {courses.map(c => (
+                    <SelectItem key={c.id} value={c.name}>{c.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
             <div>
               <Label>Horário</Label>
@@ -250,7 +296,10 @@ export default function TrialLessons() {
             </div>
             <div>
               <Label>Data</Label>
-              <Input type="date" value={form.lesson_date} onChange={e => setForm(f => ({ ...f, lesson_date: e.target.value }))} />
+              <DateInput
+                value={form.lesson_date}
+                onChange={val => setForm(f => ({ ...f, lesson_date: val }))}
+              />
             </div>
             <div>
               <Label>Situação</Label>
