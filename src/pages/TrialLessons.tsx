@@ -11,7 +11,7 @@ import { Plus, Pencil, Trash2, Search } from 'lucide-react';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 
-const STATUSES = ['OK', 'OK.FECHOU', 'NÃO VEIO', 'DESMARCOU', 'REMARCOU'] as const;
+const STATUSES = ['PENDENTE', 'OK', 'OK.FECHOU', 'NÃO VEIO', 'DESMARCOU', 'REMARCOU'] as const;
 
 interface TrialLesson {
   id: string;
@@ -29,7 +29,7 @@ const emptyForm = {
   course: '',
   time_slot: '',
   lesson_date: format(new Date(), 'yyyy-MM-dd'),
-  status: 'OK',
+  status: 'PENDENTE',
 };
 
 export default function TrialLessons() {
