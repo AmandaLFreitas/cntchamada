@@ -11,6 +11,7 @@ import Attendance from "./pages/Attendance";
 import Reports from "./pages/Reports";
 import Completed from "./pages/Completed";
 import Birthdays from "./pages/Birthdays";
+import TrialLessons from "./pages/TrialLessons";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -39,6 +40,7 @@ function AppRoutes() {
         <Route path="/relatorios" element={<Reports />} />
         <Route path="/finalizados" element={<Completed />} />
         <Route path="/aniversariantes" element={<Birthdays />} />
+        <Route path="/experimentais" element={<TrialLessons />} />
         <Route path="*" element={<NotFound />} />
       </Routes>
     </Layout>
