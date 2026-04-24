@@ -159,13 +159,37 @@ export default function TrialLessons() {
     setDialogOpen(true);
   };
 
+  const availableYears = useMemo(() => {
+    const years = new Set<number>();
+    years.add(now.getFullYear());
+    lessons.forEach(l => {
+      const y = parseInt(l.lesson_date.slice(0, 4), 10);
+      if (!isNaN(y)) years.add(y);
+    });
+    return Array.from(years).sort((a, b) => b - a);
+  }, [lessons]);
+
   const filtered = useMemo(() => {
     return lessons.filter(l => {
       const matchName = !search || l.student_name.toLowerCase().includes(search.toLowerCase());
-      const matchDate = !dateFilter || isoToDDMMYYYY(l.lesson_date).includes(dateFilter);
-      return matchName && matchDate;
+      const [yStr, mStr, dStr] = l.lesson_date.split('-');
+      const lessonY = parseInt(yStr, 10);
+      const lessonM = parseInt(mStr, 10) - 1;
+      const lessonD = parseInt(dStr, 10);
+
+      const matchYear = lessonY === parseInt(filterYear, 10);
+      const matchMonth = filterMonth === ALL_MONTHS || lessonM === parseInt(filterMonth, 10);
+
+      let matchDate = true;
+      if (filterDate) {
+        matchDate =
+          lessonY === filterDate.getFullYear() &&
+          lessonM === filterDate.getMonth() &&
+          lessonD === filterDate.getDate();
+      }
+      return matchName && matchYear && matchMonth && matchDate;
     });
-  }, [lessons, search, dateFilter]);
+  }, [lessons, search, filterMonth, filterYear, filterDate]);
 
   const handleSubmit = () => {
     if (!form.student_name.trim()) {
@@ -179,6 +203,9 @@ export default function TrialLessons() {
     upsert.mutate(editingId ? { ...form, id: editingId } : form);
   };
 
+  const formatSelectedDate = (d: Date) =>
+    `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}/${d.getFullYear()}`;
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
@@ -188,8 +215,8 @@ export default function TrialLessons() {
         </Button>
       </div>
 
-      <div className="flex flex-col sm:flex-row gap-3">
-        <div className="relative flex-1">
+      <div className="flex flex-col sm:flex-row gap-3 flex-wrap">
+        <div className="relative flex-1 min-w-[200px]">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
             placeholder="Buscar por nome..."
@@ -198,14 +225,52 @@ export default function TrialLessons() {
             className="pl-9"
           />
         </div>
-        <DateInput
-          value={dateFilter}
-          onChange={setDateFilter}
-          placeholder="Filtrar por data"
-          className="w-auto"
-        />
-        {dateFilter && (
-          <Button variant="ghost" size="sm" onClick={() => setDateFilter('')}>Limpar data</Button>
+        <Select value={filterMonth} onValueChange={setFilterMonth}>
+          <SelectTrigger className="w-[160px]">
+            <SelectValue placeholder="Mês" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value={ALL_MONTHS}>Todos os meses</SelectItem>
+            {MONTHS.map((m, i) => (
+              <SelectItem key={m} value={String(i)}>{m}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <Select value={filterYear} onValueChange={setFilterYear}>
+          <SelectTrigger className="w-[110px]">
+            <SelectValue placeholder="Ano" />
+          </SelectTrigger>
+          <SelectContent>
+            {availableYears.map(y => (
+              <SelectItem key={y} value={String(y)}>{y}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <Popover open={datePopoverOpen} onOpenChange={setDatePopoverOpen}>
+          <PopoverTrigger asChild>
+            <Button
+              variant="outline"
+              className={cn(
+                'justify-start text-left font-normal w-[180px]',
+                !filterDate && 'text-muted-foreground'
+              )}
+            >
+              <CalendarIcon className="mr-2 h-4 w-4" />
+              {filterDate ? formatSelectedDate(filterDate) : 'Filtrar por data'}
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent className="w-auto p-0" align="start">
+            <Calendar
+              mode="single"
+              selected={filterDate}
+              onSelect={(d) => { setFilterDate(d); setDatePopoverOpen(false); }}
+              initialFocus
+              className={cn('p-3 pointer-events-auto')}
+            />
+          </PopoverContent>
+        </Popover>
+        {filterDate && (
+          <Button variant="ghost" size="sm" onClick={() => setFilterDate(undefined)}>Limpar data</Button>
         )}
       </div>
 
