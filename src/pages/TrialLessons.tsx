@@ -62,8 +62,12 @@ const emptyForm = {
 
 export default function TrialLessons() {
   const queryClient = useQueryClient();
+  const now = new Date();
   const [search, setSearch] = useState('');
-  const [dateFilter, setDateFilter] = useState('');
+  const [filterMonth, setFilterMonth] = useState<string>(String(now.getMonth()));
+  const [filterYear, setFilterYear] = useState<string>(String(now.getFullYear()));
+  const [filterDate, setFilterDate] = useState<Date | undefined>(undefined);
+  const [datePopoverOpen, setDatePopoverOpen] = useState(false);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState(emptyForm);
