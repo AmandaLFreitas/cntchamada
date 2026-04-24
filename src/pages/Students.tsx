@@ -65,8 +65,10 @@ const WEEKDAY_TIMES = [
 ];
 
 const SATURDAY_TIMES = [
-  { start: '08:00', end: '10:00', label: '08:00 às 10:00' },
-  { start: '10:00', end: '12:00', label: '10:00 às 12:00' },
+  { start: '08:00', end: '09:00', label: '08:00 às 09:00' },
+  { start: '09:00', end: '10:00', label: '09:00 às 10:00' },
+  { start: '10:00', end: '11:00', label: '10:00 às 11:00' },
+  { start: '11:00', end: '12:00', label: '11:00 às 12:00' },
 ];
 
 const STATUS_OPTIONS = [
