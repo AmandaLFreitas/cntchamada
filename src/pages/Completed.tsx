@@ -6,19 +6,23 @@ import { CertificateDialog } from '@/components/CertificateDialog';
 import type { CertificateData } from '@/lib/certificate-templates';
 import { supabase } from '@/integrations/supabase/client';
 import { useQuery } from '@tanstack/react-query';
+import { useSchool } from '@/contexts/SchoolContext';
 
 export default function Completed() {
   const { data: completions, isLoading } = useCompletions();
+  const { schoolId } = useSchool();
   const [search, setSearch] = useState('');
   const [certOpen, setCertOpen] = useState(false);
   const [certData, setCertData] = useState<CertificateData | null>(null);
 
   // Get finalized student_courses with student info
   const { data: finalizedCourses } = useQuery({
-    queryKey: ['finalized_student_courses'],
+    queryKey: ['finalized_student_courses', schoolId],
+    enabled: !!schoolId,
     queryFn: async () => {
       const { data, error } = await (supabase as any).from('student_courses')
         .select('*, students(id, full_name), courses(name, workload)')
+        .eq('school_id', schoolId!)
         .eq('status', 'finalizado')
         .order('created_at', { ascending: false });
       if (error) throw error;

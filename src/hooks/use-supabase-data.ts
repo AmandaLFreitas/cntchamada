@@ -1,10 +1,11 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { useSchool } from '@/contexts/SchoolContext';
 
 // Helper for student_courses table (may not be in auto-generated types yet)
 const scTable = () => (supabase as any).from('student_courses');
 
-// Fetch all time slots
+// Fetch all time slots (SHARED across schools)
 export function useTimeSlots() {
   return useQuery({
     queryKey: ['time_slots'],
@@ -16,7 +17,7 @@ export function useTimeSlots() {
   });
 }
 
-// Fetch all courses
+// Fetch all courses (SHARED across schools)
 export function useCourses() {
   return useQuery({
     queryKey: ['courses'],
@@ -28,19 +29,23 @@ export function useCourses() {
   });
 }
 
-// Fetch students with their student_courses
+// Fetch students with their student_courses (SCOPED by school)
 export function useStudents(activeOnly = true) {
+  const { schoolId } = useSchool();
   return useQuery({
-    queryKey: ['students', activeOnly],
+    queryKey: ['students', activeOnly, schoolId],
+    enabled: !!schoolId,
     queryFn: async () => {
       const { data: students, error } = await supabase
         .from('students')
         .select('*')
+        .eq('school_id', schoolId!)
         .order('full_name');
       if (error) throw error;
 
       const { data: scs, error: scErr } = await scTable()
-        .select('*, courses(name, workload)');
+        .select('*, courses(name, workload)')
+        .eq('school_id', schoolId!);
       if (scErr) throw scErr;
 
       const result = (students ?? []).map((s: any) => ({
@@ -60,12 +65,14 @@ export function useStudents(activeOnly = true) {
 
 // Fetch student_courses for a specific student
 export function useStudentCourses(studentId: string | null) {
+  const { schoolId } = useSchool();
   return useQuery({
-    queryKey: ['student_courses', studentId],
-    enabled: !!studentId,
+    queryKey: ['student_courses', studentId, schoolId],
+    enabled: !!studentId && !!schoolId,
     queryFn: async () => {
       const { data, error } = await scTable()
         .select('*, courses(name, workload)')
+        .eq('school_id', schoolId!)
         .eq('student_id', studentId!);
       if (error) throw error;
       return data ?? [];
@@ -73,17 +80,19 @@ export function useStudentCourses(studentId: string | null) {
   });
 }
 
-// Fetch student schedules
+// Fetch student schedules (SCOPED by school)
 export function useStudentSchedules() {
+  const { schoolId } = useSchool();
   return useQuery({
-    queryKey: ['student_schedules'],
+    queryKey: ['student_schedules', schoolId],
+    enabled: !!schoolId,
     queryFn: async () => {
       const { data, error } = await supabase
         .from('student_schedules')
-        .select('*, time_slots(*)');
+        .select('*, time_slots(*)')
+        .eq('school_id', schoolId!);
       if (error) throw error;
 
-      // Enrich with student_courses data
       const scIds = [...new Set((data ?? []).map((d: any) => d.student_course_id).filter(Boolean))];
       let scMap: Record<string, any> = {};
       if (scIds.length > 0) {
@@ -110,15 +119,17 @@ export function useStudentSchedules() {
   });
 }
 
-// Fetch schedules for a specific time slot (backward-compatible shape)
+// Fetch schedules for a specific time slot (SCOPED by school)
 export function useSlotStudents(timeSlotId: string | null) {
+  const { schoolId } = useSchool();
   return useQuery({
-    queryKey: ['slot_students', timeSlotId],
-    enabled: !!timeSlotId,
+    queryKey: ['slot_students', timeSlotId, schoolId],
+    enabled: !!timeSlotId && !!schoolId,
     queryFn: async () => {
       const { data, error } = await supabase
         .from('student_schedules')
         .select('*')
+        .eq('school_id', schoolId!)
         .eq('time_slot_id', timeSlotId!);
       if (error) throw error;
 
@@ -157,14 +168,17 @@ export function useSlotStudents(timeSlotId: string | null) {
   });
 }
 
-// Count students per slot
+// Count students per slot (SCOPED by school)
 export function useSlotCounts() {
+  const { schoolId } = useSchool();
   return useQuery({
-    queryKey: ['slot_counts'],
+    queryKey: ['slot_counts', schoolId],
+    enabled: !!schoolId,
     queryFn: async () => {
       const { data: schedules, error } = await supabase
         .from('student_schedules')
-        .select('time_slot_id, student_course_id');
+        .select('time_slot_id, student_course_id')
+        .eq('school_id', schoolId!);
       if (error) throw error;
 
       const scIds = [...new Set((schedules ?? []).map((d: any) => d.student_course_id).filter(Boolean))];
@@ -188,15 +202,17 @@ export function useSlotCounts() {
   });
 }
 
-// Attendance
+// Attendance (SCOPED by school)
 export function useAttendance(date: string, timeSlotId: string | null) {
+  const { schoolId } = useSchool();
   return useQuery({
-    queryKey: ['attendance', date, timeSlotId],
-    enabled: !!timeSlotId,
+    queryKey: ['attendance', date, timeSlotId, schoolId],
+    enabled: !!timeSlotId && !!schoolId,
     queryFn: async () => {
       const { data, error } = await supabase
         .from('attendance')
         .select('*')
+        .eq('school_id', schoolId!)
         .eq('date', date)
         .eq('time_slot_id', timeSlotId!);
       if (error) throw error;
@@ -208,11 +224,16 @@ export function useAttendance(date: string, timeSlotId: string | null) {
 // Save attendance
 export function useSaveAttendance() {
   const qc = useQueryClient();
+  const { schoolId } = useSchool();
   return useMutation({
     mutationFn: async ({ studentId, timeSlotId, date, status }: { studentId: string; timeSlotId: string; date: string; status: string }) => {
-      const { data, error } = await supabase
+      if (!schoolId) throw new Error('Nenhuma unidade selecionada');
+      const { data, error } = await (supabase as any)
         .from('attendance')
-        .upsert({ student_id: studentId, time_slot_id: timeSlotId, date, status }, { onConflict: 'student_id,time_slot_id,date' })
+        .upsert(
+          { student_id: studentId, time_slot_id: timeSlotId, date, status, school_id: schoolId },
+          { onConflict: 'student_id,time_slot_id,date' }
+        )
         .select();
       if (error) throw error;
       return data;
@@ -226,6 +247,7 @@ export function useSaveAttendance() {
 // Create student + student_course + schedules
 export function useCreateStudent() {
   const qc = useQueryClient();
+  const { schoolId } = useSchool();
   return useMutation({
     mutationFn: async (input: {
       full_name?: string; street?: string; house_number?: string; birth_date?: string;
@@ -238,6 +260,7 @@ export function useCreateStudent() {
       // For adding course to existing student
       existingStudentId?: string;
     }) => {
+      if (!schoolId) throw new Error('Nenhuma unidade selecionada');
       const { schedules, existingStudentId, course_id, custom_course_name, enrollment_date, first_class_date, workload, status, payment_method, ...personalData } = input;
 
       let studentId: string;
@@ -245,10 +268,13 @@ export function useCreateStudent() {
       if (existingStudentId) {
         studentId = existingStudentId;
         // Update personal data
-        const { error } = await supabase.from('students').update(personalData).eq('id', studentId);
+        const { error } = await (supabase as any).from('students').update(personalData).eq('id', studentId);
         if (error) throw error;
       } else {
-        const { data, error } = await supabase.from('students').insert(personalData).select().single();
+        const { data, error } = await (supabase as any).from('students')
+          .insert({ ...personalData, school_id: schoolId })
+          .select()
+          .single();
         if (error) throw error;
         studentId = data.id;
       }
@@ -258,6 +284,7 @@ export function useCreateStudent() {
       const { data: sc, error: scErr } = await scTable()
         .insert({
           student_id: studentId,
+          school_id: schoolId,
           course_id: course_id || null,
           custom_course_name: custom_course_name || null,
           enrollment_date: enrollment_date || null,
@@ -273,8 +300,13 @@ export function useCreateStudent() {
 
       // Create schedules
       if (schedules && schedules.length > 0 && isActive) {
-        const { error: schedError } = await supabase.from('student_schedules').insert(
-          schedules.map(tsId => ({ student_id: studentId, time_slot_id: tsId, student_course_id: sc.id }))
+        const { error: schedError } = await (supabase as any).from('student_schedules').insert(
+          schedules.map(tsId => ({
+            student_id: studentId,
+            time_slot_id: tsId,
+            student_course_id: sc.id,
+            school_id: schoolId,
+          }))
         );
         if (schedError) throw schedError;
       }
@@ -294,6 +326,7 @@ export function useCreateStudent() {
 // Update student personal data + student_course
 export function useUpdateStudent() {
   const qc = useQueryClient();
+  const { schoolId } = useSchool();
   return useMutation({
     mutationFn: async (input: {
       id: string; // student id
@@ -313,7 +346,7 @@ export function useUpdateStudent() {
       const cleanPersonal: any = {};
       Object.entries(personalData).forEach(([k, v]) => { if (v !== undefined) cleanPersonal[k] = v; });
       if (Object.keys(cleanPersonal).length > 0) {
-        const { error } = await supabase.from('students').update(cleanPersonal).eq('id', id);
+        const { error } = await (supabase as any).from('students').update(cleanPersonal).eq('id', id);
         if (error) throw error;
       }
 
@@ -340,6 +373,7 @@ export function useUpdateStudent() {
 
         // Update schedules for this student_course
         if (schedules !== undefined) {
+          if (!schoolId) throw new Error('Nenhuma unidade selecionada');
           // Deduplicate schedule list
           const uniqueSchedules = [...new Set(schedules)];
 
@@ -362,10 +396,15 @@ export function useUpdateStudent() {
 
           // STEP 3: Insert new schedules
           if (uniqueSchedules.length > 0) {
-            const { error: schedError } = await supabase
+            const { error: schedError } = await (supabase as any)
               .from('student_schedules')
               .insert(
-                uniqueSchedules.map(tsId => ({ student_id: id, time_slot_id: tsId, student_course_id: studentCourseId }))
+                uniqueSchedules.map(tsId => ({
+                  student_id: id,
+                  time_slot_id: tsId,
+                  student_course_id: studentCourseId,
+                  school_id: schoolId,
+                }))
               );
             if (schedError) throw schedError;
           }
@@ -402,15 +441,18 @@ export function useDeleteStudent() {
 // Complete a student_course
 export function useCompleteStudent() {
   const qc = useQueryClient();
+  const { schoolId } = useSchool();
   return useMutation({
     mutationFn: async ({ studentId, studentCourseId, courseName, startDate }: {
       studentId: string; studentCourseId?: string; courseName: string; startDate: string | null;
     }) => {
+      if (!schoolId) throw new Error('Nenhuma unidade selecionada');
       // Insert into completions
-      const { error: compError } = await supabase.from('completions').insert({
+      const { error: compError } = await (supabase as any).from('completions').insert({
         student_id: studentId,
         course_name: courseName,
         start_date: startDate,
+        school_id: schoolId,
       });
       if (compError) throw compError;
 
@@ -438,14 +480,17 @@ export function useCompleteStudent() {
   });
 }
 
-// Fetch completions
+// Fetch completions (SCOPED by school)
 export function useCompletions() {
+  const { schoolId } = useSchool();
   return useQuery({
-    queryKey: ['completions'],
+    queryKey: ['completions', schoolId],
+    enabled: !!schoolId,
     queryFn: async () => {
       const { data, error } = await supabase
         .from('completions')
         .select('*, students(full_name)')
+        .eq('school_id', schoolId!)
         .order('end_date', { ascending: false });
       if (error) throw error;
       return data;
@@ -455,13 +500,15 @@ export function useCompletions() {
 
 // Get first attendance date for a student
 export function useFirstAttendance(studentId: string | null) {
+  const { schoolId } = useSchool();
   return useQuery({
-    queryKey: ['first_attendance', studentId],
-    enabled: !!studentId,
+    queryKey: ['first_attendance', studentId, schoolId],
+    enabled: !!studentId && !!schoolId,
     queryFn: async () => {
       const { data, error } = await supabase
         .from('attendance')
         .select('date')
+        .eq('school_id', schoolId!)
         .eq('student_id', studentId!)
         .eq('status', 'present')
         .order('date', { ascending: true })
@@ -472,35 +519,42 @@ export function useFirstAttendance(studentId: string | null) {
   });
 }
 
-// Report data
+// Report data (SCOPED by school)
 export function useReportData() {
+  const { schoolId } = useSchool();
   return useQuery({
-    queryKey: ['report_data'],
+    queryKey: ['report_data', schoolId],
+    enabled: !!schoolId,
     queryFn: async () => {
       const { data: students, error: sErr } = await supabase
         .from('students')
         .select('*')
+        .eq('school_id', schoolId!)
         .order('full_name');
       if (sErr) throw sErr;
 
       const { data: scs, error: scErr } = await scTable()
         .select('*, courses(name)')
+        .eq('school_id', schoolId!)
         .eq('is_active', true);
       if (scErr) throw scErr;
 
       const { data: attendance, error: aErr } = await supabase
         .from('attendance')
-        .select('student_id, status');
+        .select('student_id, status')
+        .eq('school_id', schoolId!);
       if (aErr) throw aErr;
 
       const { data: completions, error: cErr } = await supabase
         .from('completions')
-        .select('student_id, start_date, end_date');
+        .select('student_id, start_date, end_date')
+        .eq('school_id', schoolId!);
       if (cErr) throw cErr;
 
       const { data: firstDates, error: fErr } = await supabase
         .from('attendance')
         .select('student_id, date')
+        .eq('school_id', schoolId!)
         .eq('status', 'present')
         .order('date', { ascending: true });
       if (fErr) throw fErr;

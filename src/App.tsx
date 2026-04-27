@@ -3,6 +3,7 @@ import { BrowserRouter, Route, Routes } from "react-router-dom";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
+import { SchoolProvider, useSchool } from "@/contexts/SchoolContext";
 import { Layout } from "@/components/Layout";
 import Login from "./pages/Login";
 import Overview from "./pages/Overview";
@@ -18,8 +19,9 @@ const queryClient = new QueryClient();
 
 function AppRoutes() {
   const { user, loading } = useAuth();
+  const { schoolId, loading: schoolLoading } = useSchool();
 
-  if (loading) {
+  if (loading || schoolLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <p className="text-muted-foreground">Carregando...</p>
@@ -27,7 +29,8 @@ function AppRoutes() {
     );
   }
 
-  if (!user) {
+  // Require both authentication AND school selection
+  if (!user || !schoolId) {
     return <Login />;
   }
 
@@ -52,9 +55,11 @@ const App = () => (
     <TooltipProvider>
       <Sonner />
       <BrowserRouter>
-        <AuthProvider>
-          <AppRoutes />
-        </AuthProvider>
+        <SchoolProvider>
+          <AuthProvider>
+            <AppRoutes />
+          </AuthProvider>
+        </SchoolProvider>
       </BrowserRouter>
     </TooltipProvider>
   </QueryClientProvider>

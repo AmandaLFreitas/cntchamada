@@ -13,6 +13,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { cn } from '@/lib/utils';
 import { supabase } from '@/integrations/supabase/client';
 import { useQuery } from '@tanstack/react-query';
+import { useSchool } from '@/contexts/SchoolContext';
 import { toast } from 'sonner';
 import { CourseCompletionAlert } from '@/components/CourseCompletionAlert';
 
@@ -27,6 +28,7 @@ export default function Overview() {
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   const [selectedDay, setSelectedDay] = useState(getTodayDayName());
   const [selectedSlotId, setSelectedSlotId] = useState<string | null>(null);
+  const { schoolId } = useSchool();
   const { data: timeSlots } = useTimeSlots();
   const { data: slotCounts } = useSlotCounts();
   const { data: slotStudents } = useSlotStudents(selectedSlotId);
@@ -37,12 +39,13 @@ export default function Overview() {
   const studentIds = slotStudents?.map((s: any) => s.students?.id).filter(Boolean) ?? [];
 
   const { data: firstDates } = useQuery({
-    queryKey: ['first_dates_batch', studentIds],
-    enabled: studentIds.length > 0,
+    queryKey: ['first_dates_batch', studentIds, schoolId],
+    enabled: studentIds.length > 0 && !!schoolId,
     queryFn: async () => {
       const { data } = await supabase
         .from('attendance')
         .select('student_id, date')
+        .eq('school_id', schoolId!)
         .in('student_id', studentIds)
         .eq('status', 'present')
         .order('date', { ascending: true });
@@ -55,12 +58,13 @@ export default function Overview() {
   });
 
   const { data: scheduleCounts } = useQuery({
-    queryKey: ['schedule_counts_batch', studentIds],
-    enabled: studentIds.length > 0,
+    queryKey: ['schedule_counts_batch', studentIds, schoolId],
+    enabled: studentIds.length > 0 && !!schoolId,
     queryFn: async () => {
       const { data } = await supabase
         .from('student_schedules')
         .select('student_id, time_slots(start_time, end_time)')
+        .eq('school_id', schoolId!)
         .in('student_id', studentIds);
       const map: Record<string, number> = {};
       data?.forEach(r => {

@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { supabase } from '@/integrations/supabase/client';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useSchool } from '@/contexts/SchoolContext';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { Send, Trash2 } from 'lucide-react';
@@ -20,14 +21,16 @@ export function StudentObservationsDialog({ open, onOpenChange, studentId, stude
   const [text, setText] = useState('');
   const [saving, setSaving] = useState(false);
   const qc = useQueryClient();
+  const { schoolId } = useSchool();
 
   const { data: observations } = useQuery({
-    queryKey: ['student_observations', studentId],
-    enabled: !!studentId && open,
+    queryKey: ['student_observations', studentId, schoolId],
+    enabled: !!studentId && open && !!schoolId,
     queryFn: async () => {
       const { data, error } = await supabase
         .from('student_observations')
         .select('*')
+        .eq('school_id', schoolId!)
         .eq('student_id', studentId!)
         .order('created_at', { ascending: false });
       if (error) throw error;
@@ -37,12 +40,14 @@ export function StudentObservationsDialog({ open, onOpenChange, studentId, stude
 
   const handleAdd = async () => {
     if (!text.trim() || !studentId) return;
+    if (!schoolId) { toast.error('Nenhuma unidade selecionada'); return; }
     setSaving(true);
     try {
-      const { error } = await supabase.from('student_observations').insert({
+      const { error } = await (supabase as any).from('student_observations').insert({
         student_id: studentId,
         observation: text.trim(),
         source: 'manual',
+        school_id: schoolId,
       });
       if (error) throw error;
       setText('');

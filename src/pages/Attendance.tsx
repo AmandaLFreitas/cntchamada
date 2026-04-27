@@ -15,6 +15,7 @@ import { Check, X, Minus, MessageSquare } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { supabase } from '@/integrations/supabase/client';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useSchool } from '@/contexts/SchoolContext';
 import { StudentObservationsDialog } from '@/components/StudentObservationsDialog';
 import { ConsecutiveAbsencesAlert } from '@/components/ConsecutiveAbsencesAlert';
 
@@ -41,6 +42,7 @@ export default function Attendance() {
   const [selectedSlotId, setSelectedSlotId] = useState<string | null>(null);
   const [obsDialogStudentId, setObsDialogStudentId] = useState<string | null>(null);
   const qc = useQueryClient();
+  const { schoolId } = useSchool();
 
   const isoDate = format(selectedDate, 'yyyy-MM-dd');
 
@@ -61,12 +63,13 @@ export default function Attendance() {
   // Check which students have never had attendance
   const studentIdsInSlot = filteredStudents.map((s: any) => s.students?.id).filter(Boolean);
   const { data: existingAttendance } = useQuery({
-    queryKey: ['has_any_attendance', studentIdsInSlot],
-    enabled: studentIdsInSlot.length > 0,
+    queryKey: ['has_any_attendance', studentIdsInSlot, schoolId],
+    enabled: studentIdsInSlot.length > 0 && !!schoolId,
     queryFn: async () => {
       const { data } = await supabase
         .from('attendance')
         .select('student_id')
+        .eq('school_id', schoolId!)
         .in('student_id', studentIdsInSlot)
         .eq('status', 'present')
         .limit(1000);
@@ -78,12 +81,13 @@ export default function Attendance() {
 
   // Fetch observation counts for students in the slot
   const { data: obsCounts } = useQuery({
-    queryKey: ['obs_counts', studentIdsInSlot],
-    enabled: studentIdsInSlot.length > 0,
+    queryKey: ['obs_counts', studentIdsInSlot, schoolId],
+    enabled: studentIdsInSlot.length > 0 && !!schoolId,
     queryFn: async () => {
       const { data } = await supabase
         .from('student_observations')
         .select('student_id')
+        .eq('school_id', schoolId!)
         .in('student_id', studentIdsInSlot);
       const counts = new Map<string, number>();
       data?.forEach(r => counts.set(r.student_id, (counts.get(r.student_id) || 0) + 1));

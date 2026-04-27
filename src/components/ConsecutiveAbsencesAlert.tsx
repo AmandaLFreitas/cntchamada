@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { useSchool } from '@/contexts/SchoolContext';
 import { AlertTriangle, X, ChevronUp } from 'lucide-react';
 
 const THRESHOLD = 4;
@@ -8,13 +9,16 @@ const THRESHOLD = 4;
 export function ConsecutiveAbsencesAlert() {
   const [dismissed, setDismissed] = useState(false);
   const [minimized, setMinimized] = useState(false);
+  const { schoolId } = useSchool();
 
   const { data: rows } = useQuery({
-    queryKey: ['consecutive_absences_alert'],
+    queryKey: ['consecutive_absences_alert', schoolId],
+    enabled: !!schoolId,
     queryFn: async () => {
       const { data } = await supabase
         .from('attendance')
         .select('student_id, status, date, students(full_name)')
+        .eq('school_id', schoolId!)
         .in('status', ['present', 'absent'])
         .order('date', { ascending: true })
         .limit(10000);
