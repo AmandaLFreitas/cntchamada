@@ -4,6 +4,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { DateInput } from '@/components/DateInput';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/contexts/AuthContext';
+import { useSchool } from '@/contexts/SchoolContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -97,6 +98,7 @@ function timeKey(start: string, end: string) {
 
 export default function Students() {
   const { isAdmin } = useAuth();
+  const { schoolId } = useSchool();
   const [search, setSearch] = useState('');
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingStudentId, setEditingStudentId] = useState<string | null>(null);
@@ -122,12 +124,13 @@ export default function Students() {
   // Fetch which students have observations
   const studentIds = students?.map((s: any) => s.id) ?? [];
   const { data: studentsWithObs } = useQuery({
-    queryKey: ['students_with_obs', studentIds],
-    enabled: studentIds.length > 0,
+    queryKey: ['students_with_obs', studentIds, schoolId],
+    enabled: studentIds.length > 0 && !!schoolId,
     queryFn: async () => {
       const { data } = await supabase
         .from('student_observations')
         .select('student_id')
+        .eq('school_id', schoolId!)
         .in('student_id', studentIds);
       const set = new Set<string>();
       data?.forEach(r => set.add(r.student_id));
@@ -280,10 +283,11 @@ export default function Students() {
   };
 
   const checkDuplicate = async (name: string): Promise<{ id: string; student: any } | null> => {
-    if (!name.trim()) return null;
+    if (!name.trim() || !schoolId) return null;
     const { data } = await supabase
       .from('students')
       .select('*')
+      .eq('school_id', schoolId)
       .ilike('full_name', name.trim());
     if (data && data.length > 0) return { id: data[0].id, student: data[0] };
     return null;
