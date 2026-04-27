@@ -1,4 +1,4 @@
-import { LayoutDashboard, Users, ClipboardList, BarChart3, CheckCircle, Cake, FlaskConical } from 'lucide-react';
+import { LayoutDashboard, Users, ClipboardList, BarChart3, CheckCircle, Cake, FlaskConical, AlertTriangle, GraduationCap } from 'lucide-react';
 import { NavLink } from '@/components/NavLink';
 import { useLocation, useNavigate } from 'react-router-dom';
 import logoImg from '@/assets/logo-cnt.png';
@@ -22,6 +22,8 @@ const items = [
   { title: 'Certificados', url: '/finalizados', icon: CheckCircle },
   { title: 'Aniversariantes', url: '/aniversariantes', icon: Cake },
   { title: 'Aulas Experimentais', url: '/experimentais', icon: FlaskConical },
+  { title: 'Finalizando o Curso', url: '/finalizando', icon: AlertTriangle },
+  { title: 'Prof. Vanderlei', url: '/professor-vanderlei', icon: GraduationCap },
 ];
 
 export function AppSidebar() {
