@@ -1,6 +1,7 @@
 import { useState, useRef } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { useSchool } from '@/contexts/SchoolContext';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -17,6 +18,7 @@ type DetailView = 'active' | 'finalized' | 'dropouts' | 'presencas' | 'faltas' |
 
 export function MonthlyReports() {
   const now = new Date();
+  const { schoolId } = useSchool();
   const [month, setMonth] = useState(now.getMonth());
   const [year, setYear] = useState(now.getFullYear());
   const [detailView, setDetailView] = useState<DetailView>(null);
@@ -29,23 +31,28 @@ export function MonthlyReports() {
   const endDate = new Date(year, month + 1, 0).toISOString().split('T')[0];
 
   const { data: stats } = useQuery({
-    queryKey: ['monthly_stats_sc', month, year],
+    queryKey: ['monthly_stats_sc', month, year, schoolId],
+    enabled: !!schoolId,
     queryFn: async () => {
       const { data: active } = await (supabase as any).from('student_courses')
         .select('id')
+        .eq('school_id', schoolId!)
         .eq('status', 'em_andamento');
 
       const { data: finalized } = await (supabase as any).from('student_courses')
         .select('id, created_at')
+        .eq('school_id', schoolId!)
         .eq('status', 'finalizado');
 
       const { data: dropouts } = await (supabase as any).from('student_courses')
         .select('id, created_at')
+        .eq('school_id', schoolId!)
         .eq('status', 'desistiu');
 
       const { data: attendance } = await supabase
         .from('attendance')
         .select('status, time_slot_id')
+        .eq('school_id', schoolId!)
         .gte('date', startDate)
         .lte('date', endDate);
 
@@ -60,8 +67,8 @@ export function MonthlyReports() {
   });
 
   const { data: detailStudents } = useQuery({
-    queryKey: ['monthly_detail_sc', detailView, month, year],
-    enabled: detailView === 'active' || detailView === 'finalized' || detailView === 'dropouts',
+    queryKey: ['monthly_detail_sc', detailView, month, year, schoolId],
+    enabled: (detailView === 'active' || detailView === 'finalized' || detailView === 'dropouts') && !!schoolId,
     queryFn: async () => {
       let statusFilter = 'em_andamento';
       if (detailView === 'finalized') statusFilter = 'finalizado';
@@ -69,6 +76,7 @@ export function MonthlyReports() {
 
       const { data } = await (supabase as any).from('student_courses')
         .select('*, students(id, full_name, birth_date, cpf, street, house_number, enrollment_date, first_class_date, guardian_name, guardian_phone), courses(name, workload)')
+        .eq('school_id', schoolId!)
         .eq('status', statusFilter);
 
       return (data ?? []).map((sc: any) => ({
@@ -91,12 +99,13 @@ export function MonthlyReports() {
 
   // Aggregated attendance per student for the selected month (presences/absences)
   const { data: attendanceByStudent } = useQuery({
-    queryKey: ['monthly_attendance_by_student', month, year],
-    enabled: detailView === 'presencas' || detailView === 'faltas',
+    queryKey: ['monthly_attendance_by_student', month, year, schoolId],
+    enabled: (detailView === 'presencas' || detailView === 'faltas') && !!schoolId,
     queryFn: async () => {
       const { data } = await supabase
         .from('attendance')
         .select('student_id, status, students(full_name)')
+        .eq('school_id', schoolId!)
         .gte('date', startDate)
         .lte('date', endDate)
         .limit(10000);
@@ -117,24 +126,26 @@ export function MonthlyReports() {
   });
 
   const { data: studentSchedules } = useQuery({
-    queryKey: ['monthly_student_schedules', selectedStudentId],
-    enabled: !!selectedStudentId,
+    queryKey: ['monthly_student_schedules', selectedStudentId, schoolId],
+    enabled: !!selectedStudentId && !!schoolId,
     queryFn: async () => {
       const { data } = await supabase
         .from('student_schedules')
         .select('*, time_slots(*)')
+        .eq('school_id', schoolId!)
         .eq('student_id', selectedStudentId!);
       return data ?? [];
     },
   });
 
   const { data: studentAttendance } = useQuery({
-    queryKey: ['monthly_student_attendance', selectedStudentId],
-    enabled: !!selectedStudentId,
+    queryKey: ['monthly_student_attendance', selectedStudentId, schoolId],
+    enabled: !!selectedStudentId && !!schoolId,
     queryFn: async () => {
       const { data } = await supabase
         .from('attendance')
         .select('date, status')
+        .eq('school_id', schoolId!)
         .eq('student_id', selectedStudentId!)
         .order('date', { ascending: true });
       return data ?? [];

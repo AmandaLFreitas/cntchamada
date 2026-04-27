@@ -1,6 +1,7 @@
 import { useState, useMemo, useCallback } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { useSchool } from '@/contexts/SchoolContext';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -29,14 +30,16 @@ export function StudentFrequencyDialog({ open, onOpenChange, studentId, studentN
   const [customStart, setCustomStart] = useState<Date | undefined>();
   const [customEnd, setCustomEnd] = useState<Date | undefined>();
   const [showDetails, setShowDetails] = useState(false);
+  const { schoolId } = useSchool();
 
   const { data: attendanceRecords } = useQuery({
-    queryKey: ['student_attendance_all', studentId],
-    enabled: !!studentId && open,
+    queryKey: ['student_attendance_all', studentId, schoolId],
+    enabled: !!studentId && open && !!schoolId,
     queryFn: async () => {
       const { data, error } = await supabase
         .from('attendance')
         .select('date, status, time_slot_id, time_slots(start_time, end_time, day_of_week)')
+        .eq('school_id', schoolId!)
         .eq('student_id', studentId!)
         .order('date', { ascending: false });
       if (error) throw error;
