@@ -24,12 +24,13 @@ export function StudentObservationsDialog({ open, onOpenChange, studentId, stude
   const { schoolId } = useSchool();
 
   const { data: observations } = useQuery({
-    queryKey: ['student_observations', studentId],
-    enabled: !!studentId && open,
+    queryKey: ['student_observations', studentId, schoolId],
+    enabled: !!studentId && open && !!schoolId,
     queryFn: async () => {
       const { data, error } = await supabase
         .from('student_observations')
         .select('*')
+        .eq('school_id', schoolId!)
         .eq('student_id', studentId!)
         .order('created_at', { ascending: false });
       if (error) throw error;
