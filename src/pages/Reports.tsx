@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Search, ChevronLeft, User, FileText } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useQuery } from '@tanstack/react-query';
+import { useSchool } from '@/contexts/SchoolContext';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { CertificateDialog } from '@/components/CertificateDialog';
@@ -17,6 +18,7 @@ type StatusFilter = 'em_andamento' | 'finalizado' | 'desistiu';
 
 export default function Reports() {
   const { data, isLoading } = useReportData();
+  const { schoolId } = useSchool();
   const [search, setSearch] = useState('');
   const [viewMode, setViewMode] = useState<ViewMode>('cards');
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('em_andamento');
@@ -26,10 +28,12 @@ export default function Reports() {
 
   // Get all student_courses with student info for status filtering
   const { data: allStudentCourses } = useQuery({
-    queryKey: ['all_student_courses_report'],
+    queryKey: ['all_student_courses_report', schoolId],
+    enabled: !!schoolId,
     queryFn: async () => {
       const { data, error } = await (supabase as any).from('student_courses')
         .select('*, students(*, courses:courses(*)), courses(name, workload)')
+        .eq('school_id', schoolId!)
         .order('created_at', { ascending: false });
       if (error) throw error;
       return data ?? [];
@@ -37,10 +41,12 @@ export default function Reports() {
   });
 
   const { data: statusCounts } = useQuery({
-    queryKey: ['student_course_status_counts'],
+    queryKey: ['student_course_status_counts', schoolId],
+    enabled: !!schoolId,
     queryFn: async () => {
       const { data: all, error } = await (supabase as any).from('student_courses')
-        .select('status');
+        .select('status')
+        .eq('school_id', schoolId!);
       if (error) throw error;
       const counts = { em_andamento: 0, finalizado: 0, desistiu: 0 };
       (all ?? []).forEach((sc: any) => {
@@ -52,12 +58,13 @@ export default function Reports() {
   });
 
   const { data: studentSchedules } = useQuery({
-    queryKey: ['student_detail_schedules', selectedStudentId],
-    enabled: !!selectedStudentId,
+    queryKey: ['student_detail_schedules', selectedStudentId, schoolId],
+    enabled: !!selectedStudentId && !!schoolId,
     queryFn: async () => {
       const { data, error } = await supabase
         .from('student_schedules')
         .select('*, time_slots(*)')
+        .eq('school_id', schoolId!)
         .eq('student_id', selectedStudentId!);
       if (error) throw error;
       return data;
@@ -65,12 +72,13 @@ export default function Reports() {
   });
 
   const { data: studentAttendance } = useQuery({
-    queryKey: ['student_detail_attendance', selectedStudentId],
-    enabled: !!selectedStudentId,
+    queryKey: ['student_detail_attendance', selectedStudentId, schoolId],
+    enabled: !!selectedStudentId && !!schoolId,
     queryFn: async () => {
       const { data, error } = await supabase
         .from('attendance')
         .select('status')
+        .eq('school_id', schoolId!)
         .eq('student_id', selectedStudentId!);
       if (error) throw error;
       const counts = { present: 0, absent: 0, neutral: 0 };
