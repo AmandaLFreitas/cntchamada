@@ -13,6 +13,7 @@ import { DateInput } from '@/components/DateInput';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { cn } from '@/lib/utils';
+import { useSchool } from '@/contexts/SchoolContext';
 
 const STATUSES = ['PENDENTE', 'OK', 'OK.FECHOU', 'NÃO VEIO', 'DESMARCOU', 'REMARCOU'] as const;
 const MONTHS = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
@@ -62,6 +63,7 @@ const emptyForm = {
 
 export default function TrialLessons() {
   const queryClient = useQueryClient();
+  const { schoolId } = useSchool();
   const now = new Date();
   const [search, setSearch] = useState('');
   const [filterMonth, setFilterMonth] = useState<string>(String(now.getMonth()));
@@ -73,11 +75,13 @@ export default function TrialLessons() {
   const [form, setForm] = useState(emptyForm);
 
   const { data: lessons = [], isLoading } = useQuery({
-    queryKey: ['trial_lessons'],
+    queryKey: ['trial_lessons', schoolId],
+    enabled: !!schoolId,
     queryFn: async () => {
       const { data, error } = await supabase
         .from('trial_lessons')
         .select('*')
+        .eq('school_id', schoolId!)
         .order('lesson_date', { ascending: false });
       if (error) throw error;
       return data as TrialLesson[];
@@ -95,6 +99,7 @@ export default function TrialLessons() {
 
   const upsert = useMutation({
     mutationFn: async (values: typeof emptyForm & { id?: string }) => {
+      if (!schoolId) throw new Error('Nenhuma unidade selecionada');
       const isoDate = ddmmyyyyToISO(values.lesson_date);
       if (!isoDate) throw new Error('Data inválida');
       const payload = {
@@ -106,10 +111,10 @@ export default function TrialLessons() {
         status: values.status,
       };
       if (values.id) {
-        const { error } = await supabase.from('trial_lessons').update(payload).eq('id', values.id);
+        const { error } = await (supabase as any).from('trial_lessons').update(payload).eq('id', values.id);
         if (error) throw error;
       } else {
-        const { error } = await supabase.from('trial_lessons').insert(payload);
+        const { error } = await (supabase as any).from('trial_lessons').insert({ ...payload, school_id: schoolId });
         if (error) throw error;
       }
     },
