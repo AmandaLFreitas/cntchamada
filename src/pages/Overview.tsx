@@ -15,7 +15,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useQuery } from '@tanstack/react-query';
 import { useSchool } from '@/contexts/SchoolContext';
 import { toast } from 'sonner';
-import { CourseCompletionAlert } from '@/components/CourseCompletionAlert';
+
 
 const dayNameFromDate = (date: Date): string => {
   const days = ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado'];
@@ -125,7 +125,7 @@ export default function Overview() {
 
   return (
     <div>
-      <CourseCompletionAlert />
+      
       <div className="flex flex-col sm:flex-row sm:items-center gap-3 mb-4">
         <h1 className="text-2xl font-bold">Visão Geral</h1>
         <div className="flex items-center gap-2 ml-auto">

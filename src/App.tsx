@@ -13,6 +13,8 @@ import Reports from "./pages/Reports";
 import Completed from "./pages/Completed";
 import Birthdays from "./pages/Birthdays";
 import TrialLessons from "./pages/TrialLessons";
+import Finalizing from "./pages/Finalizing";
+import Vanderlei from "./pages/Vanderlei";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -44,6 +46,8 @@ function AppRoutes() {
         <Route path="/finalizados" element={<Completed />} />
         <Route path="/aniversariantes" element={<Birthdays />} />
         <Route path="/experimentais" element={<TrialLessons />} />
+        <Route path="/finalizando" element={<Finalizing />} />
+        <Route path="/professor-vanderlei" element={<Vanderlei />} />
         <Route path="*" element={<NotFound />} />
       </Routes>
     </Layout>
