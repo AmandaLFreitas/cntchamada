@@ -2,6 +2,8 @@ import { SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar';
 import { AppSidebar } from '@/components/AppSidebar';
 import { FinalizingNotification } from '@/components/FinalizingNotification';
 import { TrialLessonNotification } from '@/components/TrialLessonNotification';
+import { BirthdayNotification } from '@/components/BirthdayNotification';
+import { FinalizingFloatingNotification } from '@/components/FinalizingFloatingNotification';
 import { useAuth } from '@/contexts/AuthContext';
 import { useSchool } from '@/contexts/SchoolContext';
 import { Button } from '@/components/ui/button';
@@ -53,6 +55,8 @@ export function Layout({ children }: { children: React.ReactNode }) {
             {children}
           </main>
           <TrialLessonNotification />
+          <BirthdayNotification />
+          <FinalizingFloatingNotification />
         </div>
       </div>
     </SidebarProvider>
