@@ -51,7 +51,6 @@ export function TrialLessonNotification() {
   const { schoolId } = useSchool();
   const navigate = useNavigate();
   const [minimized, setMinimized] = useState(false);
-  const [dismissed, setDismissed] = useState(false);
 
   const { data: lessons = [] } = useQuery({
     queryKey: ['trial_lessons_today', schoolId, todayISO()],
@@ -73,7 +72,7 @@ export function TrialLessonNotification() {
       .sort((a, b) => (a.time_slot || '').localeCompare(b.time_slot || ''));
   }, [lessons]);
 
-  if (!todayLessons.length || dismissed) return null;
+  if (!todayLessons.length) return null;
 
   if (minimized) {
     return (
@@ -103,7 +102,7 @@ export function TrialLessonNotification() {
           <button onClick={() => setMinimized(true)} className="p-1 hover:bg-blue-700 rounded">
             <ChevronUp className="h-3.5 w-3.5" />
           </button>
-          <button onClick={() => setDismissed(true)} className="p-1 hover:bg-blue-700 rounded">
+          <button onClick={() => setMinimized(true)} className="p-1 hover:bg-blue-700 rounded" title="Fechar">
             <X className="h-3.5 w-3.5" />
           </button>
         </div>

@@ -14,7 +14,6 @@ function parseBirthDate(dateStr: string | null): { day: number; month: number } 
 export function BirthdayNotification() {
   const { data: students } = useStudents();
   const [minimized, setMinimized] = useState(false);
-  const [dismissed, setDismissed] = useState(false);
 
   const birthdays = useMemo(() => {
     if (!students?.length) return { today: [] as string[], week: [] as { name: string; date: string }[], month: [] as { name: string; date: string }[] };
@@ -47,7 +46,7 @@ export function BirthdayNotification() {
   }, [students]);
 
   const hasAny = birthdays.today.length > 0 || birthdays.week.length > 0 || birthdays.month.length > 0;
-  if (!hasAny || dismissed) return null;
+  if (!hasAny) return null;
 
   if (minimized) {
     return (
@@ -74,7 +73,7 @@ export function BirthdayNotification() {
           <button onClick={() => setMinimized(true)} className="p-1 hover:bg-amber-600 rounded">
             <ChevronUp className="h-3.5 w-3.5" />
           </button>
-          <button onClick={() => setDismissed(true)} className="p-1 hover:bg-amber-600 rounded">
+          <button onClick={() => setMinimized(true)} className="p-1 hover:bg-amber-600 rounded" title="Fechar">
             <X className="h-3.5 w-3.5" />
           </button>
         </div>
