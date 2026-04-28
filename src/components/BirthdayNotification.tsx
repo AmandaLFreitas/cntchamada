@@ -13,7 +13,7 @@ function parseBirthDate(dateStr: string | null): { day: number; month: number } 
 
 export function BirthdayNotification() {
   const { data: students } = useStudents();
-  const [minimized, setMinimized] = useState(false);
+  const [minimized, setMinimized] = useState(true);
 
   const birthdays = useMemo(() => {
     if (!students?.length) return { today: [] as string[], week: [] as { name: string; date: string }[], month: [] as { name: string; date: string }[] };

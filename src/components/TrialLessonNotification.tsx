@@ -50,7 +50,7 @@ const abbreviateCourse = (course: string | null): string => {
 export function TrialLessonNotification() {
   const { schoolId } = useSchool();
   const navigate = useNavigate();
-  const [minimized, setMinimized] = useState(false);
+  const [minimized, setMinimized] = useState(true);
 
   const { data: lessons = [] } = useQuery({
     queryKey: ['trial_lessons_today', schoolId, todayISO()],
