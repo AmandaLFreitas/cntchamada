@@ -51,7 +51,6 @@ export function TrialLessonNotification() {
   const { schoolId } = useSchool();
   const navigate = useNavigate();
   const [minimized, setMinimized] = useState(false);
-  const [dismissed, setDismissed] = useState(false);
 
   const { data: lessons = [] } = useQuery({
     queryKey: ['trial_lessons_today', schoolId, todayISO()],
@@ -73,7 +72,7 @@ export function TrialLessonNotification() {
       .sort((a, b) => (a.time_slot || '').localeCompare(b.time_slot || ''));
   }, [lessons]);
 
-  if (!todayLessons.length || dismissed) return null;
+  if (!todayLessons.length) return null;
 
   if (minimized) {
     return (
