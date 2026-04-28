@@ -8,10 +8,9 @@ const firstName = (full: string) => (full || '').trim().split(/\s+/)[0] || full;
 export function FinalizingFloatingNotification() {
   const navigate = useNavigate();
   const finalizing = useFinalizingStudents();
-  const [minimized, setMinimized] = useState(false);
-  const [dismissed, setDismissed] = useState(false);
+  const [minimized, setMinimized] = useState(true);
 
-  if (!finalizing.length || dismissed) return null;
+  if (!finalizing.length) return null;
 
   if (minimized) {
     return (
@@ -41,7 +40,7 @@ export function FinalizingFloatingNotification() {
           <button onClick={() => setMinimized(true)} className="p-1 hover:bg-yellow-600 rounded">
             <ChevronUp className="h-3.5 w-3.5" />
           </button>
-          <button onClick={() => setDismissed(true)} className="p-1 hover:bg-yellow-600 rounded">
+          <button onClick={() => setMinimized(true)} className="p-1 hover:bg-yellow-600 rounded" title="Fechar">
             <X className="h-3.5 w-3.5" />
           </button>
         </div>
