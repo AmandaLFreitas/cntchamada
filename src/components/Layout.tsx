@@ -1,6 +1,7 @@
 import { SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar';
 import { AppSidebar } from '@/components/AppSidebar';
 import { FinalizingNotification } from '@/components/FinalizingNotification';
+import { TrialLessonNotification } from '@/components/TrialLessonNotification';
 import { useAuth } from '@/contexts/AuthContext';
 import { useSchool } from '@/contexts/SchoolContext';
 import { Button } from '@/components/ui/button';
@@ -51,6 +52,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
           <main className="flex-1 p-3 sm:p-4 md:p-6 overflow-auto">
             {children}
           </main>
+          <TrialLessonNotification />
         </div>
       </div>
     </SidebarProvider>
