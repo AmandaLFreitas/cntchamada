@@ -102,7 +102,7 @@ export function TrialLessonNotification() {
           <button onClick={() => setMinimized(true)} className="p-1 hover:bg-blue-700 rounded">
             <ChevronUp className="h-3.5 w-3.5" />
           </button>
-          <button onClick={() => setDismissed(true)} className="p-1 hover:bg-blue-700 rounded">
+          <button onClick={() => setMinimized(true)} className="p-1 hover:bg-blue-700 rounded" title="Fechar">
             <X className="h-3.5 w-3.5" />
           </button>
         </div>
