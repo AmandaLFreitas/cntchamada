@@ -3,6 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useStudents } from '@/hooks/use-supabase-data';
 import { useSchool } from '@/contexts/SchoolContext';
+import { effectiveWeeksBetween, addEffectiveWeeks } from '@/lib/calendar-breaks';
 
 export interface FinalizingStudent {
   studentId: string;
@@ -118,12 +119,11 @@ export function useFinalizingStudents() {
         const realHoursCompleted = attendance.count * effectiveHoursPerSession;
         const realPct = workload > 0 ? (realHoursCompleted / workload) * 100 : 0;
 
-        // Estimated progress (CASE 2) — based on time elapsed since start + weekly schedule
+        // Estimated progress (CASE 2) — uses effective weeks (skips holidays + breaks)
         let estimatedHoursCompleted = 0;
         let estimatedPct = 0;
         if (startDate && weeklyHours > 0) {
-          const msPerWeek = 7 * 24 * 60 * 60 * 1000;
-          const weeksElapsed = Math.max((today.getTime() - startDate.getTime()) / msPerWeek, 0);
+          const weeksElapsed = effectiveWeeksBetween(startDate, today);
           estimatedHoursCompleted = Math.min(weeksElapsed * weeklyHours, workload);
           estimatedPct = workload > 0 ? (estimatedHoursCompleted / workload) * 100 : 0;
         }
@@ -149,11 +149,11 @@ export function useFinalizingStudents() {
           const hoursRemaining = Math.max(workload - hoursCompleted, 0);
           const lessonsRemaining = Math.ceil(hoursRemaining / effectiveHoursPerSession);
 
+          // Expected end date — weeks needed for full workload, skipping breaks/holidays
           let expectedEnd: Date | null = null;
           if (startDate && weeklyHours > 0) {
-            const weeks = workload / weeklyHours;
-            expectedEnd = new Date(startDate);
-            expectedEnd.setDate(expectedEnd.getDate() + Math.ceil(weeks * 7));
+            const totalWeeksNeeded = workload / weeklyHours;
+            expectedEnd = addEffectiveWeeks(startDate, totalWeeksNeeded);
           }
 
           result.push({
