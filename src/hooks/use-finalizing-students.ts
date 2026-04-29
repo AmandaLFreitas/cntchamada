@@ -17,11 +17,11 @@ export interface FinalizingStudent {
   lessonsRemaining: number;
   hoursPerSession: number;
   pct: number;
+  source: 'real' | 'estimated';
 }
 
 const parseDate = (v: string | null | undefined): Date | null => {
   if (!v) return null;
-  // Accept dd/mm/yyyy or yyyy-mm-dd
   if (/^\d{2}\/\d{2}\/\d{4}$/.test(v)) {
     const [d, m, y] = v.split('/').map(Number);
     return new Date(y, m - 1, d);
@@ -44,24 +44,30 @@ export function useFinalizingStudents() {
 
   const studentIds = useMemo(() => (students ?? []).map((s: any) => s.id), [students]);
 
+  // Real attendance (presences only)
   const { data: attendanceCounts } = useQuery({
     queryKey: ['attendance_counts_finalizing', schoolId, studentIds],
     enabled: !!schoolId && studentIds.length > 0,
     queryFn: async () => {
       const { data } = await supabase
         .from('attendance')
-        .select('student_id, status')
+        .select('student_id, status, date')
         .eq('school_id', schoolId!)
         .in('student_id', studentIds)
         .eq('status', 'present');
-      const map: Record<string, number> = {};
+      const map: Record<string, { count: number; firstDate: string | null }> = {};
       data?.forEach(r => {
-        map[r.student_id] = (map[r.student_id] || 0) + 1;
+        if (!map[r.student_id]) map[r.student_id] = { count: 0, firstDate: null };
+        map[r.student_id].count += 1;
+        if (!map[r.student_id].firstDate || r.date < map[r.student_id].firstDate!) {
+          map[r.student_id].firstDate = r.date;
+        }
       });
       return map;
     },
   });
 
+  // Schedule hours per week per student
   const { data: scheduleHours } = useQuery({
     queryKey: ['schedule_hours_finalizing', schoolId, studentIds],
     enabled: !!schoolId && studentIds.length > 0,
@@ -89,27 +95,63 @@ export function useFinalizingStudents() {
   const finalizing = useMemo<FinalizingStudent[]>(() => {
     if (!students || !attendanceCounts || !scheduleHours) return [];
     const result: FinalizingStudent[] = [];
+    const seen = new Set<string>();
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
 
     (students as any[]).forEach(s => {
       const activeCourses = (s.student_courses ?? []).filter((sc: any) => sc.is_active);
       activeCourses.forEach((sc: any) => {
-        const presences = attendanceCounts[s.id] || 0;
+        if (seen.has(sc.id)) return;
+        seen.add(sc.id);
+
+        const attendance = attendanceCounts[s.id] || { count: 0, firstDate: null };
         const sched = scheduleHours[s.id] || { totalHours: 0, sessions: 0 };
         const hoursPerSession = sched.sessions > 0 ? sched.totalHours / sched.sessions : 1;
         const effectiveHoursPerSession = Math.max(hoursPerSession, 1);
-        const hoursCompleted = presences * effectiveHoursPerSession;
+        const weeklyHours = sched.totalHours; // total hours per week from schedule
         const workload = sc.workload || 48;
-        const pct = Math.round((hoursCompleted / workload) * 100);
 
-        if (pct >= 80 && pct < 100) {
+        const startDate = parseDate(sc.first_class_date || sc.enrollment_date);
+
+        // Real progress (CASE 1) — based on actual presences
+        const realHoursCompleted = attendance.count * effectiveHoursPerSession;
+        const realPct = workload > 0 ? (realHoursCompleted / workload) * 100 : 0;
+
+        // Estimated progress (CASE 2) — based on time elapsed since start + weekly schedule
+        let estimatedHoursCompleted = 0;
+        let estimatedPct = 0;
+        if (startDate && weeklyHours > 0) {
+          const msPerWeek = 7 * 24 * 60 * 60 * 1000;
+          const weeksElapsed = Math.max((today.getTime() - startDate.getTime()) / msPerWeek, 0);
+          estimatedHoursCompleted = Math.min(weeksElapsed * weeklyHours, workload);
+          estimatedPct = workload > 0 ? (estimatedHoursCompleted / workload) * 100 : 0;
+        }
+
+        // Use the higher of real vs estimated to avoid blocking calculation when
+        // attendance history is incomplete. Real takes priority when it's higher.
+        let hoursCompleted: number;
+        let pct: number;
+        let source: 'real' | 'estimated';
+        if (realPct >= estimatedPct) {
+          hoursCompleted = realHoursCompleted;
+          pct = realPct;
+          source = 'real';
+        } else {
+          hoursCompleted = estimatedHoursCompleted;
+          pct = estimatedPct;
+          source = 'estimated';
+        }
+
+        const pctRounded = Math.round(pct);
+
+        if (pctRounded >= 80 && pctRounded < 100) {
           const hoursRemaining = Math.max(workload - hoursCompleted, 0);
           const lessonsRemaining = Math.ceil(hoursRemaining / effectiveHoursPerSession);
 
-          // Expected end date: start + (workload / weeklyHours) weeks
-          const startDate = parseDate(sc.first_class_date || sc.enrollment_date);
           let expectedEnd: Date | null = null;
-          if (startDate && sched.totalHours > 0) {
-            const weeks = workload / sched.totalHours;
+          if (startDate && weeklyHours > 0) {
+            const weeks = workload / weeklyHours;
             expectedEnd = new Date(startDate);
             expectedEnd.setDate(expectedEnd.getDate() + Math.ceil(weeks * 7));
           }
@@ -126,7 +168,8 @@ export function useFinalizingStudents() {
             hoursRemaining: Math.round(hoursRemaining * 10) / 10,
             lessonsRemaining,
             hoursPerSession: effectiveHoursPerSession,
-            pct,
+            pct: pctRounded,
+            source,
           });
         }
       });
