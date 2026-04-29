@@ -3,6 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useStudents } from '@/hooks/use-supabase-data';
 import { useSchool } from '@/contexts/SchoolContext';
+import { effectiveWeeksBetween, addEffectiveWeeks } from '@/lib/calendar-breaks';
 
 export interface FinalizingStudent {
   studentId: string;
