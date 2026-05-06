@@ -169,6 +169,7 @@ export type Database = {
           id: string
           is_active: boolean
           payment_method: string | null
+          rescue_flagged: boolean
           school_id: string
           status: string
           student_id: string
@@ -183,6 +184,7 @@ export type Database = {
           id?: string
           is_active?: boolean
           payment_method?: string | null
+          rescue_flagged?: boolean
           school_id: string
           status?: string
           student_id: string
@@ -197,6 +199,7 @@ export type Database = {
           id?: string
           is_active?: boolean
           payment_method?: string | null
+          rescue_flagged?: boolean
           school_id?: string
           status?: string
           student_id?: string
@@ -441,6 +444,7 @@ export type Database = {
           created_at: string
           id: string
           lesson_date: string
+          observations: string | null
           phone: string | null
           school_id: string
           status: string
@@ -453,6 +457,7 @@ export type Database = {
           created_at?: string
           id?: string
           lesson_date?: string
+          observations?: string | null
           phone?: string | null
           school_id: string
           status?: string
@@ -465,6 +470,7 @@ export type Database = {
           created_at?: string
           id?: string
           lesson_date?: string
+          observations?: string | null
           phone?: string | null
           school_id?: string
           status?: string
