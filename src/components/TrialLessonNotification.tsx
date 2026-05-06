@@ -101,7 +101,7 @@ export function TrialLessonNotification() {
 
   return (
     <div className="fixed bottom-4 right-20 z-50 w-72 bg-card border shadow-xl rounded-lg overflow-hidden">
-      <div className="bg-blue-600 text-white px-3 py-2 flex items-center justify-between">
+      <div className={`text-white px-3 py-2 flex items-center justify-between ${needsContactCount > 0 ? 'bg-orange-600' : 'bg-blue-600'}`}>
         <button
           onClick={() => navigate('/experimentais')}
           className="flex items-center gap-2 text-sm font-medium hover:underline"
