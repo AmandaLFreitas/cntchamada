@@ -83,6 +83,7 @@ const emptyForm = {
   time_slot: '',
   lesson_date: todayDDMMYYYY,
   status: 'PENDENTE',
+  observations: '',
 };
 
 export default function TrialLessons() {
@@ -133,6 +134,7 @@ export default function TrialLessons() {
         time_slot: values.time_slot || null,
         lesson_date: isoDate,
         status: values.status,
+        observations: values.observations || null,
       };
       if (values.id) {
         const { error } = await (supabase as any).from('trial_lessons').update(payload).eq('id', values.id);
@@ -184,6 +186,7 @@ export default function TrialLessons() {
       time_slot: lesson.time_slot || '',
       lesson_date: isoToDDMMYYYY(lesson.lesson_date),
       status: lesson.status,
+      observations: lesson.observations || '',
     });
     setDialogOpen(true);
   };
