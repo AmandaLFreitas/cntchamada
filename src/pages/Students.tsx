@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo, useRef } from 'react';
 import { useStudents, useCourses, useTimeSlots, useCreateStudent, useUpdateStudent, useDeleteStudent, useCompletions } from '@/hooks/use-supabase-data';
 import { supabase } from '@/integrations/supabase/client';
 import { DateInput } from '@/components/DateInput';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query';
 import { useAuth } from '@/contexts/AuthContext';
 import { useSchool } from '@/contexts/SchoolContext';
 import { Button } from '@/components/ui/button';
@@ -12,7 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Checkbox } from '@/components/ui/checkbox';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { DAYS_OF_WEEK } from '@/lib/constants';
-import { Plus, Pencil, Trash2, Search, History, BookOpen, BarChart3, Camera, MessageSquare } from 'lucide-react';
+import { Plus, Pencil, Trash2, Search, History, BookOpen, BarChart3, Camera, MessageSquare, LifeBuoy } from 'lucide-react';
 import { StudentObservationsDialog } from '@/components/StudentObservationsDialog';
 import { StudentFrequencyDialog } from '@/components/StudentFrequencyDialog';
 import { toast } from 'sonner';
@@ -136,6 +136,47 @@ export default function Students() {
       const set = new Set<string>();
       data?.forEach(r => set.add(r.student_id));
       return set;
+    },
+  });
+
+  // Fetch which student_courses are flagged for Rescue
+  const { data: rescueFlagged } = useQuery({
+    queryKey: ['rescue_flags', schoolId],
+    enabled: !!schoolId,
+    queryFn: async () => {
+      const { data } = await (supabase as any)
+        .from('student_courses')
+        .select('id, student_id')
+        .eq('school_id', schoolId!)
+        .eq('rescue_flagged', true);
+      const byStudent = new Set<string>();
+      const byCourse = new Set<string>();
+      (data ?? []).forEach((r: any) => { byStudent.add(r.student_id); byCourse.add(r.id); });
+      return { byStudent, byCourse };
+    },
+  });
+
+  const toggleRescueStudent = useMutation({
+    mutationFn: async ({ studentId, value }: { studentId: string; value: boolean }) => {
+      // Toggle on the student's first active course (or first course if none active)
+      const { data: scs } = await (supabase as any)
+        .from('student_courses')
+        .select('id, is_active')
+        .eq('school_id', schoolId!)
+        .eq('student_id', studentId);
+      const target = (scs ?? []).find((sc: any) => sc.is_active) ?? (scs ?? [])[0];
+      if (!target) return;
+      const { error } = await (supabase as any)
+        .from('student_courses')
+        .update({ rescue_flagged: value })
+        .eq('id', target.id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['rescue_flags'] });
+      qc.invalidateQueries({ queryKey: ['rescue'] });
+      qc.invalidateQueries({ queryKey: ['slot_students'] });
+      toast.success('Atualizado');
     },
   });
 
@@ -526,6 +567,9 @@ export default function Students() {
               </Button>
               <Button size="icon" variant="ghost" onClick={() => setHistoryStudentId(s.id)} title="Histórico">
                 <History className="h-4 w-4" />
+              </Button>
+              <Button size="icon" variant="ghost" onClick={() => toggleRescueStudent.mutate({ studentId: s.id, value: !rescueFlagged?.byStudent.has(s.id) })} title={rescueFlagged?.byStudent.has(s.id) ? 'Remover do Resgate' : 'Enviar para Resgate'}>
+                <LifeBuoy className={`h-4 w-4 ${rescueFlagged?.byStudent.has(s.id) ? 'text-orange-600 fill-orange-100' : 'text-muted-foreground'}`} />
               </Button>
               <Button size="icon" variant="ghost" onClick={() => {
                 const activeSc = (s.student_courses ?? []).find((sc: any) => sc.is_active);
