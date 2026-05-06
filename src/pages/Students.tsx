@@ -12,7 +12,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Checkbox } from '@/components/ui/checkbox';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { DAYS_OF_WEEK } from '@/lib/constants';
-import { Plus, Pencil, Trash2, Search, History, BookOpen, BarChart3, Camera, MessageSquare } from 'lucide-react';
+import { Plus, Pencil, Trash2, Search, History, BookOpen, BarChart3, Camera, MessageSquare, LifeBuoy } from 'lucide-react';
+import { useMutation } from '@tanstack/react-query';
 import { StudentObservationsDialog } from '@/components/StudentObservationsDialog';
 import { StudentFrequencyDialog } from '@/components/StudentFrequencyDialog';
 import { toast } from 'sonner';
