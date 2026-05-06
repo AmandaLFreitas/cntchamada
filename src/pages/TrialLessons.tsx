@@ -469,11 +469,11 @@ export default function TrialLessons() {
               <Label>Situação</Label>
               <Select value={form.status} onValueChange={val => setForm(f => ({ ...f, status: val }))}>
                 <SelectTrigger>
-                  <SelectValue />
+                  <SelectValue>{STATUS_LABELS[form.status] ?? form.status}</SelectValue>
                 </SelectTrigger>
                 <SelectContent>
                   {STATUSES.map(s => (
-                    <SelectItem key={s} value={s}>{s}</SelectItem>
+                    <SelectItem key={s} value={s}>{STATUS_LABELS[s] ?? s}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
