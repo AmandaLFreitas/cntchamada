@@ -469,6 +469,15 @@ export default function TrialLessons() {
                 </SelectContent>
               </Select>
             </div>
+            <div>
+              <Label>Observações</Label>
+              <Textarea
+                value={form.observations}
+                onChange={e => setForm(f => ({ ...f, observations: e.target.value }))}
+                placeholder="Observações sobre a aula..."
+                rows={3}
+              />
+            </div>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={closeDialog}>Cancelar</Button>
