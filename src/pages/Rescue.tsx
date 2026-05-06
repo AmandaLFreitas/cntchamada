@@ -21,7 +21,7 @@ const CONTACT_STATUSES = [
 
 const contactRowClass = (status: string | null | undefined) => {
   switch (status) {
-    case 'fechou': return 'bg-green-50/70';
+    case 'fechou': return 'bg-green-200/70 hover:bg-green-300/70 border-l-4 border-l-green-600';
     case 'nao_fechou': return 'bg-red-50/70';
     case 'esperar': return 'bg-yellow-50/70';
     case 'contatado': return 'bg-blue-50/70';
