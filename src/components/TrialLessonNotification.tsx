@@ -72,14 +72,24 @@ export function TrialLessonNotification() {
       .sort((a, b) => (a.time_slot || '').localeCompare(b.time_slot || ''));
   }, [lessons]);
 
+  const needsContactCount = useMemo(
+    () => todayLessons.filter(l => {
+      const s = (l.status || '').toUpperCase();
+      return s === 'NÃO VEIO' || s === 'DESMARCOU';
+    }).length,
+    [todayLessons]
+  );
+
   if (!todayLessons.length) return null;
+
+  const headerBg = needsContactCount > 0 ? 'bg-orange-600 hover:bg-orange-700' : 'bg-blue-600 hover:bg-blue-700';
 
   if (minimized) {
     return (
       <button
         onClick={() => setMinimized(false)}
-        className="fixed bottom-4 right-20 z-50 bg-blue-600 text-white rounded-full p-3 shadow-lg hover:bg-blue-700 transition-colors"
-        title="Aulas experimentais hoje"
+        className={`fixed bottom-4 right-20 z-50 text-white rounded-full p-3 shadow-lg transition-colors ${headerBg}`}
+        title={needsContactCount > 0 ? `${needsContactCount} aluno(s) precisam de contato` : 'Aulas experimentais hoje'}
       >
         <GraduationCap className="h-5 w-5" />
         <span className="absolute -top-1 -right-1 bg-destructive text-destructive-foreground text-xs rounded-full h-5 w-5 flex items-center justify-center">
