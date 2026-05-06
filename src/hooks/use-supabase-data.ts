@@ -148,6 +148,7 @@ export function useSlotStudents(timeSlotId: string | null) {
           if (!sc || !sc.students) return null;
           return {
             ...d,
+            rescue_flagged: !!sc.rescue_flagged,
             students: {
               ...sc.students,
               course_id: sc.course_id,
