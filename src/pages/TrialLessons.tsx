@@ -17,6 +17,14 @@ import { useSchool } from '@/contexts/SchoolContext';
 import { Textarea } from '@/components/ui/textarea';
 
 const STATUSES = ['PENDENTE', 'OK', 'OK.FECHOU', 'NÃO VEIO', 'DESMARCOU', 'REMARCOU'] as const;
+const STATUS_LABELS: Record<string, string> = {
+  'PENDENTE': 'AGENDADO',
+  'OK': 'COMPARECEU (SEM FECHAMENTO)',
+  'OK.FECHOU': 'FECHOU MATRÍCULA',
+  'NÃO VEIO': 'FALTOU',
+  'DESMARCOU': 'CANCELADO',
+  'REMARCOU': 'REAGENDADO',
+};
 const MONTHS = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
 const ALL_MONTHS = '__all__';
 
@@ -38,13 +46,14 @@ const todayISO = () => {
 
 const statusRowClass = (status: string, isToday: boolean): string => {
   const s = (status || '').toUpperCase();
-  if (s === 'NÃO VEIO' || s === 'DESMARCOU') {
-    // Contact alert: orange overrides everything
-    return 'bg-orange-100/70 hover:bg-orange-200/70 border-l-4 border-l-orange-500';
-  }
-  if (s === 'OK' || s === 'OK.FECHOU') return 'bg-green-100/60 hover:bg-green-200/60';
-  if (s === 'REMARCOU') return 'bg-purple-100/60 hover:bg-purple-200/60';
-  if (isToday) return 'bg-blue-100/50 hover:bg-blue-200/50';
+  // Light, near-transparent backgrounds matching the new palette
+  if (s === 'PENDENTE') return 'bg-[#FFF3CD]/60 hover:bg-[#FFF3CD]/80';
+  if (s === 'OK') return 'bg-[#D0E7FF]/60 hover:bg-[#D0E7FF]/80';
+  if (s === 'OK.FECHOU') return 'bg-[#D4EDDA]/70 hover:bg-[#D4EDDA]/90';
+  if (s === 'NÃO VEIO') return 'bg-[#F8D7DA]/70 hover:bg-[#F8D7DA]/90 border-l-4 border-l-red-400';
+  if (s === 'DESMARCOU') return 'bg-[#E2E3E5]/70 hover:bg-[#E2E3E5]/90';
+  if (s === 'REMARCOU') return 'bg-[#E6D6F5]/70 hover:bg-[#E6D6F5]/90';
+  if (isToday) return 'bg-blue-100/40 hover:bg-blue-200/40';
   return '';
 };
 
