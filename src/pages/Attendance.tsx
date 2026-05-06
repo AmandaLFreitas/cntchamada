@@ -270,18 +270,16 @@ export default function Attendance() {
                             <span className="absolute -top-0.5 -right-0.5 h-3 w-3 rounded-full bg-destructive border-2 border-card" />
                           )}
                         </Button>
-                        <Button size="icon" variant="ghost" className="h-8 w-8"
+                        <Button size="icon" variant="ghost" className="h-9 w-9"
                           onClick={() => toggleMaterial.mutate({ id: student.id, value: !materialSent })}
                           title={materialSent ? 'Apostila enviada (clique para desmarcar)' : 'Apostila NÃO enviada (clique para marcar)'}>
-                          <BookOpen className={cn('h-4 w-4', materialSent ? 'text-blue-600' : 'text-destructive')} />
+                          <BookOpen className={cn('h-5 w-5', materialSent ? 'text-blue-600' : 'text-destructive')} />
                         </Button>
-                        {isFinalizing && (
-                          <Button size="icon" variant="ghost" className="h-8 w-8"
-                            onClick={() => toggleRescue.mutate({ scId: s.student_course_id, value: !isRescued })}
-                            title={isRescued ? 'Remover do Resgate' : 'Enviar para Resgate'}>
-                            <LifeBuoy className={cn('h-4 w-4', isRescued ? 'text-orange-600' : 'text-muted-foreground')} />
-                          </Button>
-                        )}
+                        <Button size="icon" variant="ghost" className="h-8 w-8"
+                          onClick={() => toggleRescue.mutate({ scId: s.student_course_id, value: !isRescued })}
+                          title={isRescued ? 'Remover do Resgate' : 'Enviar para Resgate'}>
+                          <LifeBuoy className={cn('h-4 w-4', isRescued ? 'text-orange-600 fill-orange-100' : 'text-muted-foreground')} />
+                        </Button>
                         <Button size="icon" variant={status === 'present' ? 'default' : 'outline'}
                           className={status === 'present' ? 'bg-green-600 hover:bg-green-700' : ''}
                           onClick={() => markAttendance(student.id, 'present')} title="Presença (clique novamente para desmarcar)">
