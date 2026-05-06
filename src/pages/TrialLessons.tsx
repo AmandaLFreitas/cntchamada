@@ -7,13 +7,14 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
-import { Plus, Pencil, Trash2, Search, CalendarIcon } from 'lucide-react';
+import { Plus, Pencil, Trash2, Search, CalendarIcon, AlertTriangle } from 'lucide-react';
 import { toast } from 'sonner';
 import { DateInput } from '@/components/DateInput';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { cn } from '@/lib/utils';
+import { cn, openWhatsApp } from '@/lib/utils';
 import { useSchool } from '@/contexts/SchoolContext';
+import { Textarea } from '@/components/ui/textarea';
 
 const STATUSES = ['PENDENTE', 'OK', 'OK.FECHOU', 'NÃO VEIO', 'DESMARCOU', 'REMARCOU'] as const;
 const MONTHS = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
@@ -27,7 +28,30 @@ interface TrialLesson {
   time_slot: string | null;
   lesson_date: string;
   status: string;
+  observations?: string | null;
 }
+
+const todayISO = () => {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+};
+
+const statusRowClass = (status: string, isToday: boolean): string => {
+  const s = (status || '').toUpperCase();
+  if (s === 'NÃO VEIO' || s === 'DESMARCOU') {
+    // Contact alert: orange overrides everything
+    return 'bg-orange-100/70 hover:bg-orange-200/70 border-l-4 border-l-orange-500';
+  }
+  if (s === 'OK' || s === 'OK.FECHOU') return 'bg-green-100/60 hover:bg-green-200/60';
+  if (s === 'REMARCOU') return 'bg-purple-100/60 hover:bg-purple-200/60';
+  if (isToday) return 'bg-blue-100/50 hover:bg-blue-200/50';
+  return '';
+};
+
+const needsContact = (status: string) => {
+  const s = (status || '').toUpperCase();
+  return s === 'NÃO VEIO' || s === 'DESMARCOU';
+};
 
 const formatPhone = (value: string) => {
   const digits = value.replace(/\D/g, '').slice(0, 11);
@@ -59,6 +83,7 @@ const emptyForm = {
   time_slot: '',
   lesson_date: todayDDMMYYYY,
   status: 'PENDENTE',
+  observations: '',
 };
 
 export default function TrialLessons() {
@@ -109,6 +134,7 @@ export default function TrialLessons() {
         time_slot: values.time_slot || null,
         lesson_date: isoDate,
         status: values.status,
+        observations: values.observations || null,
       };
       if (values.id) {
         const { error } = await (supabase as any).from('trial_lessons').update(payload).eq('id', values.id);
@@ -139,7 +165,15 @@ export default function TrialLessons() {
 
   const updateStatus = useMutation({
     mutationFn: async ({ id, status }: { id: string; status: string }) => {
-      const { error } = await supabase.from('trial_lessons').update({ status }).eq('id', id);
+      const { error } = await (supabase as any).from('trial_lessons').update({ status }).eq('id', id);
+      if (error) throw error;
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['trial_lessons'] }),
+  });
+
+  const updateObservation = useMutation({
+    mutationFn: async ({ id, observations }: { id: string; observations: string }) => {
+      const { error } = await (supabase as any).from('trial_lessons').update({ observations }).eq('id', id);
       if (error) throw error;
     },
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['trial_lessons'] }),
@@ -160,6 +194,7 @@ export default function TrialLessons() {
       time_slot: lesson.time_slot || '',
       lesson_date: isoToDDMMYYYY(lesson.lesson_date),
       status: lesson.status,
+      observations: lesson.observations || '',
     });
     setDialogOpen(true);
   };
@@ -284,7 +319,7 @@ export default function TrialLessons() {
       ) : filtered.length === 0 ? (
         <p className="text-muted-foreground text-center py-8">Nenhuma aula experimental encontrada.</p>
       ) : (
-        <div className="border rounded-lg">
+        <div className="border rounded-lg overflow-x-auto">
           <Table>
             <TableHeader>
               <TableRow>
@@ -294,44 +329,85 @@ export default function TrialLessons() {
                 <TableHead className="hidden md:table-cell">Horário</TableHead>
                 <TableHead>Data</TableHead>
                 <TableHead>Situação</TableHead>
+                <TableHead className="min-w-[180px]">Observações</TableHead>
                 <TableHead className="w-[80px]">Ações</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filtered.map(l => (
-                <TableRow key={l.id}>
-                  <TableCell className="font-medium">{l.student_name}</TableCell>
-                  <TableCell className="hidden sm:table-cell">{l.phone ? formatPhone(l.phone) : '—'}</TableCell>
-                  <TableCell className="hidden sm:table-cell">{l.course || '—'}</TableCell>
-                  <TableCell className="hidden md:table-cell">{l.time_slot || '—'}</TableCell>
-                  <TableCell>{isoToDDMMYYYY(l.lesson_date)}</TableCell>
-                  <TableCell>
-                    <Select
-                      value={l.status}
-                      onValueChange={val => updateStatus.mutate({ id: l.id, status: val })}
-                    >
-                      <SelectTrigger className="h-8 w-[130px] text-xs">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {STATUSES.map(s => (
-                          <SelectItem key={s} value={s}>{s}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex gap-1">
-                      <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEdit(l)}>
-                        <Pencil className="h-3.5 w-3.5" />
-                      </Button>
-                      <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => remove.mutate(l.id)}>
-                        <Trash2 className="h-3.5 w-3.5" />
-                      </Button>
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ))}
+              {filtered.map(l => {
+                const isToday = l.lesson_date === todayISO();
+                const rowClass = statusRowClass(l.status, isToday);
+                const showAlert = needsContact(l.status);
+                return (
+                  <TableRow key={l.id} className={rowClass}>
+                    <TableCell className="font-medium">
+                      <div className="flex flex-col gap-1">
+                        <button
+                          type="button"
+                          onClick={() => openWhatsApp(l.phone)}
+                          className="text-left hover:underline hover:text-green-700"
+                          title={l.phone ? 'Abrir WhatsApp' : 'Sem telefone'}
+                        >
+                          {l.student_name}
+                        </button>
+                        {showAlert && (
+                          <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-orange-700">
+                            <AlertTriangle className="h-3 w-3" /> Entrar em contato com o aluno
+                          </span>
+                        )}
+                      </div>
+                    </TableCell>
+                    <TableCell className="hidden sm:table-cell">
+                      {l.phone ? (
+                        <button onClick={() => openWhatsApp(l.phone)} className="hover:underline hover:text-green-700">
+                          {formatPhone(l.phone)}
+                        </button>
+                      ) : '—'}
+                    </TableCell>
+                    <TableCell className="hidden sm:table-cell">{l.course || '—'}</TableCell>
+                    <TableCell className="hidden md:table-cell">{l.time_slot || '—'}</TableCell>
+                    <TableCell>{isoToDDMMYYYY(l.lesson_date)}</TableCell>
+                    <TableCell>
+                      <Select
+                        value={l.status}
+                        onValueChange={val => updateStatus.mutate({ id: l.id, status: val })}
+                      >
+                        <SelectTrigger className="h-8 w-[130px] text-xs bg-background">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {STATUSES.map(s => (
+                            <SelectItem key={s} value={s}>{s}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </TableCell>
+                    <TableCell>
+                      <Input
+                        defaultValue={l.observations || ''}
+                        placeholder="Observação..."
+                        className="h-8 text-xs bg-background"
+                        onBlur={(e) => {
+                          const v = e.target.value;
+                          if (v !== (l.observations || '')) {
+                            updateObservation.mutate({ id: l.id, observations: v });
+                          }
+                        }}
+                      />
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex gap-1">
+                        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEdit(l)}>
+                          <Pencil className="h-3.5 w-3.5" />
+                        </Button>
+                        <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => remove.mutate(l.id)}>
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
             </TableBody>
           </Table>
         </div>
@@ -392,6 +468,15 @@ export default function TrialLessons() {
                   ))}
                 </SelectContent>
               </Select>
+            </div>
+            <div>
+              <Label>Observações</Label>
+              <Textarea
+                value={form.observations}
+                onChange={e => setForm(f => ({ ...f, observations: e.target.value }))}
+                placeholder="Observações sobre a aula..."
+                rows={3}
+              />
             </div>
           </div>
           <DialogFooter>

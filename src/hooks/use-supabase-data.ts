@@ -148,6 +148,7 @@ export function useSlotStudents(timeSlotId: string | null) {
           if (!sc || !sc.students) return null;
           return {
             ...d,
+            rescue_flagged: !!sc.rescue_flagged,
             students: {
               ...sc.students,
               course_id: sc.course_id,
@@ -221,13 +222,23 @@ export function useAttendance(date: string, timeSlotId: string | null) {
   });
 }
 
-// Save attendance
+// Save attendance (optimistic + supports clearing via status='')
 export function useSaveAttendance() {
   const qc = useQueryClient();
   const { schoolId } = useSchool();
   return useMutation({
     mutationFn: async ({ studentId, timeSlotId, date, status }: { studentId: string; timeSlotId: string; date: string; status: string }) => {
       if (!schoolId) throw new Error('Nenhuma unidade selecionada');
+      if (!status) {
+        const { error } = await supabase
+          .from('attendance')
+          .delete()
+          .eq('student_id', studentId)
+          .eq('time_slot_id', timeSlotId)
+          .eq('date', date);
+        if (error) throw error;
+        return null;
+      }
       const { data, error } = await (supabase as any)
         .from('attendance')
         .upsert(
@@ -238,8 +249,25 @@ export function useSaveAttendance() {
       if (error) throw error;
       return data;
     },
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['attendance'] });
+    onMutate: async ({ studentId, timeSlotId, date, status }) => {
+      await qc.cancelQueries({ queryKey: ['attendance', date, timeSlotId, schoolId] });
+      const prev = qc.getQueryData<any[]>(['attendance', date, timeSlotId, schoolId]);
+      qc.setQueryData<any[]>(['attendance', date, timeSlotId, schoolId], (old) => {
+        const list = old ? [...old] : [];
+        const idx = list.findIndex(r => r.student_id === studentId);
+        if (!status) {
+          if (idx >= 0) list.splice(idx, 1);
+        } else if (idx >= 0) {
+          list[idx] = { ...list[idx], status };
+        } else {
+          list.push({ student_id: studentId, time_slot_id: timeSlotId, date, status, school_id: schoolId });
+        }
+        return list;
+      });
+      return { prev };
+    },
+    onError: (_e, vars, ctx) => {
+      if (ctx?.prev) qc.setQueryData(['attendance', vars.date, vars.timeSlotId, schoolId], ctx.prev);
     },
   });
 }

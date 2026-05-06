@@ -11,12 +11,15 @@ import { Button } from '@/components/ui/button';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { cn } from '@/lib/utils';
-import { Check, X, Minus, MessageSquare } from 'lucide-react';
+import { Check, X, Minus, MessageSquare, BookOpen, LifeBuoy } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { supabase } from '@/integrations/supabase/client';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query';
 import { useSchool } from '@/contexts/SchoolContext';
 import { StudentObservationsDialog } from '@/components/StudentObservationsDialog';
+import { openWhatsApp } from '@/lib/utils';
+import { useFinalizingStudents } from '@/hooks/use-finalizing-students';
+import { toast } from 'sonner';
 
 
 const dayNameFromDate = (date: Date): string => {
@@ -117,8 +120,40 @@ export default function Attendance() {
 
   const markAttendance = (studentId: string, status: string) => {
     if (!selectedSlotId) return;
-    saveAttendance.mutate({ studentId, timeSlotId: selectedSlotId, date: isoDate, status });
+    const current = getStatus(studentId);
+    // Toggle: clicking same status clears it
+    const next = current === status ? '' : status;
+    saveAttendance.mutate({ studentId, timeSlotId: selectedSlotId, date: isoDate, status: next });
   };
+
+  const finalizing = useFinalizingStudents();
+  const finalizingMap = new Map<string, any>();
+  finalizing.forEach(f => finalizingMap.set(f.studentId, f));
+
+  const toggleMaterial = useMutation({
+    mutationFn: async ({ id, value }: { id: string; value: boolean }) => {
+      const { error } = await (supabase as any).from('students').update({ material_sent: value }).eq('id', id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['slot_students'] });
+      qc.invalidateQueries({ queryKey: ['students'] });
+      toast.success('Apostila atualizada');
+    },
+  });
+
+  const toggleRescue = useMutation({
+    mutationFn: async ({ scId, value }: { scId: string; value: boolean }) => {
+      const { error } = await (supabase as any).from('student_courses').update({ rescue_flagged: value }).eq('id', scId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['slot_students'] });
+      qc.invalidateQueries({ queryKey: ['students'] });
+      qc.invalidateQueries({ queryKey: ['rescue'] });
+      toast.success('Atualizado para Resgate');
+    },
+  });
 
   const handleDateSelect = (date: Date | undefined) => {
     if (!date) return;
@@ -197,6 +232,10 @@ export default function Attendance() {
                 if (!student) return null;
                 const status = getStatus(student.id);
                 const courseName = student.courses?.name || student.custom_course_name || 'N/A';
+                const materialSent = !!student.material_sent;
+                const fin = finalizingMap.get(student.id);
+                const isFinalizing = !!fin;
+                const isRescued = !!s.rescue_flagged;
                 return (
                   <div key={s.id} className="border rounded-lg p-3 bg-card space-y-2">
                     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
@@ -204,9 +243,9 @@ export default function Attendance() {
                         <div className="flex items-center gap-2 flex-wrap">
                           <button
                             type="button"
-                            onClick={() => setObsDialogStudentId(student.id)}
-                            className="font-medium truncate text-sm sm:text-base text-left hover:underline flex items-center gap-1.5"
-                            title="Ver observações"
+                            onClick={() => openWhatsApp(student.guardian_phone)}
+                            className="font-medium truncate text-sm sm:text-base text-left hover:underline hover:text-green-700 flex items-center gap-1.5"
+                            title={student.guardian_phone ? 'Abrir WhatsApp' : 'Sem telefone'}
                           >
                             <span className="truncate">{student.full_name || 'Sem nome'}</span>
                             {(obsCounts?.get(student.id) ?? 0) > 0 && (
@@ -216,10 +255,13 @@ export default function Attendance() {
                           {isNewStudent(student.id, student.enrollment_date) && (
                             <Badge className="bg-blue-500 text-white text-[10px] px-1.5 py-0">Novo</Badge>
                           )}
+                          {isFinalizing && (
+                            <Badge className="bg-yellow-500 text-white text-[10px] px-1.5 py-0">Finalizando</Badge>
+                          )}
                         </div>
                         <p className="text-sm text-muted-foreground">{courseName}</p>
                       </div>
-                      <div className="flex gap-2 ml-auto sm:ml-2">
+                      <div className="flex gap-1.5 ml-auto sm:ml-2 flex-wrap justify-end">
                         <Button size="icon" variant="ghost" className="h-8 w-8 relative"
                           onClick={() => setObsDialogStudentId(student.id)}
                           title="Observação">
@@ -228,15 +270,27 @@ export default function Attendance() {
                             <span className="absolute -top-0.5 -right-0.5 h-3 w-3 rounded-full bg-destructive border-2 border-card" />
                           )}
                         </Button>
+                        <Button size="icon" variant="ghost" className="h-8 w-8"
+                          onClick={() => toggleMaterial.mutate({ id: student.id, value: !materialSent })}
+                          title={materialSent ? 'Apostila enviada (clique para desmarcar)' : 'Apostila NÃO enviada (clique para marcar)'}>
+                          <BookOpen className={cn('h-4 w-4', materialSent ? 'text-blue-600' : 'text-destructive')} />
+                        </Button>
+                        {isFinalizing && (
+                          <Button size="icon" variant="ghost" className="h-8 w-8"
+                            onClick={() => toggleRescue.mutate({ scId: s.student_course_id, value: !isRescued })}
+                            title={isRescued ? 'Remover do Resgate' : 'Enviar para Resgate'}>
+                            <LifeBuoy className={cn('h-4 w-4', isRescued ? 'text-orange-600' : 'text-muted-foreground')} />
+                          </Button>
+                        )}
                         <Button size="icon" variant={status === 'present' ? 'default' : 'outline'}
                           className={status === 'present' ? 'bg-green-600 hover:bg-green-700' : ''}
-                          onClick={() => markAttendance(student.id, 'present')} title="Presença">
-                          <Check className="h-4 w-4" />
+                          onClick={() => markAttendance(student.id, 'present')} title="Presença (clique novamente para desmarcar)">
+                          <Check className={cn('h-4 w-4', status !== 'present' && 'text-green-600')} />
                         </Button>
                         <Button size="icon" variant={status === 'absent' ? 'default' : 'outline'}
                           className={status === 'absent' ? 'bg-destructive hover:bg-destructive/90' : ''}
-                          onClick={() => markAttendance(student.id, 'absent')} title="Falta">
-                          <X className="h-4 w-4" />
+                          onClick={() => markAttendance(student.id, 'absent')} title="Falta (clique novamente para desmarcar)">
+                          <X className={cn('h-4 w-4', status !== 'absent' && 'text-destructive')} />
                         </Button>
                         <Button size="icon" variant={status === 'neutral' ? 'default' : 'outline'}
                           className={status === 'neutral' ? 'bg-muted-foreground hover:bg-muted-foreground/90 text-white' : ''}

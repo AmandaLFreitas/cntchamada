@@ -20,6 +20,7 @@ import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { PhotoLightbox } from '@/components/PhotoLightbox';
+import { openWhatsApp } from '@/lib/utils';
 
 interface StudentForm {
   full_name: string; street: string; house_number: string; birth_date: string;
@@ -500,9 +501,12 @@ export default function Students() {
               </Avatar>
               <button
                 type="button"
-                onClick={() => setObservationsStudentId(s.id)}
-                className="font-medium truncate text-sm sm:text-base text-left hover:underline flex items-center gap-1.5 min-w-0"
-                title="Ver observações"
+                onClick={() => {
+                  if (s.guardian_phone) openWhatsApp(s.guardian_phone);
+                  else setObservationsStudentId(s.id);
+                }}
+                className="font-medium truncate text-sm sm:text-base text-left hover:underline hover:text-green-700 flex items-center gap-1.5 min-w-0"
+                title={s.guardian_phone ? 'Abrir WhatsApp' : 'Ver observações'}
               >
                 <span className="truncate">{s.full_name || 'Sem nome'}</span>
                 {studentsWithObs?.has(s.id) && (

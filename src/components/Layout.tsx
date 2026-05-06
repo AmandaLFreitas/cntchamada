@@ -1,6 +1,5 @@
 import { SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar';
 import { AppSidebar } from '@/components/AppSidebar';
-import { FinalizingNotification } from '@/components/FinalizingNotification';
 import { TrialLessonNotification } from '@/components/TrialLessonNotification';
 import { BirthdayNotification } from '@/components/BirthdayNotification';
 import { FinalizingFloatingNotification } from '@/components/FinalizingFloatingNotification';
@@ -44,7 +43,6 @@ export function Layout({ children }: { children: React.ReactNode }) {
               {displayName && (
                 <span className="text-sm text-muted-foreground hidden sm:inline">Olá, {displayName}</span>
               )}
-              <FinalizingNotification />
               <ChangePasswordDialog />
               <Button variant="ghost" size="icon" onClick={signOut} title="Sair">
                 <LogOut className="h-4 w-4" />
