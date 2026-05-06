@@ -381,12 +381,12 @@ export default function TrialLessons() {
                         value={l.status}
                         onValueChange={val => updateStatus.mutate({ id: l.id, status: val })}
                       >
-                        <SelectTrigger className="h-8 w-[130px] text-xs bg-background">
-                          <SelectValue />
+                        <SelectTrigger className="h-8 w-[200px] text-xs bg-background">
+                          <SelectValue>{STATUS_LABELS[l.status] ?? l.status}</SelectValue>
                         </SelectTrigger>
                         <SelectContent>
                           {STATUSES.map(s => (
-                            <SelectItem key={s} value={s}>{s}</SelectItem>
+                            <SelectItem key={s} value={s}>{STATUS_LABELS[s] ?? s}</SelectItem>
                           ))}
                         </SelectContent>
                       </Select>
