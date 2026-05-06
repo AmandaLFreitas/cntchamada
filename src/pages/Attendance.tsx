@@ -11,12 +11,15 @@ import { Button } from '@/components/ui/button';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { cn } from '@/lib/utils';
-import { Check, X, Minus, MessageSquare } from 'lucide-react';
+import { Check, X, Minus, MessageSquare, BookOpen, LifeBuoy } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { supabase } from '@/integrations/supabase/client';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query';
 import { useSchool } from '@/contexts/SchoolContext';
 import { StudentObservationsDialog } from '@/components/StudentObservationsDialog';
+import { openWhatsApp } from '@/lib/utils';
+import { useFinalizingStudents } from '@/hooks/use-finalizing-students';
+import { toast } from 'sonner';
 
 
 const dayNameFromDate = (date: Date): string => {
@@ -117,8 +120,40 @@ export default function Attendance() {
 
   const markAttendance = (studentId: string, status: string) => {
     if (!selectedSlotId) return;
-    saveAttendance.mutate({ studentId, timeSlotId: selectedSlotId, date: isoDate, status });
+    const current = getStatus(studentId);
+    // Toggle: clicking same status clears it
+    const next = current === status ? '' : status;
+    saveAttendance.mutate({ studentId, timeSlotId: selectedSlotId, date: isoDate, status: next });
   };
+
+  const finalizing = useFinalizingStudents();
+  const finalizingMap = new Map<string, any>();
+  finalizing.forEach(f => finalizingMap.set(f.studentId, f));
+
+  const toggleMaterial = useMutation({
+    mutationFn: async ({ id, value }: { id: string; value: boolean }) => {
+      const { error } = await (supabase as any).from('students').update({ material_sent: value }).eq('id', id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['slot_students'] });
+      qc.invalidateQueries({ queryKey: ['students'] });
+      toast.success('Apostila atualizada');
+    },
+  });
+
+  const toggleRescue = useMutation({
+    mutationFn: async ({ scId, value }: { scId: string; value: boolean }) => {
+      const { error } = await (supabase as any).from('student_courses').update({ rescue_flagged: value }).eq('id', scId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['slot_students'] });
+      qc.invalidateQueries({ queryKey: ['students'] });
+      qc.invalidateQueries({ queryKey: ['rescue'] });
+      toast.success('Atualizado para Resgate');
+    },
+  });
 
   const handleDateSelect = (date: Date | undefined) => {
     if (!date) return;
