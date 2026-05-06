@@ -139,6 +139,47 @@ export default function Students() {
     },
   });
 
+  // Fetch which student_courses are flagged for Rescue
+  const { data: rescueFlagged } = useQuery({
+    queryKey: ['rescue_flags', schoolId],
+    enabled: !!schoolId,
+    queryFn: async () => {
+      const { data } = await (supabase as any)
+        .from('student_courses')
+        .select('id, student_id')
+        .eq('school_id', schoolId!)
+        .eq('rescue_flagged', true);
+      const byStudent = new Set<string>();
+      const byCourse = new Set<string>();
+      (data ?? []).forEach((r: any) => { byStudent.add(r.student_id); byCourse.add(r.id); });
+      return { byStudent, byCourse };
+    },
+  });
+
+  const toggleRescueStudent = useMutation({
+    mutationFn: async ({ studentId, value }: { studentId: string; value: boolean }) => {
+      // Toggle on the student's first active course (or first course if none active)
+      const { data: scs } = await (supabase as any)
+        .from('student_courses')
+        .select('id, is_active')
+        .eq('school_id', schoolId!)
+        .eq('student_id', studentId);
+      const target = (scs ?? []).find((sc: any) => sc.is_active) ?? (scs ?? [])[0];
+      if (!target) return;
+      const { error } = await (supabase as any)
+        .from('student_courses')
+        .update({ rescue_flagged: value })
+        .eq('id', target.id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['rescue_flags'] });
+      qc.invalidateQueries({ queryKey: ['rescue'] });
+      qc.invalidateQueries({ queryKey: ['slot_students'] });
+      toast.success('Atualizado');
+    },
+  });
+
   const slotLookup = useMemo(() => {
     const map: Record<string, string> = {};
     timeSlots?.forEach(ts => {
