@@ -568,6 +568,9 @@ export default function Students() {
               <Button size="icon" variant="ghost" onClick={() => setHistoryStudentId(s.id)} title="Histórico">
                 <History className="h-4 w-4" />
               </Button>
+              <Button size="icon" variant="ghost" onClick={() => toggleRescueStudent.mutate({ studentId: s.id, value: !rescueFlagged?.byStudent.has(s.id) })} title={rescueFlagged?.byStudent.has(s.id) ? 'Remover do Resgate' : 'Enviar para Resgate'}>
+                <LifeBuoy className={`h-4 w-4 ${rescueFlagged?.byStudent.has(s.id) ? 'text-orange-600 fill-orange-100' : 'text-muted-foreground'}`} />
+              </Button>
               <Button size="icon" variant="ghost" onClick={() => {
                 const activeSc = (s.student_courses ?? []).find((sc: any) => sc.is_active);
                 if (activeSc) {
