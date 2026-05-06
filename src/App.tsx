@@ -15,9 +15,19 @@ import Birthdays from "./pages/Birthdays";
 import TrialLessons from "./pages/TrialLessons";
 import Finalizing from "./pages/Finalizing";
 import Vanderlei from "./pages/Vanderlei";
+import Rescue from "./pages/Rescue";
 import NotFound from "./pages/NotFound";
 
-const queryClient = new QueryClient();
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 60_000,
+      gcTime: 5 * 60_000,
+      refetchOnWindowFocus: false,
+      retry: 1,
+    },
+  },
+});
 
 function AppRoutes() {
   const { user, loading } = useAuth();
@@ -48,6 +58,7 @@ function AppRoutes() {
         <Route path="/experimentais" element={<TrialLessons />} />
         <Route path="/finalizando" element={<Finalizing />} />
         <Route path="/professor-vanderlei" element={<Vanderlei />} />
+        <Route path="/resgate" element={<Rescue />} />
         <Route path="*" element={<NotFound />} />
       </Routes>
     </Layout>
