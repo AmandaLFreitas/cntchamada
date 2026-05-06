@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo, useRef } from 'react';
 import { useStudents, useCourses, useTimeSlots, useCreateStudent, useUpdateStudent, useDeleteStudent, useCompletions } from '@/hooks/use-supabase-data';
 import { supabase } from '@/integrations/supabase/client';
 import { DateInput } from '@/components/DateInput';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query';
 import { useAuth } from '@/contexts/AuthContext';
 import { useSchool } from '@/contexts/SchoolContext';
 import { Button } from '@/components/ui/button';
