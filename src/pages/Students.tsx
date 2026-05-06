@@ -20,6 +20,7 @@ import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { PhotoLightbox } from '@/components/PhotoLightbox';
+import { openWhatsApp } from '@/lib/utils';
 
 interface StudentForm {
   full_name: string; street: string; house_number: string; birth_date: string;
