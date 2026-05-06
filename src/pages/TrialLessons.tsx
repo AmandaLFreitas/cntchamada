@@ -7,13 +7,14 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
-import { Plus, Pencil, Trash2, Search, CalendarIcon } from 'lucide-react';
+import { Plus, Pencil, Trash2, Search, CalendarIcon, AlertTriangle } from 'lucide-react';
 import { toast } from 'sonner';
 import { DateInput } from '@/components/DateInput';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { cn } from '@/lib/utils';
+import { cn, openWhatsApp } from '@/lib/utils';
 import { useSchool } from '@/contexts/SchoolContext';
+import { Textarea } from '@/components/ui/textarea';
 
 const STATUSES = ['PENDENTE', 'OK', 'OK.FECHOU', 'NÃO VEIO', 'DESMARCOU', 'REMARCOU'] as const;
 const MONTHS = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
@@ -27,7 +28,30 @@ interface TrialLesson {
   time_slot: string | null;
   lesson_date: string;
   status: string;
+  observations?: string | null;
 }
+
+const todayISO = () => {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+};
+
+const statusRowClass = (status: string, isToday: boolean): string => {
+  const s = (status || '').toUpperCase();
+  if (s === 'NÃO VEIO' || s === 'DESMARCOU') {
+    // Contact alert: orange overrides everything
+    return 'bg-orange-100/70 hover:bg-orange-200/70 border-l-4 border-l-orange-500';
+  }
+  if (s === 'OK' || s === 'OK.FECHOU') return 'bg-green-100/60 hover:bg-green-200/60';
+  if (s === 'REMARCOU') return 'bg-purple-100/60 hover:bg-purple-200/60';
+  if (isToday) return 'bg-blue-100/50 hover:bg-blue-200/50';
+  return '';
+};
+
+const needsContact = (status: string) => {
+  const s = (status || '').toUpperCase();
+  return s === 'NÃO VEIO' || s === 'DESMARCOU';
+};
 
 const formatPhone = (value: string) => {
   const digits = value.replace(/\D/g, '').slice(0, 11);
