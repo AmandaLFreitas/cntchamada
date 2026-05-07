@@ -474,7 +474,13 @@ export default function TrialLessons() {
             </div>
             <div>
               <Label>Horário</Label>
-              <Input value={form.time_slot} onChange={e => setForm(f => ({ ...f, time_slot: e.target.value }))} placeholder="Ex: 08:00 - 09:00" />
+              <Input
+                value={form.time_slot}
+                onChange={e => setForm(f => ({ ...f, time_slot: e.target.value }))}
+                onBlur={e => setForm(f => ({ ...f, time_slot: formatTimeSlot(e.target.value) }))}
+                inputMode="numeric"
+                placeholder="Ex: 08:00 ou 0830"
+              />
             </div>
             <div>
               <Label>Data</Label>
