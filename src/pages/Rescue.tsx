@@ -3,6 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useSchool } from '@/contexts/SchoolContext';
 import { useFinalizingStudents } from '@/hooks/use-finalizing-students';
+import { useCoursesProgress } from '@/hooks/use-courses-progress';
 import { useCourses } from '@/hooks/use-supabase-data';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
