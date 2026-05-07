@@ -355,6 +355,11 @@ export default function Attendance() {
         studentId={obsDialogStudentId}
         studentName={filteredStudents.find((s: any) => s.students?.id === obsDialogStudentId)?.students?.full_name || 'Aluno'}
       />
+      <StudentDetailsDialog
+        open={!!detailsStudentId}
+        onOpenChange={(open) => { if (!open) setDetailsStudentId(null); }}
+        studentId={detailsStudentId}
+      />
     </div>
   );
 }
