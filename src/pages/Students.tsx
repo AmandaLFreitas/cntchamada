@@ -920,6 +920,11 @@ export default function Students() {
         studentId={observationsStudentId}
         studentName={students?.find((s: any) => s.id === observationsStudentId)?.full_name || 'Aluno'}
       />
+      <StudentDetailsDialog
+        open={!!detailsStudentId}
+        onOpenChange={(o) => { if (!o) setDetailsStudentId(null); }}
+        studentId={detailsStudentId}
+      />
     </div>
   );
 }
