@@ -68,7 +68,7 @@ export function TrialLessonNotification() {
 
   const todayLessons = useMemo(() => {
     return lessons
-      .filter(l => (l.status || '').toUpperCase() !== 'CANCELADO')
+      .slice()
       .sort((a, b) => (a.time_slot || '').localeCompare(b.time_slot || ''));
   }, [lessons]);
 
