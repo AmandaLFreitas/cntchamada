@@ -116,6 +116,9 @@ export default function Rescue() {
             <TableBody>
               {flagged.map((sc: any) => {
                 const fin = finalizingMap.get(sc.id);
+                const prog = progressMap[sc.id];
+                const hoursRem = fin?.hoursRemaining ?? prog?.hoursRemaining;
+                const lessonsRem = fin?.lessonsRemaining ?? prog?.lessonsRemaining;
                 const courseName = sc.courses?.name || sc.custom_course_name || '—';
                 const phone = sc.students?.guardian_phone || null;
                 return (
@@ -131,10 +134,10 @@ export default function Rescue() {
                     </TableCell>
                     <TableCell>{courseName}</TableCell>
                     <TableCell className="text-center font-semibold text-orange-700">
-                      {fin ? `${fin.hoursRemaining}h` : '—'}
+                      {hoursRem !== undefined ? `${hoursRem}h` : '—'}
                     </TableCell>
                     <TableCell className="text-center font-semibold">
-                      {fin ? fin.lessonsRemaining : '—'}
+                      {lessonsRem !== undefined ? lessonsRem : '—'}
                     </TableCell>
                     <TableCell>
                       <Select
