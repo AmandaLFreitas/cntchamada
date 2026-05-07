@@ -544,12 +544,9 @@ export default function Students() {
               </Avatar>
               <button
                 type="button"
-                onClick={() => {
-                  if (s.guardian_phone) openWhatsApp(s.guardian_phone);
-                  else setObservationsStudentId(s.id);
-                }}
-                className="font-medium truncate text-sm sm:text-base text-left hover:underline hover:text-green-700 flex items-center gap-1.5 min-w-0"
-                title={s.guardian_phone ? 'Abrir WhatsApp' : 'Ver observações'}
+                onClick={() => setDetailsStudentId(s.id)}
+                className="font-medium truncate text-sm sm:text-base text-left hover:underline flex items-center gap-1.5 min-w-0"
+                title="Ver dados do aluno"
               >
                 <span className="truncate">{s.full_name || 'Sem nome'}</span>
                 {studentsWithObs?.has(s.id) && (
