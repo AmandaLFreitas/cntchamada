@@ -118,17 +118,31 @@ export function TrialLessonNotification() {
         </div>
       </div>
       <div className="p-3 text-sm max-h-56 overflow-auto space-y-1.5">
-        {todayLessons.map(l => (
-          <div key={l.id} className="flex items-center justify-between gap-2 border-b last:border-b-0 pb-1.5 last:pb-0">
-            <div className="min-w-0 flex-1">
-              <p className="font-medium truncate">{firstName(l.student_name)}</p>
-              <p className="text-xs text-muted-foreground truncate">{abbreviateCourse(l.course)}</p>
+        {todayLessons.map(l => {
+          const s = (l.status || '').toUpperCase();
+          const rowClass =
+            s === 'PENDENTE' ? 'bg-[#FFF3CD]/60' :
+            s === 'OK' ? 'bg-[#D0E7FF]/60' :
+            s === 'OK.FECHOU' ? 'bg-[#D4EDDA]/70' :
+            s === 'NÃO VEIO' ? 'bg-[#F8D7DA]/70 border-l-4 border-l-orange-500' :
+            s === 'DESMARCOU' ? 'bg-[#E2E3E5]/70 border-l-4 border-l-orange-500' :
+            s === 'REMARCOU' ? 'bg-[#E6D6F5]/70' : '';
+          const isAlert = s === 'NÃO VEIO' || s === 'DESMARCOU';
+          return (
+            <div key={l.id} className={`flex items-center justify-between gap-2 rounded px-2 py-1 ${rowClass}`}>
+              <div className="min-w-0 flex-1">
+                <p className="font-medium truncate flex items-center gap-1">
+                  {isAlert && <span className="text-orange-600">⚠️</span>}
+                  {firstName(l.student_name)}
+                </p>
+                <p className="text-xs text-muted-foreground truncate">{abbreviateCourse(l.course)}</p>
+              </div>
+              <span className="text-xs font-semibold text-blue-700 whitespace-nowrap">
+                {l.time_slot || '--:--'}
+              </span>
             </div>
-            <span className="text-xs font-semibold text-blue-700 whitespace-nowrap">
-              {l.time_slot || '--:--'}
-            </span>
-          </div>
-        ))}
+          );
+        })}
       </div>
     </div>
   );
