@@ -91,10 +91,13 @@ export default function Attendance() {
     ? allDaySlots.filter(s => searchSlotIds.has(s.id))
     : allDaySlots;
 
+  const searchTerm = search.trim().toLowerCase();
   const filteredStudents = (slotStudents ?? []).filter((s: any) => {
     const student = s.students;
     if (!student) return false;
-    return isEnrolledByDate(student.enrollment_date, isoDate);
+    if (!isEnrolledByDate(student.enrollment_date, isoDate)) return false;
+    if (searchTerm.length >= 2 && !(student.full_name || '').toLowerCase().includes(searchTerm)) return false;
+    return true;
   });
 
   // Check which students have never had attendance
