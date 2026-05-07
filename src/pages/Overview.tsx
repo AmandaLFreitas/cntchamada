@@ -16,7 +16,6 @@ import { useQuery } from '@tanstack/react-query';
 import { useSchool } from '@/contexts/SchoolContext';
 import { Input } from '@/components/ui/input';
 import { Search } from 'lucide-react';
-import { useState as useStateAlias } from 'react';
 import { toast } from 'sonner';
 
 
