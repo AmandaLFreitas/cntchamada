@@ -47,6 +47,8 @@ export default function Attendance() {
   const [selectedDay, setSelectedDay] = useState(getTodayDayName());
   const [selectedSlotId, setSelectedSlotId] = useState<string | null>(null);
   const [obsDialogStudentId, setObsDialogStudentId] = useState<string | null>(null);
+  const [detailsStudentId, setDetailsStudentId] = useState<string | null>(null);
+  const [search, setSearch] = useState('');
   const qc = useQueryClient();
   const { schoolId } = useSchool();
 
@@ -58,7 +60,36 @@ export default function Attendance() {
   const { data: attendance } = useAttendance(isoDate, selectedSlotId);
   const saveAttendance = useSaveAttendance();
 
-  const daySlots = timeSlots?.filter(s => s.day_of_week === selectedDay) ?? [];
+  // When searching, find which slots contain matching students for the selected day
+  const { data: searchSlotIds } = useQuery({
+    queryKey: ['attendance_search', schoolId, selectedDay, search.trim().toLowerCase()],
+    enabled: !!schoolId && search.trim().length >= 2,
+    queryFn: async () => {
+      const term = `%${search.trim()}%`;
+      const { data: matched } = await supabase
+        .from('students')
+        .select('id')
+        .eq('school_id', schoolId!)
+        .ilike('full_name', term);
+      const ids = (matched ?? []).map((r: any) => r.id);
+      if (ids.length === 0) return new Set<string>();
+      const { data: scheds } = await supabase
+        .from('student_schedules')
+        .select('time_slot_id, time_slots(day_of_week)')
+        .eq('school_id', schoolId!)
+        .in('student_id', ids);
+      const set = new Set<string>();
+      (scheds ?? []).forEach((r: any) => {
+        if (r.time_slots?.day_of_week === selectedDay) set.add(r.time_slot_id);
+      });
+      return set;
+    },
+  });
+
+  const allDaySlots = timeSlots?.filter(s => s.day_of_week === selectedDay) ?? [];
+  const daySlots = search.trim().length >= 2 && searchSlotIds
+    ? allDaySlots.filter(s => searchSlotIds.has(s.id))
+    : allDaySlots;
 
   const filteredStudents = (slotStudents ?? []).filter((s: any) => {
     const student = s.students;
