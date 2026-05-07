@@ -56,6 +56,9 @@ export default function Rescue() {
     return m;
   }, [finalizing]);
 
+  const flaggedIds = useMemo(() => (flagged ?? []).map((sc: any) => sc.id), [flagged]);
+  const progressMap = useCoursesProgress(flaggedIds);
+
   const updateField = useMutation({
     mutationFn: async ({ scId, patch }: { scId: string; patch: Record<string, any> }) => {
       const { error } = await (supabase as any).from('student_courses').update(patch).eq('id', scId);
