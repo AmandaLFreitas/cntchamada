@@ -14,6 +14,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { DAYS_OF_WEEK } from '@/lib/constants';
 import { Plus, Pencil, Trash2, Search, History, BookOpen, BarChart3, Camera, MessageSquare, LifeBuoy } from 'lucide-react';
 import { StudentObservationsDialog } from '@/components/StudentObservationsDialog';
+import { StudentDetailsDialog } from '@/components/StudentDetailsDialog';
 import { StudentFrequencyDialog } from '@/components/StudentFrequencyDialog';
 import { toast } from 'sonner';
 import { Switch } from '@/components/ui/switch';
@@ -111,6 +112,7 @@ export default function Students() {
   const [observationsStudentId, setObservationsStudentId] = useState<string | null>(null);
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
   const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
+  const [detailsStudentId, setDetailsStudentId] = useState<string | null>(null);
   const photoInputRef = useRef<HTMLInputElement>(null);
 
   const { data: students } = useStudents(false); // all students
@@ -542,12 +544,9 @@ export default function Students() {
               </Avatar>
               <button
                 type="button"
-                onClick={() => {
-                  if (s.guardian_phone) openWhatsApp(s.guardian_phone);
-                  else setObservationsStudentId(s.id);
-                }}
-                className="font-medium truncate text-sm sm:text-base text-left hover:underline hover:text-green-700 flex items-center gap-1.5 min-w-0"
-                title={s.guardian_phone ? 'Abrir WhatsApp' : 'Ver observações'}
+                onClick={() => setDetailsStudentId(s.id)}
+                className="font-medium truncate text-sm sm:text-base text-left hover:underline flex items-center gap-1.5 min-w-0"
+                title="Ver dados do aluno"
               >
                 <span className="truncate">{s.full_name || 'Sem nome'}</span>
                 {studentsWithObs?.has(s.id) && (
@@ -920,6 +919,11 @@ export default function Students() {
         onOpenChange={() => setObservationsStudentId(null)}
         studentId={observationsStudentId}
         studentName={students?.find((s: any) => s.id === observationsStudentId)?.full_name || 'Aluno'}
+      />
+      <StudentDetailsDialog
+        open={!!detailsStudentId}
+        onOpenChange={(o) => { if (!o) setDetailsStudentId(null); }}
+        studentId={detailsStudentId}
       />
     </div>
   );

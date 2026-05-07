@@ -17,6 +17,9 @@ import { supabase } from '@/integrations/supabase/client';
 import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query';
 import { useSchool } from '@/contexts/SchoolContext';
 import { StudentObservationsDialog } from '@/components/StudentObservationsDialog';
+import { StudentDetailsDialog } from '@/components/StudentDetailsDialog';
+import { Input } from '@/components/ui/input';
+import { Search } from 'lucide-react';
 import { openWhatsApp } from '@/lib/utils';
 import { useFinalizingStudents } from '@/hooks/use-finalizing-students';
 import { toast } from 'sonner';
@@ -44,6 +47,8 @@ export default function Attendance() {
   const [selectedDay, setSelectedDay] = useState(getTodayDayName());
   const [selectedSlotId, setSelectedSlotId] = useState<string | null>(null);
   const [obsDialogStudentId, setObsDialogStudentId] = useState<string | null>(null);
+  const [detailsStudentId, setDetailsStudentId] = useState<string | null>(null);
+  const [search, setSearch] = useState('');
   const qc = useQueryClient();
   const { schoolId } = useSchool();
 
@@ -55,12 +60,44 @@ export default function Attendance() {
   const { data: attendance } = useAttendance(isoDate, selectedSlotId);
   const saveAttendance = useSaveAttendance();
 
-  const daySlots = timeSlots?.filter(s => s.day_of_week === selectedDay) ?? [];
+  // When searching, find which slots contain matching students for the selected day
+  const { data: searchSlotIds } = useQuery({
+    queryKey: ['attendance_search', schoolId, selectedDay, search.trim().toLowerCase()],
+    enabled: !!schoolId && search.trim().length >= 2,
+    queryFn: async () => {
+      const term = `%${search.trim()}%`;
+      const { data: matched } = await supabase
+        .from('students')
+        .select('id')
+        .eq('school_id', schoolId!)
+        .ilike('full_name', term);
+      const ids = (matched ?? []).map((r: any) => r.id);
+      if (ids.length === 0) return new Set<string>();
+      const { data: scheds } = await supabase
+        .from('student_schedules')
+        .select('time_slot_id, time_slots(day_of_week)')
+        .eq('school_id', schoolId!)
+        .in('student_id', ids);
+      const set = new Set<string>();
+      (scheds ?? []).forEach((r: any) => {
+        if (r.time_slots?.day_of_week === selectedDay) set.add(r.time_slot_id);
+      });
+      return set;
+    },
+  });
 
+  const allDaySlots = timeSlots?.filter(s => s.day_of_week === selectedDay) ?? [];
+  const daySlots = search.trim().length >= 2 && searchSlotIds
+    ? allDaySlots.filter(s => searchSlotIds.has(s.id))
+    : allDaySlots;
+
+  const searchTerm = search.trim().toLowerCase();
   const filteredStudents = (slotStudents ?? []).filter((s: any) => {
     const student = s.students;
     if (!student) return false;
-    return isEnrolledByDate(student.enrollment_date, isoDate);
+    if (!isEnrolledByDate(student.enrollment_date, isoDate)) return false;
+    if (searchTerm.length >= 2 && !(student.full_name || '').toLowerCase().includes(searchTerm)) return false;
+    return true;
   });
 
   // Check which students have never had attendance
@@ -214,6 +251,11 @@ export default function Attendance() {
 
       <DayTabs value={selectedDay} onChange={handleDayChange} />
 
+      <div className="relative my-3">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+        <Input placeholder="Buscar aluno..." value={search} onChange={e => setSearch(e.target.value)} className="pl-9" />
+      </div>
+
       <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-4 mt-4">
         {daySlots.map(slot => (
           <TimeSlotCard key={slot.id} startTime={slot.start_time} endTime={slot.end_time} studentCount={slotCounts?.[slot.id] ?? 0} onClick={() => setSelectedSlotId(slot.id)} />
@@ -239,19 +281,19 @@ export default function Attendance() {
                 return (
                   <div key={s.id} className="border rounded-lg p-3 bg-card space-y-2">
                     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                      <div className="min-w-0 flex-1">
+                      <button
+                        type="button"
+                        onClick={() => setDetailsStudentId(student.id)}
+                        className="min-w-0 flex-1 text-left"
+                        title="Ver dados do aluno"
+                      >
                         <div className="flex items-center gap-2 flex-wrap">
-                          <button
-                            type="button"
-                            onClick={() => openWhatsApp(student.guardian_phone)}
-                            className="font-medium truncate text-sm sm:text-base text-left hover:underline hover:text-green-700 flex items-center gap-1.5"
-                            title={student.guardian_phone ? 'Abrir WhatsApp' : 'Sem telefone'}
-                          >
+                          <span className="font-medium truncate text-sm sm:text-base hover:underline flex items-center gap-1.5">
                             <span className="truncate">{student.full_name || 'Sem nome'}</span>
                             {(obsCounts?.get(student.id) ?? 0) > 0 && (
                               <span className="shrink-0 h-2 w-2 rounded-full bg-destructive" title="Possui observações" />
                             )}
-                          </button>
+                          </span>
                           {isNewStudent(student.id, student.enrollment_date) && (
                             <Badge className="bg-blue-500 text-white text-[10px] px-1.5 py-0">Novo</Badge>
                           )}
@@ -260,7 +302,7 @@ export default function Attendance() {
                           )}
                         </div>
                         <p className="text-sm text-muted-foreground">{courseName}</p>
-                      </div>
+                      </button>
                       <div className="flex gap-1.5 ml-auto sm:ml-2 flex-wrap justify-end">
                         <Button size="icon" variant="ghost" className="h-8 w-8 relative"
                           onClick={() => setObsDialogStudentId(student.id)}
@@ -312,6 +354,11 @@ export default function Attendance() {
         onOpenChange={(open) => { if (!open) setObsDialogStudentId(null); }}
         studentId={obsDialogStudentId}
         studentName={filteredStudents.find((s: any) => s.students?.id === obsDialogStudentId)?.students?.full_name || 'Aluno'}
+      />
+      <StudentDetailsDialog
+        open={!!detailsStudentId}
+        onOpenChange={(open) => { if (!open) setDetailsStudentId(null); }}
+        studentId={detailsStudentId}
       />
     </div>
   );

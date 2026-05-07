@@ -14,6 +14,8 @@ import { cn } from '@/lib/utils';
 import { supabase } from '@/integrations/supabase/client';
 import { useQuery } from '@tanstack/react-query';
 import { useSchool } from '@/contexts/SchoolContext';
+import { Input } from '@/components/ui/input';
+import { Search } from 'lucide-react';
 import { toast } from 'sonner';
 
 
@@ -28,15 +30,51 @@ export default function Overview() {
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   const [selectedDay, setSelectedDay] = useState(getTodayDayName());
   const [selectedSlotId, setSelectedSlotId] = useState<string | null>(null);
+  const [search, setSearch] = useState('');
   const { schoolId } = useSchool();
   const { data: timeSlots } = useTimeSlots();
   const { data: slotCounts } = useSlotCounts();
   const { data: slotStudents } = useSlotStudents(selectedSlotId);
   const completeStudent = useCompleteStudent();
 
-  const daySlots = timeSlots?.filter(s => s.day_of_week === selectedDay) ?? [];
+  const allDaySlots = timeSlots?.filter(s => s.day_of_week === selectedDay) ?? [];
 
-  const studentIds = slotStudents?.map((s: any) => s.students?.id).filter(Boolean) ?? [];
+  const { data: searchSlotIds } = useQuery({
+    queryKey: ['overview_search', schoolId, selectedDay, search.trim().toLowerCase()],
+    enabled: !!schoolId && search.trim().length >= 2,
+    queryFn: async () => {
+      const term = `%${search.trim()}%`;
+      const { data: matched } = await supabase
+        .from('students')
+        .select('id')
+        .eq('school_id', schoolId!)
+        .ilike('full_name', term);
+      const ids = (matched ?? []).map((r: any) => r.id);
+      if (ids.length === 0) return new Set<string>();
+      const { data: scheds } = await supabase
+        .from('student_schedules')
+        .select('time_slot_id, time_slots(day_of_week)')
+        .eq('school_id', schoolId!)
+        .in('student_id', ids);
+      const set = new Set<string>();
+      (scheds ?? []).forEach((r: any) => {
+        if (r.time_slots?.day_of_week === selectedDay) set.add(r.time_slot_id);
+      });
+      return set;
+    },
+  });
+
+  const daySlots = search.trim().length >= 2 && searchSlotIds
+    ? allDaySlots.filter(s => searchSlotIds.has(s.id))
+    : allDaySlots;
+
+  const searchTerm = search.trim().toLowerCase();
+  const filteredSlotStudents = (slotStudents ?? []).filter((s: any) => {
+    if (searchTerm.length < 2) return true;
+    return (s.students?.full_name || '').toLowerCase().includes(searchTerm);
+  });
+
+  const studentIds = filteredSlotStudents.map((s: any) => s.students?.id).filter(Boolean) ?? [];
 
   const { data: firstDates } = useQuery({
     queryKey: ['first_dates_batch', studentIds, schoolId],
@@ -151,6 +189,11 @@ export default function Overview() {
 
       <DayTabs value={selectedDay} onChange={handleDayChange} />
 
+      <div className="relative my-3">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+        <Input placeholder="Buscar aluno..." value={search} onChange={e => setSearch(e.target.value)} className="pl-9" />
+      </div>
+
       <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-4 mt-4">
         {daySlots.map(slot => (
           <TimeSlotCard key={slot.id} startTime={slot.start_time} endTime={slot.end_time} studentCount={slotCounts?.[slot.id] ?? 0} onClick={() => setSelectedSlotId(slot.id)} />
@@ -162,9 +205,9 @@ export default function Overview() {
           <DialogHeader>
             <DialogTitle>Alunos do Horário</DialogTitle>
           </DialogHeader>
-          {slotStudents && slotStudents.length > 0 ? (
+          {filteredSlotStudents && filteredSlotStudents.length > 0 ? (
             <div className="space-y-2">
-              {slotStudents.map((s: any) => {
+              {filteredSlotStudents.map((s: any) => {
                 const student = s.students;
                 if (!student) return null;
                 const courseName = student.courses?.name || student.custom_course_name || 'N/A';
@@ -173,13 +216,13 @@ export default function Overview() {
                 const endDate = calculateEndDate(student.id, workload);
                 return (
                   <div key={s.id} className="border rounded-lg p-3 bg-card">
-                    <div className="flex items-center justify-between">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                       <p className="font-medium truncate">{student.full_name || 'Sem nome'}</p>
-                      <Button size="sm" variant="outline" className="ml-2 text-destructive border-destructive hover:bg-destructive hover:text-destructive-foreground" onClick={() => handleComplete(s)}>
+                      <Button size="sm" variant="outline" className="sm:ml-2 text-destructive border-destructive hover:bg-destructive hover:text-destructive-foreground self-end sm:self-auto" onClick={() => handleComplete(s)}>
                         Finalizar
                       </Button>
                     </div>
-                    <div className="mt-1 text-sm text-muted-foreground space-y-0.5">
+                    <div className="mt-1 text-sm text-muted-foreground space-y-0.5 break-words">
                       <p>Curso: {courseName}</p>
                       <p>Carga horária: {workload}h • {scheduleCounts?.[student.id]?.toFixed(0) ?? '?'}h/semana</p>
                       <p>Início: {startDate} • Previsão de término: {endDate}</p>

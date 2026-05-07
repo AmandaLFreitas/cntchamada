@@ -3,6 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useSchool } from '@/contexts/SchoolContext';
 import { useFinalizingStudents } from '@/hooks/use-finalizing-students';
+import { useCoursesProgress } from '@/hooks/use-courses-progress';
 import { useCourses } from '@/hooks/use-supabase-data';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -54,6 +55,9 @@ export default function Rescue() {
     finalizing.forEach(f => m.set(f.studentCourseId, f));
     return m;
   }, [finalizing]);
+
+  const flaggedIds = useMemo(() => (flagged ?? []).map((sc: any) => sc.id), [flagged]);
+  const progressMap = useCoursesProgress(flaggedIds);
 
   const updateField = useMutation({
     mutationFn: async ({ scId, patch }: { scId: string; patch: Record<string, any> }) => {
@@ -112,6 +116,9 @@ export default function Rescue() {
             <TableBody>
               {flagged.map((sc: any) => {
                 const fin = finalizingMap.get(sc.id);
+                const prog = progressMap[sc.id];
+                const hoursRem = fin?.hoursRemaining ?? prog?.hoursRemaining;
+                const lessonsRem = fin?.lessonsRemaining ?? prog?.lessonsRemaining;
                 const courseName = sc.courses?.name || sc.custom_course_name || '—';
                 const phone = sc.students?.guardian_phone || null;
                 return (
@@ -127,10 +134,10 @@ export default function Rescue() {
                     </TableCell>
                     <TableCell>{courseName}</TableCell>
                     <TableCell className="text-center font-semibold text-orange-700">
-                      {fin ? `${fin.hoursRemaining}h` : '—'}
+                      {hoursRem !== undefined ? `${hoursRem}h` : '—'}
                     </TableCell>
                     <TableCell className="text-center font-semibold">
-                      {fin ? fin.lessonsRemaining : '—'}
+                      {lessonsRem !== undefined ? lessonsRem : '—'}
                     </TableCell>
                     <TableCell>
                       <Select
