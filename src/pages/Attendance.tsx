@@ -60,9 +60,9 @@ export default function Attendance() {
   const { data: attendance } = useAttendance(isoDate, selectedSlotId);
   const saveAttendance = useSaveAttendance();
 
-  // When searching, find which slots contain matching students for the selected day
+  // When searching, find which slots (across ALL days) contain matching students
   const { data: searchSlotIds } = useQuery({
-    queryKey: ['attendance_search', schoolId, selectedDay, search.trim().toLowerCase()],
+    queryKey: ['attendance_search_all', schoolId, search.trim().toLowerCase()],
     enabled: !!schoolId && search.trim().length >= 2,
     queryFn: async () => {
       const term = `%${search.trim()}%`;
@@ -75,20 +75,19 @@ export default function Attendance() {
       if (ids.length === 0) return new Set<string>();
       const { data: scheds } = await supabase
         .from('student_schedules')
-        .select('time_slot_id, time_slots(day_of_week)')
+        .select('time_slot_id')
         .eq('school_id', schoolId!)
         .in('student_id', ids);
       const set = new Set<string>();
-      (scheds ?? []).forEach((r: any) => {
-        if (r.time_slots?.day_of_week === selectedDay) set.add(r.time_slot_id);
-      });
+      (scheds ?? []).forEach((r: any) => set.add(r.time_slot_id));
       return set;
     },
   });
 
+  const isSearching = search.trim().length >= 2;
   const allDaySlots = timeSlots?.filter(s => s.day_of_week === selectedDay) ?? [];
-  const daySlots = search.trim().length >= 2 && searchSlotIds
-    ? allDaySlots.filter(s => searchSlotIds.has(s.id))
+  const daySlots = isSearching && searchSlotIds
+    ? (timeSlots ?? []).filter(s => searchSlotIds.has(s.id))
     : allDaySlots;
 
   const searchTerm = search.trim().toLowerCase();
