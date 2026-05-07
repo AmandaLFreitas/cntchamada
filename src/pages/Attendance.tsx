@@ -281,19 +281,19 @@ export default function Attendance() {
                 return (
                   <div key={s.id} className="border rounded-lg p-3 bg-card space-y-2">
                     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                      <div className="min-w-0 flex-1">
+                      <button
+                        type="button"
+                        onClick={() => setDetailsStudentId(student.id)}
+                        className="min-w-0 flex-1 text-left"
+                        title="Ver dados do aluno"
+                      >
                         <div className="flex items-center gap-2 flex-wrap">
-                          <button
-                            type="button"
-                            onClick={() => openWhatsApp(student.guardian_phone)}
-                            className="font-medium truncate text-sm sm:text-base text-left hover:underline hover:text-green-700 flex items-center gap-1.5"
-                            title={student.guardian_phone ? 'Abrir WhatsApp' : 'Sem telefone'}
-                          >
+                          <span className="font-medium truncate text-sm sm:text-base hover:underline flex items-center gap-1.5">
                             <span className="truncate">{student.full_name || 'Sem nome'}</span>
                             {(obsCounts?.get(student.id) ?? 0) > 0 && (
                               <span className="shrink-0 h-2 w-2 rounded-full bg-destructive" title="Possui observações" />
                             )}
-                          </button>
+                          </span>
                           {isNewStudent(student.id, student.enrollment_date) && (
                             <Badge className="bg-blue-500 text-white text-[10px] px-1.5 py-0">Novo</Badge>
                           )}
@@ -302,7 +302,7 @@ export default function Attendance() {
                           )}
                         </div>
                         <p className="text-sm text-muted-foreground">{courseName}</p>
-                      </div>
+                      </button>
                       <div className="flex gap-1.5 ml-auto sm:ml-2 flex-wrap justify-end">
                         <Button size="icon" variant="ghost" className="h-8 w-8 relative"
                           onClick={() => setObsDialogStudentId(student.id)}
