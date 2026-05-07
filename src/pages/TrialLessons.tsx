@@ -69,6 +69,24 @@ const formatPhone = (value: string) => {
   return `(${digits.slice(0, 2)}) ${digits.slice(2, 7)}-${digits.slice(7)}`;
 };
 
+// Auto-format input like "8" -> "08:00", "830" -> "08:30", "1430" -> "14:30"
+const formatTimeSlot = (raw: string): string => {
+  const v = (raw || '').trim();
+  if (!v) return '';
+  // If it already contains a range or colon, leave alone
+  if (v.includes('-')) return v;
+  const digits = v.replace(/\D/g, '');
+  if (!digits) return v;
+  let hh = '', mm = '';
+  if (digits.length === 1) { hh = '0' + digits; mm = '00'; }
+  else if (digits.length === 2) { hh = digits; mm = '00'; }
+  else if (digits.length === 3) { hh = '0' + digits[0]; mm = digits.slice(1); }
+  else { hh = digits.slice(0, 2); mm = digits.slice(2, 4); }
+  const h = Math.min(parseInt(hh, 10) || 0, 23);
+  const m = Math.min(parseInt(mm, 10) || 0, 59);
+  return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+};
+
 const todayDDMMYYYY = (() => {
   const d = new Date();
   return `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}/${d.getFullYear()}`;
@@ -456,7 +474,13 @@ export default function TrialLessons() {
             </div>
             <div>
               <Label>Horário</Label>
-              <Input value={form.time_slot} onChange={e => setForm(f => ({ ...f, time_slot: e.target.value }))} placeholder="Ex: 08:00 - 09:00" />
+              <Input
+                value={form.time_slot}
+                onChange={e => setForm(f => ({ ...f, time_slot: e.target.value }))}
+                onBlur={e => setForm(f => ({ ...f, time_slot: formatTimeSlot(e.target.value) }))}
+                inputMode="numeric"
+                placeholder="Ex: 08:00 ou 0830"
+              />
             </div>
             <div>
               <Label>Data</Label>

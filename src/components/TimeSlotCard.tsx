@@ -6,9 +6,10 @@ interface TimeSlotCardProps {
   endTime: string;
   studentCount: number;
   onClick: () => void;
+  dayLabel?: string;
 }
 
-export function TimeSlotCard({ startTime, endTime, studentCount, onClick }: TimeSlotCardProps) {
+export function TimeSlotCard({ startTime, endTime, studentCount, onClick, dayLabel }: TimeSlotCardProps) {
   const available = MAX_STUDENTS_PER_SLOT - studentCount;
 
   return (
@@ -16,6 +17,9 @@ export function TimeSlotCard({ startTime, endTime, studentCount, onClick }: Time
       onClick={onClick}
       className="bg-card border rounded-lg p-4 hover:shadow-md transition-shadow cursor-pointer text-left w-full"
     >
+      {dayLabel && (
+        <div className="text-xs font-semibold text-primary mb-1 uppercase tracking-wide">{dayLabel}</div>
+      )}
       <div className="flex items-center gap-2 mb-3">
         <Clock className="h-4 w-4 text-muted-foreground" />
         <span className="font-semibold text-foreground">{startTime} - {endTime}</span>
