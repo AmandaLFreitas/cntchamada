@@ -62,7 +62,7 @@ export function useCoursesProgress(studentCourseIds: string[]) {
     },
   });
 
-  const studentIds = useMemo<string[]>(() => [...new Set((scs ?? []).map((s: any) => s.student_id as string))], [scs]);
+  const studentIds = useMemo<string[]>(() => Array.from(new Set((scs ?? []).map((s: any) => s.student_id as string))), [scs]);
 
   const { data: attendance } = useQuery({
     queryKey: ['progress_attendance', schoolId, studentIds],
