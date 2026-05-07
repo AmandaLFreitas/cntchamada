@@ -14,6 +14,9 @@ import { cn } from '@/lib/utils';
 import { supabase } from '@/integrations/supabase/client';
 import { useQuery } from '@tanstack/react-query';
 import { useSchool } from '@/contexts/SchoolContext';
+import { Input } from '@/components/ui/input';
+import { Search } from 'lucide-react';
+import { useState as useStateAlias } from 'react';
 import { toast } from 'sonner';
 
 
