@@ -14,6 +14,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { DAYS_OF_WEEK } from '@/lib/constants';
 import { Plus, Pencil, Trash2, Search, History, BookOpen, BarChart3, Camera, MessageSquare, LifeBuoy } from 'lucide-react';
 import { StudentObservationsDialog } from '@/components/StudentObservationsDialog';
+import { StudentDetailsDialog } from '@/components/StudentDetailsDialog';
 import { StudentFrequencyDialog } from '@/components/StudentFrequencyDialog';
 import { toast } from 'sonner';
 import { Switch } from '@/components/ui/switch';
