@@ -366,7 +366,7 @@ export default function TrialLessons() {
             <TableBody>
               {filtered.map(l => {
                 const isToday = l.lesson_date === todayISO();
-                const rowClass = statusRowClass(l.status, isToday);
+                const rowClass = statusRowClass(l.status, l.lesson_date, todayISO());
                 const showAlert = needsContact(l.status);
                 return (
                   <TableRow key={l.id} className={rowClass}>
