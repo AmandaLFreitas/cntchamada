@@ -28,8 +28,17 @@ const STATUS_LABELS: Record<string, string> = {
   'DESMARCOU': 'CANCELADO',
   'REMARCOU': 'REAGENDADO',
 };
+const STATUS_DOTS: Record<string, string> = {
+  'PENDENTE': 'bg-yellow-400',
+  'OK': 'bg-blue-500',
+  'OK.FECHOU': 'bg-green-500',
+  'NÃO VEIO': 'bg-red-500',
+  'DESMARCOU': 'bg-gray-500',
+  'REMARCOU': 'bg-purple-500',
+};
 const MONTHS = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
 const ALL_MONTHS = '__all__';
+const ALL_YEARS = '__all_years__';
 
 interface TrialLesson {
   id: string;
