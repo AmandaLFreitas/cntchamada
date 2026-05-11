@@ -336,10 +336,11 @@ export default function TrialLessons() {
           </SelectContent>
         </Select>
         <Select value={filterYear} onValueChange={setFilterYear}>
-          <SelectTrigger className="w-[110px]">
+          <SelectTrigger className="w-[130px]">
             <SelectValue placeholder="Ano" />
           </SelectTrigger>
           <SelectContent>
+            <SelectItem value={ALL_YEARS}>Todos os anos</SelectItem>
             {availableYears.map(y => (
               <SelectItem key={y} value={String(y)}>{y}</SelectItem>
             ))}
@@ -355,7 +356,7 @@ export default function TrialLessons() {
               )}
             >
               <CalendarIcon className="mr-2 h-4 w-4" />
-              {filterDate ? formatSelectedDate(filterDate) : 'Filtrar por data'}
+              {filterDate ? formatSelectedDate(filterDate) : 'Filtrar por dia'}
             </Button>
           </PopoverTrigger>
           <PopoverContent className="w-auto p-0" align="start">
@@ -368,10 +369,66 @@ export default function TrialLessons() {
             />
           </PopoverContent>
         </Popover>
-        {filterDate && (
-          <Button variant="ghost" size="sm" onClick={() => setFilterDate(undefined)}>Limpar data</Button>
+        <Popover open={statusPopoverOpen} onOpenChange={setStatusPopoverOpen}>
+          <PopoverTrigger asChild>
+            <Button variant="outline" className="justify-start font-normal min-w-[180px]">
+              <Filter className="mr-2 h-4 w-4" />
+              {filterStatuses.length === 0
+                ? 'Filtrar por situação'
+                : `${filterStatuses.length} situaç${filterStatuses.length === 1 ? 'ão' : 'ões'}`}
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent className="w-64 p-2" align="start">
+            <div className="space-y-1">
+              {STATUSES.map(s => (
+                <label
+                  key={s}
+                  className="flex items-center gap-2 px-2 py-1.5 rounded hover:bg-accent cursor-pointer text-sm"
+                >
+                  <Checkbox
+                    checked={filterStatuses.includes(s)}
+                    onCheckedChange={() => toggleStatus(s)}
+                  />
+                  <span className={cn('inline-block h-2.5 w-2.5 rounded-full', STATUS_DOTS[s])} />
+                  <span>{STATUS_LABELS[s]}</span>
+                </label>
+              ))}
+              {filterStatuses.length > 0 && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="w-full justify-start text-xs"
+                  onClick={() => setFilterStatuses([])}
+                >
+                  <X className="mr-1 h-3 w-3" /> Limpar situações
+                </Button>
+              )}
+            </div>
+          </PopoverContent>
+        </Popover>
+        {hasActiveFilters && (
+          <Button variant="ghost" size="sm" onClick={clearFilters}>
+            <X className="mr-1 h-4 w-4" /> Limpar filtros
+          </Button>
         )}
       </div>
+
+      {filterStatuses.length > 0 && (
+        <div className="flex flex-wrap gap-1.5">
+          {filterStatuses.map(s => (
+            <Badge
+              key={s}
+              variant="secondary"
+              className="gap-1.5 cursor-pointer"
+              onClick={() => toggleStatus(s)}
+            >
+              <span className={cn('inline-block h-2 w-2 rounded-full', STATUS_DOTS[s])} />
+              {STATUS_LABELS[s]}
+              <X className="h-3 w-3" />
+            </Badge>
+          ))}
+        </div>
+      )}
 
       {isLoading ? (
         <p className="text-muted-foreground text-center py-8">Carregando...</p>
