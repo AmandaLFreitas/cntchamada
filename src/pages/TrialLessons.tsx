@@ -275,7 +275,7 @@ export default function TrialLessons() {
       const lessonM = parseInt(mStr, 10) - 1;
       const lessonD = parseInt(dStr, 10);
 
-      const matchYear = lessonY === parseInt(filterYear, 10);
+      const matchYear = filterYear === ALL_YEARS || lessonY === parseInt(filterYear, 10);
       const matchMonth = filterMonth === ALL_MONTHS || lessonM === parseInt(filterMonth, 10);
 
       let matchDate = true;
@@ -285,9 +285,10 @@ export default function TrialLessons() {
           lessonM === filterDate.getMonth() &&
           lessonD === filterDate.getDate();
       }
-      return matchName && matchYear && matchMonth && matchDate;
+      const matchStatus = filterStatuses.length === 0 || filterStatuses.includes(l.status);
+      return matchName && matchYear && matchMonth && matchDate && matchStatus;
     });
-  }, [lessons, search, filterMonth, filterYear, filterDate]);
+  }, [lessons, search, filterMonth, filterYear, filterDate, filterStatuses]);
 
   const handleSubmit = () => {
     if (!form.student_name.trim()) {
