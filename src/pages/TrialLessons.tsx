@@ -136,10 +136,26 @@ export default function TrialLessons() {
   const [filterMonth, setFilterMonth] = useState<string>(String(now.getMonth()));
   const [filterYear, setFilterYear] = useState<string>(String(now.getFullYear()));
   const [filterDate, setFilterDate] = useState<Date | undefined>(undefined);
+  const [filterStatuses, setFilterStatuses] = useState<string[]>([]);
   const [datePopoverOpen, setDatePopoverOpen] = useState(false);
+  const [statusPopoverOpen, setStatusPopoverOpen] = useState(false);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState(emptyForm);
+
+  const toggleStatus = (s: string) => {
+    setFilterStatuses(prev => prev.includes(s) ? prev.filter(x => x !== s) : [...prev, s]);
+  };
+
+  const clearFilters = () => {
+    setSearch('');
+    setFilterMonth(ALL_MONTHS);
+    setFilterYear(ALL_YEARS);
+    setFilterDate(undefined);
+    setFilterStatuses([]);
+  };
+
+  const hasActiveFilters = !!search || filterMonth !== ALL_MONTHS || filterYear !== ALL_YEARS || !!filterDate || filterStatuses.length > 0;
 
   const { data: lessons = [], isLoading } = useQuery({
     queryKey: ['trial_lessons', schoolId],
