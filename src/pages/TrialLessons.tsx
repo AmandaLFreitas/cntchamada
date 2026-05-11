@@ -499,7 +499,7 @@ export default function TrialLessons() {
             </div>
             <div>
               <Label>Data</Label>
-              <DateInput
+              <SmartDateInput
                 value={form.lesson_date}
                 onChange={val => setForm(f => ({ ...f, lesson_date: val }))}
               />
