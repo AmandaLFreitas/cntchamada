@@ -9,12 +9,15 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { Label } from '@/components/ui/label';
 import { Plus, Pencil, Trash2, Search, CalendarIcon, AlertTriangle } from 'lucide-react';
 import { toast } from 'sonner';
-import { DateInput } from '@/components/DateInput';
+import { SmartDateInput } from '@/components/SmartDateInput';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Badge } from '@/components/ui/badge';
 import { cn, openWhatsApp } from '@/lib/utils';
 import { useSchool } from '@/contexts/SchoolContext';
 import { Textarea } from '@/components/ui/textarea';
+import { Filter, X } from 'lucide-react';
 
 const STATUSES = ['PENDENTE', 'OK', 'OK.FECHOU', 'NÃO VEIO', 'DESMARCOU', 'REMARCOU'] as const;
 const STATUS_LABELS: Record<string, string> = {
