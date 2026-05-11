@@ -44,10 +44,13 @@ const todayISO = () => {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 };
 
-const statusRowClass = (status: string, isToday: boolean): string => {
+const statusRowClass = (status: string, lessonDate: string, today: string): string => {
   const s = (status || '').toUpperCase();
-  // Light, near-transparent backgrounds matching the new palette
-  if (s === 'PENDENTE') return 'bg-[#FFF3CD]/60 hover:bg-[#FFF3CD]/80';
+  const isToday = lessonDate === today;
+  if (s === 'PENDENTE') {
+    if (isToday) return 'bg-[#FFF3CD]/60 hover:bg-[#FFF3CD]/80';
+    return '';
+  }
   if (s === 'OK') return 'bg-[#D0E7FF]/60 hover:bg-[#D0E7FF]/80';
   if (s === 'OK.FECHOU') return 'bg-[#D4EDDA]/70 hover:bg-[#D4EDDA]/90';
   if (s === 'NÃO VEIO') return 'bg-[#F8D7DA]/70 hover:bg-[#F8D7DA]/90 border-l-4 border-l-red-400';
