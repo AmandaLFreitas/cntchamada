@@ -9,12 +9,15 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { Label } from '@/components/ui/label';
 import { Plus, Pencil, Trash2, Search, CalendarIcon, AlertTriangle } from 'lucide-react';
 import { toast } from 'sonner';
-import { DateInput } from '@/components/DateInput';
+import { SmartDateInput } from '@/components/SmartDateInput';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Badge } from '@/components/ui/badge';
 import { cn, openWhatsApp } from '@/lib/utils';
 import { useSchool } from '@/contexts/SchoolContext';
 import { Textarea } from '@/components/ui/textarea';
+import { Filter, X } from 'lucide-react';
 
 const STATUSES = ['PENDENTE', 'OK', 'OK.FECHOU', 'NÃO VEIO', 'DESMARCOU', 'REMARCOU'] as const;
 const STATUS_LABELS: Record<string, string> = {
@@ -25,8 +28,17 @@ const STATUS_LABELS: Record<string, string> = {
   'DESMARCOU': 'CANCELADO',
   'REMARCOU': 'REAGENDADO',
 };
+const STATUS_DOTS: Record<string, string> = {
+  'PENDENTE': 'bg-yellow-400',
+  'OK': 'bg-blue-500',
+  'OK.FECHOU': 'bg-green-500',
+  'NÃO VEIO': 'bg-red-500',
+  'DESMARCOU': 'bg-gray-500',
+  'REMARCOU': 'bg-purple-500',
+};
 const MONTHS = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
 const ALL_MONTHS = '__all__';
+const ALL_YEARS = '__all_years__';
 
 interface TrialLesson {
   id: string;
@@ -124,10 +136,26 @@ export default function TrialLessons() {
   const [filterMonth, setFilterMonth] = useState<string>(String(now.getMonth()));
   const [filterYear, setFilterYear] = useState<string>(String(now.getFullYear()));
   const [filterDate, setFilterDate] = useState<Date | undefined>(undefined);
+  const [filterStatuses, setFilterStatuses] = useState<string[]>([]);
   const [datePopoverOpen, setDatePopoverOpen] = useState(false);
+  const [statusPopoverOpen, setStatusPopoverOpen] = useState(false);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState(emptyForm);
+
+  const toggleStatus = (s: string) => {
+    setFilterStatuses(prev => prev.includes(s) ? prev.filter(x => x !== s) : [...prev, s]);
+  };
+
+  const clearFilters = () => {
+    setSearch('');
+    setFilterMonth(ALL_MONTHS);
+    setFilterYear(ALL_YEARS);
+    setFilterDate(undefined);
+    setFilterStatuses([]);
+  };
+
+  const hasActiveFilters = !!search || filterMonth !== ALL_MONTHS || filterYear !== ALL_YEARS || !!filterDate || filterStatuses.length > 0;
 
   const { data: lessons = [], isLoading } = useQuery({
     queryKey: ['trial_lessons', schoolId],
@@ -247,7 +275,7 @@ export default function TrialLessons() {
       const lessonM = parseInt(mStr, 10) - 1;
       const lessonD = parseInt(dStr, 10);
 
-      const matchYear = lessonY === parseInt(filterYear, 10);
+      const matchYear = filterYear === ALL_YEARS || lessonY === parseInt(filterYear, 10);
       const matchMonth = filterMonth === ALL_MONTHS || lessonM === parseInt(filterMonth, 10);
 
       let matchDate = true;
@@ -257,9 +285,10 @@ export default function TrialLessons() {
           lessonM === filterDate.getMonth() &&
           lessonD === filterDate.getDate();
       }
-      return matchName && matchYear && matchMonth && matchDate;
+      const matchStatus = filterStatuses.length === 0 || filterStatuses.includes(l.status);
+      return matchName && matchYear && matchMonth && matchDate && matchStatus;
     });
-  }, [lessons, search, filterMonth, filterYear, filterDate]);
+  }, [lessons, search, filterMonth, filterYear, filterDate, filterStatuses]);
 
   const handleSubmit = () => {
     if (!form.student_name.trim()) {
@@ -307,10 +336,11 @@ export default function TrialLessons() {
           </SelectContent>
         </Select>
         <Select value={filterYear} onValueChange={setFilterYear}>
-          <SelectTrigger className="w-[110px]">
+          <SelectTrigger className="w-[130px]">
             <SelectValue placeholder="Ano" />
           </SelectTrigger>
           <SelectContent>
+            <SelectItem value={ALL_YEARS}>Todos os anos</SelectItem>
             {availableYears.map(y => (
               <SelectItem key={y} value={String(y)}>{y}</SelectItem>
             ))}
@@ -326,7 +356,7 @@ export default function TrialLessons() {
               )}
             >
               <CalendarIcon className="mr-2 h-4 w-4" />
-              {filterDate ? formatSelectedDate(filterDate) : 'Filtrar por data'}
+              {filterDate ? formatSelectedDate(filterDate) : 'Filtrar por dia'}
             </Button>
           </PopoverTrigger>
           <PopoverContent className="w-auto p-0" align="start">
@@ -339,10 +369,66 @@ export default function TrialLessons() {
             />
           </PopoverContent>
         </Popover>
-        {filterDate && (
-          <Button variant="ghost" size="sm" onClick={() => setFilterDate(undefined)}>Limpar data</Button>
+        <Popover open={statusPopoverOpen} onOpenChange={setStatusPopoverOpen}>
+          <PopoverTrigger asChild>
+            <Button variant="outline" className="justify-start font-normal min-w-[180px]">
+              <Filter className="mr-2 h-4 w-4" />
+              {filterStatuses.length === 0
+                ? 'Filtrar por situação'
+                : `${filterStatuses.length} situaç${filterStatuses.length === 1 ? 'ão' : 'ões'}`}
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent className="w-64 p-2" align="start">
+            <div className="space-y-1">
+              {STATUSES.map(s => (
+                <label
+                  key={s}
+                  className="flex items-center gap-2 px-2 py-1.5 rounded hover:bg-accent cursor-pointer text-sm"
+                >
+                  <Checkbox
+                    checked={filterStatuses.includes(s)}
+                    onCheckedChange={() => toggleStatus(s)}
+                  />
+                  <span className={cn('inline-block h-2.5 w-2.5 rounded-full', STATUS_DOTS[s])} />
+                  <span>{STATUS_LABELS[s]}</span>
+                </label>
+              ))}
+              {filterStatuses.length > 0 && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="w-full justify-start text-xs"
+                  onClick={() => setFilterStatuses([])}
+                >
+                  <X className="mr-1 h-3 w-3" /> Limpar situações
+                </Button>
+              )}
+            </div>
+          </PopoverContent>
+        </Popover>
+        {hasActiveFilters && (
+          <Button variant="ghost" size="sm" onClick={clearFilters}>
+            <X className="mr-1 h-4 w-4" /> Limpar filtros
+          </Button>
         )}
       </div>
+
+      {filterStatuses.length > 0 && (
+        <div className="flex flex-wrap gap-1.5">
+          {filterStatuses.map(s => (
+            <Badge
+              key={s}
+              variant="secondary"
+              className="gap-1.5 cursor-pointer"
+              onClick={() => toggleStatus(s)}
+            >
+              <span className={cn('inline-block h-2 w-2 rounded-full', STATUS_DOTS[s])} />
+              {STATUS_LABELS[s]}
+              <X className="h-3 w-3" />
+            </Badge>
+          ))}
+        </div>
+      )}
 
       {isLoading ? (
         <p className="text-muted-foreground text-center py-8">Carregando...</p>
@@ -487,7 +573,7 @@ export default function TrialLessons() {
             </div>
             <div>
               <Label>Data</Label>
-              <DateInput
+              <SmartDateInput
                 value={form.lesson_date}
                 onChange={val => setForm(f => ({ ...f, lesson_date: val }))}
               />
