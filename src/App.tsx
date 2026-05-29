@@ -15,6 +15,7 @@ import Birthdays from "./pages/Birthdays";
 import TrialLessons from "./pages/TrialLessons";
 import Finalizing from "./pages/Finalizing";
 import Vanderlei from "./pages/Vanderlei";
+import Amanda from "./pages/Amanda";
 import Rescue from "./pages/Rescue";
 import NotFound from "./pages/NotFound";
 
@@ -58,6 +59,7 @@ function AppRoutes() {
         <Route path="/experimentais" element={<TrialLessons />} />
         <Route path="/finalizando" element={<Finalizing />} />
         <Route path="/professor-vanderlei" element={<Vanderlei />} />
+        <Route path="/profa-amanda" element={<Amanda />} />
         <Route path="/resgate" element={<Rescue />} />
         <Route path="*" element={<NotFound />} />
       </Routes>

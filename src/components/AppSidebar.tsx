@@ -25,6 +25,7 @@ const items = [
   { title: 'Finalizando o Curso', url: '/finalizando', icon: AlertTriangle },
   { title: 'Resgate', url: '/resgate', icon: LifeBuoy },
   { title: 'Prof. Vanderlei', url: '/professor-vanderlei', icon: GraduationCap },
+  { title: 'Profª Amanda - Programação', url: '/profa-amanda', icon: GraduationCap },
 ];
 
 export function AppSidebar() {
