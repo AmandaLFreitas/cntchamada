@@ -20,6 +20,7 @@ type DetailView = 'active' | 'finalized' | 'dropouts' | 'presencas' | 'faltas' |
 export function MonthlyReports() {
   const now = new Date();
   const { schoolId } = useSchool();
+  const { isAdmin } = useAuth();
   const [month, setMonth] = useState(now.getMonth());
   const [year, setYear] = useState(now.getFullYear());
   const [detailView, setDetailView] = useState<DetailView>(null);
