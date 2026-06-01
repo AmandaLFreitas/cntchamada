@@ -2,6 +2,7 @@ import { useState, useRef } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useSchool } from '@/contexts/SchoolContext';
+import { useAuth } from '@/contexts/AuthContext';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -19,6 +20,7 @@ type DetailView = 'active' | 'finalized' | 'dropouts' | 'presencas' | 'faltas' |
 export function MonthlyReports() {
   const now = new Date();
   const { schoolId } = useSchool();
+  const { isAdmin } = useAuth();
   const [month, setMonth] = useState(now.getMonth());
   const [year, setYear] = useState(now.getFullYear());
   const [detailView, setDetailView] = useState<DetailView>(null);
@@ -67,15 +69,18 @@ export function MonthlyReports() {
   });
 
   const { data: detailStudents } = useQuery({
-    queryKey: ['monthly_detail_sc', detailView, month, year, schoolId],
+    queryKey: ['monthly_detail_sc', detailView, month, year, schoolId, isAdmin],
     enabled: (detailView === 'active' || detailView === 'finalized' || detailView === 'dropouts') && !!schoolId,
     queryFn: async () => {
       let statusFilter = 'em_andamento';
       if (detailView === 'finalized') statusFilter = 'finalizado';
       if (detailView === 'dropouts') statusFilter = 'desistiu';
 
+      const studentCols = isAdmin
+        ? 'id, full_name, birth_date, cpf, street, house_number, enrollment_date, first_class_date, guardian_name, guardian_phone'
+        : 'id, full_name, birth_date, enrollment_date, first_class_date';
       const { data } = await (supabase as any).from('student_courses')
-        .select('*, students(id, full_name, birth_date, cpf, street, house_number, enrollment_date, first_class_date, guardian_name, guardian_phone), courses(name, workload)')
+        .select(`*, students(${studentCols}), courses(name, workload)`)
         .eq('school_id', schoolId!)
         .eq('status', statusFilter);
 

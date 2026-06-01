@@ -12,12 +12,14 @@ import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { CertificateDialog } from '@/components/CertificateDialog';
 import type { CertificateData } from '@/lib/certificate-templates';
+import { useAuth } from '@/contexts/AuthContext';
 
 type ViewMode = 'cards' | 'list';
 type StatusFilter = 'em_andamento' | 'finalizado' | 'desistiu';
 
 export default function Reports() {
   const { data, isLoading } = useReportData();
+  const { isAdmin } = useAuth();
   const { schoolId } = useSchool();
   const [search, setSearch] = useState('');
   const [viewMode, setViewMode] = useState<ViewMode>('cards');
@@ -194,9 +196,9 @@ export default function Reports() {
           {selectedStudent && (
             <div className="space-y-4">
               <div className="grid grid-cols-2 gap-3 text-sm">
-                <div><p className="text-muted-foreground">CPF</p><p className="font-medium">{selectedStudent.cpf || '-'}</p></div>
+                {isAdmin && <div><p className="text-muted-foreground">CPF</p><p className="font-medium">{selectedStudent.cpf || '-'}</p></div>}
                 <div><p className="text-muted-foreground">Data de Nascimento</p><p className="font-medium">{selectedStudent.birth_date || '-'}</p></div>
-                <div><p className="text-muted-foreground">Endereço</p><p className="font-medium">{selectedStudent.street ? `${selectedStudent.street}, ${selectedStudent.house_number || 's/n'}` : '-'}</p></div>
+                {isAdmin && <div><p className="text-muted-foreground">Endereço</p><p className="font-medium">{selectedStudent.street ? `${selectedStudent.street}, ${selectedStudent.house_number || 's/n'}` : '-'}</p></div>}
                 <div><p className="text-muted-foreground">Curso</p><p className="font-medium">{selectedStudent.courseName}</p></div>
                 <div><p className="text-muted-foreground">Carga Horária</p><p className="font-medium">{selectedStudent.workload}h</p></div>
                 <div><p className="text-muted-foreground">Status</p><p className="font-medium capitalize">{selectedStudent.studentCourseStatus?.replace('_', ' ') || 'Em andamento'}</p></div>
