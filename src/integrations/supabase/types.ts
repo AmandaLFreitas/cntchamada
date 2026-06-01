@@ -552,6 +552,17 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      get_student_course_payment: { Args: { _id: string }; Returns: string }
+      get_student_pii: {
+        Args: { _id: string }
+        Returns: {
+          cpf: string
+          guardian_name: string
+          guardian_phone: string
+          house_number: string
+          street: string
+        }[]
+      }
       get_user_role: { Args: { _user_id: string }; Returns: string }
       has_role: {
         Args: {
