@@ -69,7 +69,7 @@ export function MonthlyReports() {
   });
 
   const { data: detailStudents } = useQuery({
-    queryKey: ['monthly_detail_sc', detailView, month, year, schoolId],
+    queryKey: ['monthly_detail_sc', detailView, month, year, schoolId, isAdmin],
     enabled: (detailView === 'active' || detailView === 'finalized' || detailView === 'dropouts') && !!schoolId,
     queryFn: async () => {
       let statusFilter = 'em_andamento';
