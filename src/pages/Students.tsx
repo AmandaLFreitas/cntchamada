@@ -269,36 +269,49 @@ export default function Students() {
     setDialogOpen(true);
   };
 
-  const openAddCourse = (studentId: string, student: any) => {
+  const fetchPii = async (studentId: string) => {
+    if (!isAdmin) return null;
+    const { data } = await (supabase as any).rpc('get_student_pii', { _id: studentId });
+    return Array.isArray(data) && data.length > 0 ? data[0] : null;
+  };
+
+  const openAddCourse = async (studentId: string, student: any) => {
     setEditingStudentId(null);
     setEditingCourseId(null);
     setAddCourseStudentId(studentId);
+    const pii = await fetchPii(studentId);
     setForm({
       ...emptyForm,
       full_name: student.full_name ?? '',
-      street: student.street ?? '',
-      house_number: student.house_number ?? '',
+      street: pii?.street ?? student.street ?? '',
+      house_number: pii?.house_number ?? student.house_number ?? '',
       birth_date: student.birth_date ?? '',
-      cpf: student.cpf ?? '',
-      guardian_name: student.guardian_name ?? '',
-      guardian_phone: student.guardian_phone ?? '',
-      show_guardian: !!student.guardian_name || isMinor(student.birth_date ?? ''),
+      cpf: pii?.cpf ?? student.cpf ?? '',
+      guardian_name: pii?.guardian_name ?? student.guardian_name ?? '',
+      guardian_phone: pii?.guardian_phone ?? student.guardian_phone ?? '',
+      show_guardian: !!(pii?.guardian_name ?? student.guardian_name) || isMinor(student.birth_date ?? ''),
     });
     setDialogOpen(true);
   };
 
-  const openEditCourse = (student: any, sc: any) => {
+  const openEditCourse = async (student: any, sc: any) => {
     setEditingStudentId(student.id);
     setEditingCourseId(sc.id);
     setAddCourseStudentId(null);
+    const pii = await fetchPii(student.id);
+    let paymentMethod = sc.payment_method ?? '';
+    if (isAdmin && !paymentMethod) {
+      const { data: pm } = await (supabase as any).rpc('get_student_course_payment', { _id: sc.id });
+      if (pm) paymentMethod = pm;
+    }
     setForm({
       full_name: student.full_name ?? '',
-      street: student.street ?? '',
-      house_number: student.house_number ?? '',
+      street: pii?.street ?? student.street ?? '',
+      house_number: pii?.house_number ?? student.house_number ?? '',
       birth_date: student.birth_date ?? '',
-      cpf: student.cpf ?? '',
-      guardian_name: student.guardian_name ?? '',
-      guardian_phone: student.guardian_phone ?? '',
+      cpf: pii?.cpf ?? student.cpf ?? '',
+      guardian_name: pii?.guardian_name ?? student.guardian_name ?? '',
+      guardian_phone: pii?.guardian_phone ?? student.guardian_phone ?? '',
       photo_url: student.photo_url ?? '',
       material_sent: (student as any).material_sent ?? false,
       course_id: sc.course_id ?? '',
@@ -307,9 +320,9 @@ export default function Students() {
       first_class_date: sc.first_class_date ?? '',
       workload: sc.workload ?? 48,
       status: sc.status || 'em_andamento',
-      payment_method: sc.payment_method ?? '',
+      payment_method: paymentMethod,
       daySchedules: {}, // Will be populated by useEffect from editSchedules
-      show_guardian: !!student.guardian_name || isMinor(student.birth_date ?? ''),
+      show_guardian: !!(pii?.guardian_name ?? student.guardian_name) || isMinor(student.birth_date ?? ''),
       customScheduleMode: false, // Will be auto-detected by useEffect
     });
     setDialogOpen(true);
