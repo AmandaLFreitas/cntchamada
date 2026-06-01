@@ -12,6 +12,7 @@ import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { CertificateDialog } from '@/components/CertificateDialog';
 import type { CertificateData } from '@/lib/certificate-templates';
+import { useAuth } from '@/contexts/AuthContext';
 
 type ViewMode = 'cards' | 'list';
 type StatusFilter = 'em_andamento' | 'finalizado' | 'desistiu';
