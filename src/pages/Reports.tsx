@@ -19,6 +19,7 @@ type StatusFilter = 'em_andamento' | 'finalizado' | 'desistiu';
 
 export default function Reports() {
   const { data, isLoading } = useReportData();
+  const { isAdmin } = useAuth();
   const { schoolId } = useSchool();
   const [search, setSearch] = useState('');
   const [viewMode, setViewMode] = useState<ViewMode>('cards');
