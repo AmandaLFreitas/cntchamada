@@ -468,10 +468,11 @@ export default function Students() {
   const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+    if (!schoolId) { toast.error('Nenhuma unidade selecionada'); return; }
     setUploadingPhoto(true);
     try {
       const ext = file.name.split('.').pop();
-      const fileName = `${Date.now()}_${Math.random().toString(36).slice(2)}.${ext}`;
+      const fileName = `${schoolId}/${Date.now()}_${Math.random().toString(36).slice(2)}.${ext}`;
       const { error: uploadError } = await supabase.storage
         .from('student-photos')
         .upload(fileName, file, { upsert: true });
