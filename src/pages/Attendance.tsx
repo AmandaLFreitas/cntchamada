@@ -232,74 +232,291 @@ export default function Attendance() {
     if (!schoolId || !timeSlots) return;
     setExporting(true);
     try {
-      // Build Mon..Sat dates around selectedDate
-      const monday = new Date(selectedDate);
-      const dow = monday.getDay(); // 0=Sun..6=Sat
-      const diffToMonday = dow === 0 ? -6 : 1 - dow;
-      monday.setDate(monday.getDate() + diffToMonday);
-      const days: { name: string; date: Date; iso: string }[] = [];
-      const dayNames = ['Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado'];
-      for (let i = 0; i < 6; i++) {
-        const d = new Date(monday);
-        d.setDate(monday.getDate() + i);
-        days.push({ name: dayNames[i], date: d, iso: format(d, 'yyyy-MM-dd') });
-      }
+      const year = selectedDate.getFullYear();
+      const month = selectedDate.getMonth(); // 0-11
+      const monthNames = ['JANEIRO','FEVEREIRO','MARÇO','ABRIL','MAIO','JUNHO','JULHO','AGOSTO','SETEMBRO','OUTUBRO','NOVEMBRO','DEZEMBRO'];
+      const monthLabel = monthNames[month];
 
-      // Fetch all schedules with students + course for this school
+      // Day name -> JS day index (0=Sun)
+      const dayIndex: Record<string, number> = { 'Domingo':0,'Segunda':1,'Terça':2,'Quarta':3,'Quinta':4,'Sexta':5,'Sábado':6 };
+
+      const datesInMonthForWeekday = (wd: number): Date[] => {
+        const out: Date[] = [];
+        const d = new Date(year, month, 1);
+        while (d.getMonth() === month) {
+          if (d.getDay() === wd) out.push(new Date(d));
+          d.setDate(d.getDate() + 1);
+        }
+        return out;
+      };
+
+      // Fetch students + courses + schedules for this school
       const { data: scheds, error: e1 } = await (supabase as any)
         .from('student_schedules')
-        .select('time_slot_id, students:students(id, full_name, enrollment_date, courses:courses(name), custom_course_name)')
+        .select('time_slot_id, student_course_id, students:students(id, full_name, birth_date, enrollment_date, first_class_date, workload, courses:courses(name), custom_course_name)')
         .eq('school_id', schoolId);
       if (e1) throw e1;
 
-      // Fetch all attendance in the week
-      const isoList = days.map(d => d.iso);
+      // Weekly hours per student (sum of slot durations across all their schedules)
+      const slotById = new Map<string, any>();
+      (timeSlots ?? []).forEach(s => slotById.set(s.id, s));
+      const slotHours = (id: string): number => {
+        const s = slotById.get(id);
+        if (!s?.start_time || !s?.end_time) return 1;
+        const [sh, sm] = s.start_time.split(':').map(Number);
+        const [eh, em] = s.end_time.split(':').map(Number);
+        return Math.max((eh + em/60) - (sh + sm/60), 1);
+      };
+      const weeklyByStudent = new Map<string, number>();
+      (scheds ?? []).forEach((r: any) => {
+        const sid = r.students?.id;
+        if (!sid) return;
+        weeklyByStudent.set(sid, (weeklyByStudent.get(sid) || 0) + slotHours(r.time_slot_id));
+      });
+
+      // Attendance for the whole month
+      const monthStart = new Date(year, month, 1);
+      const monthEnd = new Date(year, month + 1, 0);
+      const isoStart = format(monthStart, 'yyyy-MM-dd');
+      const isoEnd = format(monthEnd, 'yyyy-MM-dd');
       const { data: attRows, error: e2 } = await supabase
         .from('attendance')
         .select('student_id, time_slot_id, date, status')
         .eq('school_id', schoolId)
-        .in('date', isoList);
+        .gte('date', isoStart)
+        .lte('date', isoEnd);
       if (e2) throw e2;
       const attMap = new Map<string, string>();
       (attRows ?? []).forEach((a: any) => attMap.set(`${a.student_id}|${a.time_slot_id}|${a.date}`, a.status));
 
-      const statusLabel = (s?: string) => s === 'present' ? '✔' : s === 'absent' ? '✗' : s === 'neutral' ? '/' : '';
+      const statusMark = (s?: string) => s === 'present' ? '✔' : s === 'absent' ? '✗' : s === 'neutral' ? '/' : '';
+
+      const fmtDM = (v?: string | null): string => {
+        if (!v) return '';
+        if (/^\d{2}\/\d{2}\/\d{4}$/.test(v)) { const [d,m] = v.split('/'); return `${parseInt(d,10)}/${parseInt(m,10)}`; }
+        if (/^\d{4}-\d{2}-\d{2}/.test(v)) { const [y,m,d] = v.slice(0,10).split('-'); return `${parseInt(d,10)}/${parseInt(m,10)}`; }
+        return v;
+      };
+      const parseAny = (v?: string | null): Date | null => {
+        if (!v) return null;
+        if (/^\d{2}\/\d{2}\/\d{4}$/.test(v)) { const [d,m,y] = v.split('/').map(Number); return new Date(y, m-1, d); }
+        if (/^\d{4}-\d{2}-\d{2}/.test(v)) { const [y,m,d] = v.slice(0,10).split('-').map(Number); return new Date(y, m-1, d); }
+        return null;
+      };
+      const predictedEnd = (st: any): string => {
+        const start = parseAny(st.first_class_date || st.enrollment_date);
+        const wh = weeklyByStudent.get(st.id) || 0;
+        const workload = st.workload || 48;
+        if (!start || wh <= 0) return '';
+        const weeks = Math.ceil(workload / wh);
+        const end = new Date(start); end.setDate(end.getDate() + weeks * 7);
+        return `${end.getDate()}/${end.getMonth() + 1}`;
+      };
+
+      // Styling helpers
+      const border = { style: 'thin', color: { rgb: '000000' } } as const;
+      const allBorders = { top: border, bottom: border, left: border, right: border };
+      const headerStyle = {
+        font: { bold: true, color: { rgb: 'FFFFFF' }, sz: 11 },
+        fill: { patternType: 'solid', fgColor: { rgb: '4A5568' } },
+        alignment: { horizontal: 'center', vertical: 'center' },
+        border: allBorders,
+      };
+      const colHeaderStyle = {
+        font: { bold: true, sz: 10 },
+        fill: { patternType: 'solid', fgColor: { rgb: 'E2E8F0' } },
+        alignment: { horizontal: 'center', vertical: 'center' },
+        border: allBorders,
+      };
+      const cellStyle = {
+        font: { sz: 10 },
+        alignment: { horizontal: 'center', vertical: 'center' },
+        border: allBorders,
+      };
+      const nameStyle = { ...cellStyle, alignment: { horizontal: 'left', vertical: 'center' } };
+      const idxStyle = { ...cellStyle, fill: { patternType: 'solid', fgColor: { rgb: 'F1F5F9' } }, font: { bold: true, sz: 10 } };
+      const highlightRowStyle = { ...cellStyle, fill: { patternType: 'solid', fgColor: { rgb: 'D1D5DB' } } };
+      const highlightIdxStyle = { ...idxStyle, fill: { patternType: 'solid', fgColor: { rgb: '9CA3AF' } } };
+
+      // Build a single block at given top-left, returns rows used. Writes into ws (object).
+      type Cell = { v: any; s?: any };
+      const writeBlock = (
+        cells: Record<string, Cell>,
+        merges: { s: { r: number; c: number }; e: { r: number; c: number } }[],
+        rowTop: number,
+        colLeft: number,
+        dayName: string,
+        slot: any,
+        dates: Date[],
+      ) => {
+        const ROWS = 18;
+        const FIXED_COLS = ['', 'ALUNO', 'NASC', 'CURSO']; // indices 0..3 (col 0 = #)
+        const totalCols = 4 + dates.length + 2; // # ALUNO NASC CURSO [dates] INICIO FIM
+        const lastCol = colLeft + totalCols - 1;
+
+        // Row 0: title spanning all cols
+        const titleAddr = XLSX.utils.encode_cell({ r: rowTop, c: colLeft });
+        cells[titleAddr] = { v: `${dayName.toUpperCase()} (${slot.start_time} AS ${slot.end_time})`, s: headerStyle };
+        merges.push({ s: { r: rowTop, c: colLeft }, e: { r: rowTop, c: lastCol } });
+        // fill merged cells with empty styled placeholders so borders render
+        for (let c = colLeft + 1; c <= lastCol; c++) {
+          cells[XLSX.utils.encode_cell({ r: rowTop, c })] = { v: '', s: headerStyle };
+        }
+
+        // Row 1: column headers (with MARÇO merged + INICIO/FIM merged across 2 rows)
+        const hdrRow = rowTop + 1;
+        const subRow = rowTop + 2;
+        // # — merged across hdr+sub
+        cells[XLSX.utils.encode_cell({ r: hdrRow, c: colLeft })] = { v: '', s: colHeaderStyle };
+        cells[XLSX.utils.encode_cell({ r: subRow, c: colLeft })] = { v: '', s: colHeaderStyle };
+        merges.push({ s: { r: hdrRow, c: colLeft }, e: { r: subRow, c: colLeft } });
+        // ALUNO, NASC, CURSO — merged across hdr+sub
+        FIXED_COLS.slice(1).forEach((label, i) => {
+          const c = colLeft + 1 + i;
+          cells[XLSX.utils.encode_cell({ r: hdrRow, c })] = { v: label, s: colHeaderStyle };
+          cells[XLSX.utils.encode_cell({ r: subRow, c })] = { v: '', s: colHeaderStyle };
+          merges.push({ s: { r: hdrRow, c }, e: { r: subRow, c } });
+        });
+        // MARÇO header merged across date cols
+        const monthColStart = colLeft + 4;
+        const monthColEnd = monthColStart + dates.length - 1;
+        cells[XLSX.utils.encode_cell({ r: hdrRow, c: monthColStart })] = { v: monthLabel, s: colHeaderStyle };
+        for (let c = monthColStart + 1; c <= monthColEnd; c++) {
+          cells[XLSX.utils.encode_cell({ r: hdrRow, c })] = { v: '', s: colHeaderStyle };
+        }
+        merges.push({ s: { r: hdrRow, c: monthColStart }, e: { r: hdrRow, c: monthColEnd } });
+        // sub row: date numbers
+        dates.forEach((d, i) => {
+          cells[XLSX.utils.encode_cell({ r: subRow, c: monthColStart + i })] = { v: d.getDate(), s: colHeaderStyle };
+        });
+        // INICIO, FIM merged hdr+sub
+        const inicioCol = monthColEnd + 1;
+        const fimCol = inicioCol + 1;
+        cells[XLSX.utils.encode_cell({ r: hdrRow, c: inicioCol })] = { v: 'INICIO', s: colHeaderStyle };
+        cells[XLSX.utils.encode_cell({ r: subRow, c: inicioCol })] = { v: '', s: colHeaderStyle };
+        merges.push({ s: { r: hdrRow, c: inicioCol }, e: { r: subRow, c: inicioCol } });
+        cells[XLSX.utils.encode_cell({ r: hdrRow, c: fimCol })] = { v: 'FIM', s: colHeaderStyle };
+        cells[XLSX.utils.encode_cell({ r: subRow, c: fimCol })] = { v: '', s: colHeaderStyle };
+        merges.push({ s: { r: hdrRow, c: fimCol }, e: { r: subRow, c: fimCol } });
+
+        // Enrolled students in this slot for this day
+        const enrolled = (scheds ?? [])
+          .filter((r: any) => r.time_slot_id === slot.id && r.students)
+          .map((r: any) => r.students)
+          // dedupe by id
+          .filter((st: any, i: number, arr: any[]) => arr.findIndex(x => x.id === st.id) === i)
+          .sort((a: any, b: any) => (a.full_name || '').localeCompare(b.full_name || '', 'pt-BR'));
+
+        for (let i = 0; i < ROWS; i++) {
+          const r = subRow + 1 + i;
+          const isHighlight = i === 8; // row 9 (1-based) inside the 18-row block
+          const rowStyle = isHighlight ? highlightRowStyle : cellStyle;
+          const rowIdxStyle = isHighlight ? highlightIdxStyle : idxStyle;
+          const rowNameStyle = isHighlight
+            ? { ...nameStyle, fill: highlightRowStyle.fill }
+            : nameStyle;
+          const st = enrolled[i];
+          // # column
+          cells[XLSX.utils.encode_cell({ r, c: colLeft })] = { v: i + 1, s: rowIdxStyle };
+          // ALUNO
+          cells[XLSX.utils.encode_cell({ r, c: colLeft + 1 })] = { v: st ? (st.full_name || '').toUpperCase() : '', s: rowNameStyle };
+          // NASC
+          cells[XLSX.utils.encode_cell({ r, c: colLeft + 2 })] = { v: st ? fmtDM(st.birth_date) : '', s: rowStyle };
+          // CURSO
+          const courseName = st ? (st.courses?.name || st.custom_course_name || '') : '';
+          cells[XLSX.utils.encode_cell({ r, c: colLeft + 3 })] = { v: courseName, s: rowStyle };
+          // Dates
+          dates.forEach((d, di) => {
+            const iso = format(d, 'yyyy-MM-dd');
+            const mark = st ? statusMark(attMap.get(`${st.id}|${slot.id}|${iso}`)) : '';
+            cells[XLSX.utils.encode_cell({ r, c: monthColStart + di })] = { v: mark, s: rowStyle };
+          });
+          // INICIO
+          cells[XLSX.utils.encode_cell({ r, c: inicioCol })] = { v: st ? fmtDM(st.first_class_date || st.enrollment_date) : '', s: rowStyle };
+          // FIM
+          cells[XLSX.utils.encode_cell({ r, c: fimCol })] = { v: st ? predictedEnd(st) : '', s: rowStyle };
+        }
+
+        return { rowsUsed: 3 + ROWS, totalCols };
+      };
+
+      const buildSheet = (days: string[]) => {
+        const cells: Record<string, any> = {};
+        const merges: any[] = [];
+        // Unique slot key (start-end) appearing on any of the days, sorted by start
+        const keySet = new Map<string, { start: string; end: string }>();
+        (timeSlots ?? []).forEach(s => {
+          if (days.includes(s.day_of_week)) {
+            const k = `${s.start_time}-${s.end_time}`;
+            if (!keySet.has(k)) keySet.set(k, { start: s.start_time, end: s.end_time });
+          }
+        });
+        const sortedKeys = Array.from(keySet.entries()).sort((a, b) => a[1].start.localeCompare(b[1].start));
+
+        let cursorRow = 0;
+        const blockGap = 2;
+        const colGap = 1;
+        let maxCol = 0;
+        let firstBlockCols = 0;
+
+        for (const [, sk] of sortedKeys) {
+          // Find slot per day with this start/end
+          const slotsForKey = days.map(d => (timeSlots ?? []).find(s => s.day_of_week === d && s.start_time === sk.start && s.end_time === sk.end));
+          let colCursor = 0;
+          let usedRows = 0;
+          for (let di = 0; di < days.length; di++) {
+            const day = days[di];
+            const slot = slotsForKey[di];
+            if (!slot) {
+              // still advance col cursor using approximate width based on day's date count
+              const dates = datesInMonthForWeekday(dayIndex[day]);
+              colCursor += (4 + dates.length + 2) + colGap;
+              continue;
+            }
+            const dates = datesInMonthForWeekday(dayIndex[day]);
+            const { rowsUsed, totalCols } = writeBlock(cells, merges, cursorRow, colCursor, day, slot, dates);
+            usedRows = Math.max(usedRows, rowsUsed);
+            if (di === 0) firstBlockCols = totalCols;
+            colCursor += totalCols + colGap;
+            maxCol = Math.max(maxCol, colCursor - colGap - 1);
+          }
+          cursorRow += usedRows + blockGap;
+        }
+
+        // Build worksheet
+        const ws: any = {};
+        Object.entries(cells).forEach(([addr, cell]) => { ws[addr] = cell; });
+        const range = { s: { r: 0, c: 0 }, e: { r: Math.max(cursorRow, 1), c: Math.max(maxCol, 1) } };
+        ws['!ref'] = XLSX.utils.encode_range(range);
+        ws['!merges'] = merges;
+        // Column widths: # narrow, ALUNO wide, NASC narrow, CURSO medium, dates narrow, INICIO/FIM small
+        const cols: any[] = [];
+        for (let c = 0; c <= maxCol; c++) cols.push({ wch: 6 });
+        // Set known widths for first block
+        if (firstBlockCols > 0) {
+          const widths = [4, 22, 7, 12];
+          for (let i = 0; i < widths.length && i <= maxCol; i++) cols[i] = { wch: widths[i] };
+          // INICIO/FIM at end
+          cols[firstBlockCols - 2] = { wch: 7 };
+          cols[firstBlockCols - 1] = { wch: 7 };
+          // gap column
+          if (firstBlockCols < cols.length) cols[firstBlockCols] = { wch: 2 };
+          // right block mirroring
+          const rOff = firstBlockCols + 1;
+          for (let i = 0; i < widths.length && rOff + i <= maxCol; i++) cols[rOff + i] = { wch: widths[i] };
+          if (rOff + firstBlockCols - 2 <= maxCol) cols[rOff + firstBlockCols - 2] = { wch: 7 };
+          if (rOff + firstBlockCols - 1 <= maxCol) cols[rOff + firstBlockCols - 1] = { wch: 7 };
+        }
+        ws['!cols'] = cols;
+        return ws;
+      };
 
       const wb = XLSX.utils.book_new();
-      for (const day of days) {
-        const slotsOfDay = (timeSlots ?? [])
-          .filter(s => s.day_of_week === day.name)
-          .sort((a, b) => (a.start_time || '').localeCompare(b.start_time || ''));
-        const aoa: any[][] = [
-          [`Chamada - ${day.name} ${format(day.date, 'dd/MM/yyyy')}`],
-          [],
-          ['Horário', 'Aluno', 'Curso', 'Status'],
-        ];
-        for (const slot of slotsOfDay) {
-          const slotLabel = `${slot.start_time} - ${slot.end_time}`;
-          const enrolled = (scheds ?? [])
-            .filter((r: any) => r.time_slot_id === slot.id && r.students && isEnrolledByDate(r.students.enrollment_date, day.iso))
-            .map((r: any) => ({
-              name: r.students.full_name || 'Sem nome',
-              course: r.students?.courses?.name || r.students.custom_course_name || '-',
-              status: statusLabel(attMap.get(`${r.students.id}|${slot.id}|${day.iso}`)),
-            }))
-            .sort((a: any, b: any) => a.name.localeCompare(b.name, 'pt-BR'));
-          if (enrolled.length === 0) {
-            aoa.push([slotLabel, '(sem alunos)', '', '']);
-          } else {
-            enrolled.forEach((s: any, idx: number) => {
-              aoa.push([idx === 0 ? slotLabel : '', s.name, s.course, s.status]);
-            });
-          }
-          aoa.push([]);
-        }
-        const ws = XLSX.utils.aoa_to_sheet(aoa);
-        ws['!cols'] = [{ wch: 16 }, { wch: 36 }, { wch: 26 }, { wch: 8 }];
-        XLSX.utils.book_append_sheet(wb, ws, day.name);
-      }
+      XLSX.utils.book_append_sheet(wb, buildSheet(['Segunda', 'Quarta']), 'SEG-QUA');
+      XLSX.utils.book_append_sheet(wb, buildSheet(['Terça', 'Quinta']), 'TER-QUI');
+      XLSX.utils.book_append_sheet(wb, buildSheet(['Sábado']), 'SÁBADO');
 
-      const fname = `chamada_${format(monday, 'yyyy-MM-dd')}_a_${format(days[5].date, 'yyyy-MM-dd')}.xlsx`;
+      const fname = `chamada_${monthLabel.toLowerCase()}_${year}.xlsx`;
       XLSX.writeFile(wb, fname);
       toast.success('Planilha gerada!');
     } catch (err: any) {
