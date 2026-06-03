@@ -18,6 +18,8 @@ import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query';
 import { useSchool } from '@/contexts/SchoolContext';
 import { StudentObservationsDialog } from '@/components/StudentObservationsDialog';
 import { StudentDetailsDialog } from '@/components/StudentDetailsDialog';
+import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
+import { PhotoLightbox } from '@/components/PhotoLightbox';
 import { Input } from '@/components/ui/input';
 import { Search } from 'lucide-react';
 import { openWhatsApp } from '@/lib/utils';
