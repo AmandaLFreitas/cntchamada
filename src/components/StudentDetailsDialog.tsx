@@ -1,7 +1,10 @@
+import { useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useSchool } from '@/contexts/SchoolContext';
+import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
+import { PhotoLightbox } from '@/components/PhotoLightbox';
 
 interface Props {
   open: boolean;
@@ -17,6 +20,7 @@ const STATUS_LABELS: Record<string, string> = {
 
 export function StudentDetailsDialog({ open, onOpenChange, studentId }: Props) {
   const { schoolId } = useSchool();
+  const [lightboxOpen, setLightboxOpen] = useState(false);
 
   const { data } = useQuery({
     queryKey: ['student_details', studentId, schoolId],
@@ -61,6 +65,19 @@ export function StudentDetailsDialog({ open, onOpenChange, studentId }: Props) {
           <p className="text-sm text-muted-foreground">Carregando...</p>
         ) : (
           <div className="space-y-3 text-sm">
+            <div className="flex items-center gap-3">
+              <button type="button" onClick={() => student.photo_url && setLightboxOpen(true)} title={student.photo_url ? 'Ampliar foto' : 'Sem foto'}>
+                <Avatar className="h-16 w-16">
+                  {student.photo_url && <AvatarImage src={student.photo_url} alt={student.full_name || 'Aluno'} />}
+                  <AvatarFallback>
+                    {(student.full_name || '?').split(' ').filter(Boolean).slice(0, 2).map((n: string) => n[0]).join('').toUpperCase()}
+                  </AvatarFallback>
+                </Avatar>
+              </button>
+              <div className="min-w-0">
+                <p className="font-semibold truncate">{student.full_name || 'Aluno'}</p>
+              </div>
+            </div>
             {(data?.courses ?? []).length === 0 && (
               <p className="text-muted-foreground">Sem cursos cadastrados.</p>
             )}
@@ -90,6 +107,7 @@ export function StudentDetailsDialog({ open, onOpenChange, studentId }: Props) {
           </div>
         )}
       </DialogContent>
+      <PhotoLightbox open={lightboxOpen} onOpenChange={setLightboxOpen} src={student?.photo_url || ''} alt={student?.full_name || 'Aluno'} />
     </Dialog>
   );
 }
