@@ -377,6 +377,11 @@ export default function Attendance() {
         onOpenChange={(open) => { if (!open) setDetailsStudentId(null); }}
         studentId={detailsStudentId}
       />
+      <PhotoLightbox
+        open={!!lightboxSrc}
+        onOpenChange={(open) => { if (!open) setLightboxSrc(null); }}
+        src={lightboxSrc || ''}
+      />
     </div>
   );
 }
