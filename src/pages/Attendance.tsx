@@ -226,6 +226,90 @@ export default function Attendance() {
     handleDateSelect(newDate);
   };
 
+  const [exporting, setExporting] = useState(false);
+
+  const handleExportExcel = async () => {
+    if (!schoolId || !timeSlots) return;
+    setExporting(true);
+    try {
+      // Build Mon..Sat dates around selectedDate
+      const monday = new Date(selectedDate);
+      const dow = monday.getDay(); // 0=Sun..6=Sat
+      const diffToMonday = dow === 0 ? -6 : 1 - dow;
+      monday.setDate(monday.getDate() + diffToMonday);
+      const days: { name: string; date: Date; iso: string }[] = [];
+      const dayNames = ['Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado'];
+      for (let i = 0; i < 6; i++) {
+        const d = new Date(monday);
+        d.setDate(monday.getDate() + i);
+        days.push({ name: dayNames[i], date: d, iso: format(d, 'yyyy-MM-dd') });
+      }
+
+      // Fetch all schedules with students + course for this school
+      const { data: scheds, error: e1 } = await (supabase as any)
+        .from('student_schedules')
+        .select('time_slot_id, students:students(id, full_name, enrollment_date, courses:courses(name), custom_course_name)')
+        .eq('school_id', schoolId);
+      if (e1) throw e1;
+
+      // Fetch all attendance in the week
+      const isoList = days.map(d => d.iso);
+      const { data: attRows, error: e2 } = await supabase
+        .from('attendance')
+        .select('student_id, time_slot_id, date, status')
+        .eq('school_id', schoolId)
+        .in('date', isoList);
+      if (e2) throw e2;
+      const attMap = new Map<string, string>();
+      (attRows ?? []).forEach((a: any) => attMap.set(`${a.student_id}|${a.time_slot_id}|${a.date}`, a.status));
+
+      const statusLabel = (s?: string) => s === 'present' ? '✔' : s === 'absent' ? '✗' : s === 'neutral' ? '/' : '';
+
+      const wb = XLSX.utils.book_new();
+      for (const day of days) {
+        const slotsOfDay = (timeSlots ?? [])
+          .filter(s => s.day_of_week === day.name)
+          .sort((a, b) => (a.start_time || '').localeCompare(b.start_time || ''));
+        const aoa: any[][] = [
+          [`Chamada - ${day.name} ${format(day.date, 'dd/MM/yyyy')}`],
+          [],
+          ['Horário', 'Aluno', 'Curso', 'Status'],
+        ];
+        for (const slot of slotsOfDay) {
+          const slotLabel = `${slot.start_time} - ${slot.end_time}`;
+          const enrolled = (scheds ?? [])
+            .filter((r: any) => r.time_slot_id === slot.id && r.students && isEnrolledByDate(r.students.enrollment_date, day.iso))
+            .map((r: any) => ({
+              name: r.students.full_name || 'Sem nome',
+              course: r.students?.courses?.name || r.students.custom_course_name || '-',
+              status: statusLabel(attMap.get(`${r.students.id}|${slot.id}|${day.iso}`)),
+            }))
+            .sort((a: any, b: any) => a.name.localeCompare(b.name, 'pt-BR'));
+          if (enrolled.length === 0) {
+            aoa.push([slotLabel, '(sem alunos)', '', '']);
+          } else {
+            enrolled.forEach((s: any, idx: number) => {
+              aoa.push([idx === 0 ? slotLabel : '', s.name, s.course, s.status]);
+            });
+          }
+          aoa.push([]);
+        }
+        const ws = XLSX.utils.aoa_to_sheet(aoa);
+        ws['!cols'] = [{ wch: 16 }, { wch: 36 }, { wch: 26 }, { wch: 8 }];
+        XLSX.utils.book_append_sheet(wb, ws, day.name);
+      }
+
+      const fname = `chamada_${format(monday, 'yyyy-MM-dd')}_a_${format(days[5].date, 'yyyy-MM-dd')}.xlsx`;
+      XLSX.writeFile(wb, fname);
+      toast.success('Planilha gerada!');
+    } catch (err: any) {
+      console.error(err);
+      toast.error('Erro ao exportar Excel');
+    } finally {
+      setExporting(false);
+    }
+  };
+
   return (
     <div>
       
