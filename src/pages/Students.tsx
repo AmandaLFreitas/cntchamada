@@ -298,12 +298,33 @@ export default function Students() {
     setEditingStudentId(student.id);
     setEditingCourseId(sc.id);
     setAddCourseStudentId(null);
-    const pii = await fetchPii(student.id);
+    const [pii, schedRes] = await Promise.all([
+      fetchPii(student.id),
+      supabase.from('student_schedules').select('time_slot_id').eq('student_course_id', sc.id),
+    ]);
     let paymentMethod = sc.payment_method ?? '';
     if (isAdmin && !paymentMethod) {
       const { data: pm } = await (supabase as any).rpc('get_student_course_payment', { _id: sc.id });
       if (pm) paymentMethod = pm;
     }
+
+    // Build daySchedules directly from DB so the dialog opens with horários pre-selected
+    const tsIds = (schedRes.data ?? []).map((r: any) => r.time_slot_id);
+    const daySchedules: Record<string, string[]> = {};
+    tsIds.forEach((tsId: string) => {
+      const info = reverseSlotLookup[tsId];
+      if (!info) return;
+      if (!daySchedules[info.day]) daySchedules[info.day] = [];
+      if (!daySchedules[info.day].includes(info.time)) daySchedules[info.day].push(info.time);
+    });
+    const pairs: [string, string][] = [['Segunda', 'Quarta'], ['Terça', 'Quinta']];
+    let isCustom = false;
+    for (const [a, b] of pairs) {
+      const tA = (daySchedules[a] || []).slice().sort().join(',');
+      const tB = (daySchedules[b] || []).slice().sort().join(',');
+      if (tA !== tB) { isCustom = true; break; }
+    }
+
     setForm({
       full_name: student.full_name ?? '',
       street: pii?.street ?? student.street ?? '',
@@ -321,9 +342,9 @@ export default function Students() {
       workload: sc.workload ?? 48,
       status: sc.status || 'em_andamento',
       payment_method: paymentMethod,
-      daySchedules: {}, // Will be populated by useEffect from editSchedules
+      daySchedules,
       show_guardian: !!(pii?.guardian_name ?? student.guardian_name) || isMinor(student.birth_date ?? ''),
-      customScheduleMode: false, // Will be auto-detected by useEffect
+      customScheduleMode: isCustom,
     });
     setDialogOpen(true);
   };
