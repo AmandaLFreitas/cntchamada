@@ -563,6 +563,7 @@ export type Database = {
           street: string
         }[]
       }
+      get_trial_lesson_phone: { Args: { _id: string }; Returns: string }
       get_user_role: { Args: { _user_id: string }; Returns: string }
       has_role: {
         Args: {
