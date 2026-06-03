@@ -20,6 +20,7 @@ const STATUS_LABELS: Record<string, string> = {
 
 export function StudentDetailsDialog({ open, onOpenChange, studentId }: Props) {
   const { schoolId } = useSchool();
+  const [lightboxOpen, setLightboxOpen] = useState(false);
 
   const { data } = useQuery({
     queryKey: ['student_details', studentId, schoolId],
