@@ -65,6 +65,19 @@ export function StudentDetailsDialog({ open, onOpenChange, studentId }: Props) {
           <p className="text-sm text-muted-foreground">Carregando...</p>
         ) : (
           <div className="space-y-3 text-sm">
+            <div className="flex items-center gap-3">
+              <button type="button" onClick={() => student.photo_url && setLightboxOpen(true)} title={student.photo_url ? 'Ampliar foto' : 'Sem foto'}>
+                <Avatar className="h-16 w-16">
+                  {student.photo_url && <AvatarImage src={student.photo_url} alt={student.full_name || 'Aluno'} />}
+                  <AvatarFallback>
+                    {(student.full_name || '?').split(' ').filter(Boolean).slice(0, 2).map((n: string) => n[0]).join('').toUpperCase()}
+                  </AvatarFallback>
+                </Avatar>
+              </button>
+              <div className="min-w-0">
+                <p className="font-semibold truncate">{student.full_name || 'Aluno'}</p>
+              </div>
+            </div>
             {(data?.courses ?? []).length === 0 && (
               <p className="text-muted-foreground">Sem cursos cadastrados.</p>
             )}
