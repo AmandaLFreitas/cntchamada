@@ -349,7 +349,7 @@ export default function Attendance() {
         slot: any,
         dates: Date[],
       ) => {
-        const ROWS = 18;
+        const ROWS = 20;
         const FIXED_COLS = ['', 'ALUNO', 'NASC', 'CURSO']; // indices 0..3 (col 0 = #)
         const totalCols = 4 + dates.length + 2; // # ALUNO NASC CURSO [dates] INICIO FIM
         const lastCol = colLeft + totalCols - 1;
