@@ -107,6 +107,7 @@ export function StudentDetailsDialog({ open, onOpenChange, studentId }: Props) {
           </div>
         )}
       </DialogContent>
+      <PhotoLightbox open={lightboxOpen} onOpenChange={setLightboxOpen} src={student?.photo_url || ''} alt={student?.full_name || 'Aluno'} />
     </Dialog>
   );
 }
