@@ -315,7 +315,11 @@ export default function Attendance() {
       
       <div className="flex flex-col sm:flex-row sm:items-center gap-3 mb-4">
         <h1 className="text-2xl font-bold">Chamada</h1>
-        <div className="flex items-center gap-2 ml-auto">
+        <div className="flex items-center gap-2 ml-auto flex-wrap">
+          <Button variant="outline" size="sm" onClick={handleExportExcel} disabled={exporting} className="gap-2">
+            <FileDown className="h-4 w-4" />
+            <span className="hidden sm:inline">{exporting ? 'Gerando...' : 'Exportar Excel'}</span>
+          </Button>
           <Button variant="outline" size="icon" onClick={() => navigateDate(-1)}>
             <ChevronLeft className="h-4 w-4" />
           </Button>
