@@ -283,28 +283,43 @@ export default function Attendance() {
                 return (
                   <div key={s.id} className="border rounded-lg p-3 bg-card space-y-2">
                     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                      <button
-                        type="button"
-                        onClick={() => setDetailsStudentId(student.id)}
-                        className="min-w-0 flex-1 text-left"
-                        title="Ver dados do aluno"
-                      >
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <span className="font-medium truncate text-sm sm:text-base hover:underline flex items-center gap-1.5">
-                            <span className="truncate">{student.full_name || 'Sem nome'}</span>
-                            {(obsCounts?.get(student.id) ?? 0) > 0 && (
-                              <span className="shrink-0 h-2 w-2 rounded-full bg-destructive" title="Possui observações" />
+                      <div className="flex items-center gap-2 min-w-0 flex-1">
+                        <button
+                          type="button"
+                          onClick={(e) => { e.stopPropagation(); if (student.photo_url) setLightboxSrc(student.photo_url); else setDetailsStudentId(student.id); }}
+                          className="shrink-0"
+                          title={student.photo_url ? 'Ver foto' : 'Sem foto'}
+                        >
+                          <Avatar className="h-9 w-9 sm:h-10 sm:w-10">
+                            {student.photo_url && <AvatarImage src={student.photo_url} alt={student.full_name || 'Aluno'} />}
+                            <AvatarFallback className="text-xs">
+                              {(student.full_name || '?').split(' ').filter(Boolean).slice(0, 2).map((n: string) => n[0]).join('').toUpperCase()}
+                            </AvatarFallback>
+                          </Avatar>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setDetailsStudentId(student.id)}
+                          className="min-w-0 flex-1 text-left"
+                          title="Ver dados do aluno"
+                        >
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className="font-medium truncate text-sm sm:text-base hover:underline flex items-center gap-1.5">
+                              <span className="truncate">{student.full_name || 'Sem nome'}</span>
+                              {(obsCounts?.get(student.id) ?? 0) > 0 && (
+                                <span className="shrink-0 h-2 w-2 rounded-full bg-destructive" title="Possui observações" />
+                              )}
+                            </span>
+                            {isNewStudent(student.id, student.enrollment_date) && (
+                              <Badge className="bg-blue-500 text-white text-[10px] px-1.5 py-0">Novo</Badge>
                             )}
-                          </span>
-                          {isNewStudent(student.id, student.enrollment_date) && (
-                            <Badge className="bg-blue-500 text-white text-[10px] px-1.5 py-0">Novo</Badge>
-                          )}
-                          {isFinalizing && (
-                            <Badge className="bg-yellow-500 text-white text-[10px] px-1.5 py-0">Finalizando</Badge>
-                          )}
-                        </div>
-                        <p className="text-sm text-muted-foreground">{courseName}</p>
-                      </button>
+                            {isFinalizing && (
+                              <Badge className="bg-yellow-500 text-white text-[10px] px-1.5 py-0">Finalizando</Badge>
+                            )}
+                          </div>
+                          <p className="text-sm text-muted-foreground">{courseName}</p>
+                        </button>
+                      </div>
                       <div className="flex gap-1.5 ml-auto sm:ml-2 flex-wrap justify-end">
                         <Button size="icon" variant="ghost" className="h-8 w-8 relative"
                           onClick={() => setObsDialogStudentId(student.id)}
