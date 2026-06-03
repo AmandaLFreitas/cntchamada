@@ -50,6 +50,7 @@ export default function Attendance() {
   const [selectedSlotId, setSelectedSlotId] = useState<string | null>(null);
   const [obsDialogStudentId, setObsDialogStudentId] = useState<string | null>(null);
   const [detailsStudentId, setDetailsStudentId] = useState<string | null>(null);
+  const [lightboxSrc, setLightboxSrc] = useState<string | null>(null);
   const [search, setSearch] = useState('');
   const qc = useQueryClient();
   const { schoolId } = useSchool();
