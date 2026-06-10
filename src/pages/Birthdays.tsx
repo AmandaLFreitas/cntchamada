@@ -1,7 +1,10 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { useStudents } from '@/hooks/use-supabase-data';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Cake } from 'lucide-react';
+
+const MONTH_NAMES = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
 
 function parseBirthDate(dateStr: string | null): { day: number; month: number } | null {
   if (!dateStr) return null;
@@ -22,6 +25,7 @@ interface BirthdayStudent {
 
 export default function Birthdays() {
   const { data: students } = useStudents();
+  const [selectedMonth, setSelectedMonth] = useState<number>(new Date().getMonth() + 1);
 
   const { today, week, month } = useMemo(() => {
     const today: BirthdayStudent[] = [];
@@ -37,24 +41,17 @@ export default function Birthdays() {
     students.forEach((s: any) => {
       const bd = parseBirthDate(s.birth_date ?? null);
       if (!bd) return;
-      // Get course from student_courses
       const activeSc = s.student_courses?.find((sc: any) => sc.is_active);
       const courseName = activeSc?.courses?.name || activeSc?.custom_course_name || 'Sem curso';
       const dateLabel = `${String(bd.day).padStart(2, '0')}/${String(bd.month).padStart(2, '0')}`;
       const entry: BirthdayStudent = { id: s.id, name: s.full_name || 'Sem nome', birth_date: s.birth_date || '', course: courseName, dateLabel };
 
-      if (bd.day === td && bd.month === tm) {
-        today.push(entry);
-      }
+      if (bd.day === td && bd.month === tm) today.push(entry);
 
       const bday = new Date(now.getFullYear(), bd.month - 1, bd.day);
-      if (bday >= startOfWeek && bday <= endOfWeek) {
-        week.push(entry);
-      }
+      if (bday >= startOfWeek && bday <= endOfWeek) week.push(entry);
 
-      if (bd.month === tm) {
-        month.push(entry);
-      }
+      if (bd.month === selectedMonth) month.push(entry);
     });
 
     month.sort((a, b) => {
@@ -64,7 +61,7 @@ export default function Birthdays() {
     });
 
     return { today, week, month };
-  }, [students]);
+  }, [students, selectedMonth]);
 
   const renderList = (list: BirthdayStudent[], emptyMsg: string) => (
     list.length === 0 ? (
@@ -104,7 +101,20 @@ export default function Birthdays() {
         </TabsList>
         <TabsContent value="today">{renderList(today, 'Nenhum aniversariante hoje.')}</TabsContent>
         <TabsContent value="week">{renderList(week, 'Nenhum aniversariante esta semana.')}</TabsContent>
-        <TabsContent value="month">{renderList(month, 'Nenhum aniversariante este mês.')}</TabsContent>
+        <TabsContent value="month">
+          <div className="mb-4 flex items-center gap-2">
+            <span className="text-sm text-muted-foreground">Filtrar mês:</span>
+            <Select value={String(selectedMonth)} onValueChange={(v) => setSelectedMonth(Number(v))}>
+              <SelectTrigger className="w-[180px]"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                {MONTH_NAMES.map((name, i) => (
+                  <SelectItem key={i} value={String(i + 1)}>{name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          {renderList(month, `Nenhum aniversariante em ${MONTH_NAMES[selectedMonth - 1]}.`)}
+        </TabsContent>
       </Tabs>
     </div>
   );
