@@ -628,7 +628,7 @@ export default function Attendance() {
                                 <span className="shrink-0 h-2 w-2 rounded-full bg-destructive" title="Possui observações" />
                               )}
                             </span>
-                            {isNewStudent(student.id, student.enrollment_date) && (
+                            {isNewStudent(student.id) && (
                               <Badge className="bg-blue-500 text-white text-[10px] px-1.5 py-0">Novo</Badge>
                             )}
                             {isFinalizing && (
@@ -657,21 +657,29 @@ export default function Attendance() {
                           title={isRescued ? 'Remover do Resgate' : 'Enviar para Resgate'}>
                           <LifeBuoy className={cn('h-4 w-4', isRescued ? 'text-orange-600 fill-orange-100' : 'text-muted-foreground')} />
                         </Button>
-                        <Button size="icon" variant={status === 'present' ? 'default' : 'outline'}
-                          className={status === 'present' ? 'bg-green-600 hover:bg-green-700' : ''}
-                          onClick={() => markAttendance(student.id, 'present')} title="Presença (clique novamente para desmarcar)">
-                          <Check className={cn('h-4 w-4', status !== 'present' && 'text-green-600')} />
-                        </Button>
-                        <Button size="icon" variant={status === 'absent' ? 'default' : 'outline'}
-                          className={status === 'absent' ? 'bg-destructive hover:bg-destructive/90' : ''}
-                          onClick={() => markAttendance(student.id, 'absent')} title="Falta (clique novamente para desmarcar)">
-                          <X className={cn('h-4 w-4', status !== 'absent' && 'text-destructive')} />
-                        </Button>
-                        <Button size="icon" variant={status === 'neutral' ? 'default' : 'outline'}
-                          className={status === 'neutral' ? 'bg-muted-foreground hover:bg-muted-foreground/90 text-white' : ''}
-                          onClick={() => markAttendance(student.id, 'neutral')} title="Neutro (feriado/sem aula)">
-                          <Minus className="h-4 w-4" />
-                        </Button>
+                        {hasNotStarted(student) ? (
+                          <span className="text-xs text-blue-600 font-medium self-center px-2 py-1 rounded bg-blue-50 border border-blue-200">
+                            Aluno iniciará em {fmtBR(toIso(student.first_class_date || student.enrollment_date)!)}
+                          </span>
+                        ) : (
+                          <>
+                            <Button size="icon" variant={status === 'present' ? 'default' : 'outline'}
+                              className={status === 'present' ? 'bg-green-600 hover:bg-green-700' : ''}
+                              onClick={() => markAttendance(student.id, 'present')} title="Presença (clique novamente para desmarcar)">
+                              <Check className={cn('h-4 w-4', status !== 'present' && 'text-green-600')} />
+                            </Button>
+                            <Button size="icon" variant={status === 'absent' ? 'default' : 'outline'}
+                              className={status === 'absent' ? 'bg-destructive hover:bg-destructive/90' : ''}
+                              onClick={() => markAttendance(student.id, 'absent')} title="Falta (clique novamente para desmarcar)">
+                              <X className={cn('h-4 w-4', status !== 'absent' && 'text-destructive')} />
+                            </Button>
+                            <Button size="icon" variant={status === 'neutral' ? 'default' : 'outline'}
+                              className={status === 'neutral' ? 'bg-muted-foreground hover:bg-muted-foreground/90 text-white' : ''}
+                              onClick={() => markAttendance(student.id, 'neutral')} title="Neutro (feriado/sem aula)">
+                              <Minus className="h-4 w-4" />
+                            </Button>
+                          </>
+                        )}
                       </div>
                     </div>
                   </div>
