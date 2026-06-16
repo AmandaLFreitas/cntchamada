@@ -138,20 +138,32 @@ export default function Attendance() {
     },
   });
 
-  const isNewStudent = (studentId: string, enrollmentDate: string | null): boolean => {
+  const isNewStudent = (studentId: string): boolean => {
     if (!existingAttendance) return false;
-    if (existingAttendance.has(studentId)) return false;
-    // Only show "Novo" if enrollment is within 14 days
-    if (!enrollmentDate) return true;
-    let isoDate = enrollmentDate;
-    const parts = enrollmentDate.split('/');
-    if (parts.length === 3 && parts[2].length === 4) {
-      isoDate = `${parts[2]}-${parts[1]}-${parts[0]}`;
+    return !existingAttendance.has(studentId);
+  };
+
+  // Parse a date string (dd/mm/yyyy or yyyy-mm-dd) into ISO yyyy-mm-dd
+  const toIso = (v: string | null | undefined): string | null => {
+    if (!v) return null;
+    if (/^\d{2}\/\d{2}\/\d{4}$/.test(v)) {
+      const [d, m, y] = v.split('/');
+      return `${y}-${m}-${d}`;
     }
-    const enrollDate = new Date(isoDate);
-    const now = new Date();
-    const diffDays = (now.getTime() - enrollDate.getTime()) / (1000 * 60 * 60 * 24);
-    return diffDays <= 30;
+    if (/^\d{4}-\d{2}-\d{2}/.test(v)) return v.slice(0, 10);
+    return null;
+  };
+
+  // True when student's course start date is AFTER the selected date (i.e. not yet started)
+  const hasNotStarted = (student: any): boolean => {
+    const startIso = toIso(student.first_class_date || student.enrollment_date);
+    if (!startIso) return false;
+    return startIso > isoDate;
+  };
+
+  const fmtBR = (iso: string): string => {
+    const [y, m, d] = iso.split('-');
+    return `${d}/${m}/${y}`;
   };
 
   const getStatus = (studentId: string) => {
@@ -616,7 +628,7 @@ export default function Attendance() {
                                 <span className="shrink-0 h-2 w-2 rounded-full bg-destructive" title="Possui observações" />
                               )}
                             </span>
-                            {isNewStudent(student.id, student.enrollment_date) && (
+                            {isNewStudent(student.id) && (
                               <Badge className="bg-blue-500 text-white text-[10px] px-1.5 py-0">Novo</Badge>
                             )}
                             {isFinalizing && (
@@ -645,21 +657,29 @@ export default function Attendance() {
                           title={isRescued ? 'Remover do Resgate' : 'Enviar para Resgate'}>
                           <LifeBuoy className={cn('h-4 w-4', isRescued ? 'text-orange-600 fill-orange-100' : 'text-muted-foreground')} />
                         </Button>
-                        <Button size="icon" variant={status === 'present' ? 'default' : 'outline'}
-                          className={status === 'present' ? 'bg-green-600 hover:bg-green-700' : ''}
-                          onClick={() => markAttendance(student.id, 'present')} title="Presença (clique novamente para desmarcar)">
-                          <Check className={cn('h-4 w-4', status !== 'present' && 'text-green-600')} />
-                        </Button>
-                        <Button size="icon" variant={status === 'absent' ? 'default' : 'outline'}
-                          className={status === 'absent' ? 'bg-destructive hover:bg-destructive/90' : ''}
-                          onClick={() => markAttendance(student.id, 'absent')} title="Falta (clique novamente para desmarcar)">
-                          <X className={cn('h-4 w-4', status !== 'absent' && 'text-destructive')} />
-                        </Button>
-                        <Button size="icon" variant={status === 'neutral' ? 'default' : 'outline'}
-                          className={status === 'neutral' ? 'bg-muted-foreground hover:bg-muted-foreground/90 text-white' : ''}
-                          onClick={() => markAttendance(student.id, 'neutral')} title="Neutro (feriado/sem aula)">
-                          <Minus className="h-4 w-4" />
-                        </Button>
+                        {hasNotStarted(student) ? (
+                          <span className="text-xs text-blue-600 font-medium self-center px-2 py-1 rounded bg-blue-50 border border-blue-200">
+                            Aluno iniciará em {fmtBR(toIso(student.first_class_date || student.enrollment_date)!)}
+                          </span>
+                        ) : (
+                          <>
+                            <Button size="icon" variant={status === 'present' ? 'default' : 'outline'}
+                              className={status === 'present' ? 'bg-green-600 hover:bg-green-700' : ''}
+                              onClick={() => markAttendance(student.id, 'present')} title="Presença (clique novamente para desmarcar)">
+                              <Check className={cn('h-4 w-4', status !== 'present' && 'text-green-600')} />
+                            </Button>
+                            <Button size="icon" variant={status === 'absent' ? 'default' : 'outline'}
+                              className={status === 'absent' ? 'bg-destructive hover:bg-destructive/90' : ''}
+                              onClick={() => markAttendance(student.id, 'absent')} title="Falta (clique novamente para desmarcar)">
+                              <X className={cn('h-4 w-4', status !== 'absent' && 'text-destructive')} />
+                            </Button>
+                            <Button size="icon" variant={status === 'neutral' ? 'default' : 'outline'}
+                              className={status === 'neutral' ? 'bg-muted-foreground hover:bg-muted-foreground/90 text-white' : ''}
+                              onClick={() => markAttendance(student.id, 'neutral')} title="Neutro (feriado/sem aula)">
+                              <Minus className="h-4 w-4" />
+                            </Button>
+                          </>
+                        )}
                       </div>
                     </div>
                   </div>

@@ -8,6 +8,7 @@ import { useSchool } from '@/contexts/SchoolContext';
 import { Button } from '@/components/ui/button';
 import { LogOut, Building2 } from 'lucide-react';
 import { ChangePasswordDialog } from '@/components/ChangePasswordDialog';
+import { NewStudentsNotification } from '@/components/NewStudentsNotification';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import logoImg from '@/assets/logo-cnt.png';
 
@@ -40,6 +41,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
                   </SelectContent>
                 </Select>
               </div>
+              <NewStudentsNotification />
               {displayName && (
                 <span className="text-sm text-muted-foreground hidden sm:inline">Olá, {displayName}</span>
               )}

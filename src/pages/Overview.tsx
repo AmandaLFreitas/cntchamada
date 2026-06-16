@@ -17,6 +17,14 @@ import { useSchool } from '@/contexts/SchoolContext';
 import { Input } from '@/components/ui/input';
 import { Search } from 'lucide-react';
 import { toast } from 'sonner';
+import { Badge } from '@/components/ui/badge';
+import { useNewStudents } from '@/hooks/use-new-students';
+
+const STATUS_LABELS: Record<string, string> = {
+  em_andamento: 'Em andamento',
+  finalizado: 'Finalizado',
+  desistiu: 'Desistiu',
+};
 
 
 const dayNameFromDate = (date: Date): string => {
@@ -36,6 +44,8 @@ export default function Overview() {
   const { data: slotCounts } = useSlotCounts();
   const { data: slotStudents } = useSlotStudents(selectedSlotId);
   const completeStudent = useCompleteStudent();
+  const { data: newStudents } = useNewStudents();
+  const newStudentIds = new Set((newStudents ?? []).map(n => n.studentId));
 
   const allDaySlots = timeSlots?.filter(s => s.day_of_week === selectedDay) ?? [];
 
@@ -211,12 +221,22 @@ export default function Overview() {
                 if (!student) return null;
                 const courseName = student.courses?.name || student.custom_course_name || 'N/A';
                 const workload = student.workload ?? 48;
-                const startDate = firstDates?.[student.id] ?? '-';
+                const firstPresence = firstDates?.[student.id] ?? null;
+                const courseStart = student.first_class_date || student.enrollment_date || null;
                 const endDate = calculateEndDate(student.id, workload);
+                const courseStatus = student.course_status || 'em_andamento';
+                const isNew = newStudentIds.has(student.id);
                 return (
                   <div key={s.id} className="border rounded-lg p-3 bg-card">
                     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                      <p className="font-medium truncate">{student.full_name || 'Sem nome'}</p>
+                      <div className="flex items-center gap-2 flex-wrap min-w-0">
+                        {isNew && (
+                          <Badge className="bg-blue-500 text-white text-[10px] px-1.5 py-0" title={`Curso: ${courseName}\nInício: ${courseStart || '—'}`}>
+                            Novo
+                          </Badge>
+                        )}
+                        <p className="font-medium truncate">{student.full_name || 'Sem nome'}</p>
+                      </div>
                       <Button size="sm" variant="outline" className="sm:ml-2 text-destructive border-destructive hover:bg-destructive hover:text-destructive-foreground self-end sm:self-auto" onClick={() => handleComplete(s)}>
                         Finalizar
                       </Button>
@@ -224,7 +244,8 @@ export default function Overview() {
                     <div className="mt-1 text-sm text-muted-foreground space-y-0.5 break-words">
                       <p>Curso: {courseName}</p>
                       <p>Carga horária: {workload}h • {scheduleCounts?.[student.id]?.toFixed(0) ?? '?'}h/semana</p>
-                      <p>Início: {startDate} • Previsão de término: {endDate}</p>
+                      <p>Início do curso: {courseStart || '—'} • Primeira presença: {firstPresence || '—'}</p>
+                      <p>Previsão de término: {endDate} • Status: {STATUS_LABELS[courseStatus] || courseStatus}</p>
                     </div>
                   </div>
                 );
