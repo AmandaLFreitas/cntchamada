@@ -17,6 +17,14 @@ import { useSchool } from '@/contexts/SchoolContext';
 import { Input } from '@/components/ui/input';
 import { Search } from 'lucide-react';
 import { toast } from 'sonner';
+import { Badge } from '@/components/ui/badge';
+import { useNewStudents } from '@/hooks/use-new-students';
+
+const STATUS_LABELS: Record<string, string> = {
+  em_andamento: 'Em andamento',
+  finalizado: 'Finalizado',
+  desistiu: 'Desistiu',
+};
 
 
 const dayNameFromDate = (date: Date): string => {
