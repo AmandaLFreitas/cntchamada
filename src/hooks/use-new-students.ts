@@ -65,7 +65,7 @@ export function useNewStudents() {
       if (list.length === 0) return [];
 
       const scIds = list.map((sc: any) => sc.id);
-      const studentIds = [...new Set(list.map((sc: any) => sc.student_id))];
+      const studentIds = [...new Set(list.map((sc: any) => sc.student_id as string))] as string[];
 
       // 2. Schedules per student_course
       const { data: schedRows } = await supabase
