@@ -149,6 +149,7 @@ export function useSlotStudents(timeSlotId: string | null) {
           return {
             ...d,
             rescue_flagged: !!sc.rescue_flagged,
+            course_status: sc.status,
             students: {
               ...sc.students,
               course_id: sc.course_id,
@@ -157,6 +158,7 @@ export function useSlotStudents(timeSlotId: string | null) {
               workload: sc.workload,
               enrollment_date: sc.enrollment_date,
               first_class_date: sc.first_class_date,
+              course_status: sc.status,
             },
           };
         })
