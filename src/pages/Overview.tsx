@@ -44,6 +44,8 @@ export default function Overview() {
   const { data: slotCounts } = useSlotCounts();
   const { data: slotStudents } = useSlotStudents(selectedSlotId);
   const completeStudent = useCompleteStudent();
+  const { data: newStudents } = useNewStudents();
+  const newStudentIds = new Set((newStudents ?? []).map(n => n.studentId));
 
   const allDaySlots = timeSlots?.filter(s => s.day_of_week === selectedDay) ?? [];
 
