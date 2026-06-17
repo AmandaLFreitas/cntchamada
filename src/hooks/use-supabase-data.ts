@@ -271,6 +271,11 @@ export function useSaveAttendance() {
     onError: (_e, vars, ctx) => {
       if (ctx?.prev) qc.setQueryData(['attendance', vars.date, vars.timeSlotId, schoolId], ctx.prev);
     },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['has_any_attendance'] });
+      qc.invalidateQueries({ queryKey: ['new_students'] });
+      qc.invalidateQueries({ queryKey: ['first_dates_batch'] });
+    },
   });
 }
 
