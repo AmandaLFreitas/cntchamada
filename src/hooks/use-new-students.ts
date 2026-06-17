@@ -49,7 +49,7 @@ export function useNewStudents() {
   const { schoolId, school } = useSchool();
 
   return useQuery<NewStudentEntry[]>({
-    queryKey: ['new_students', schoolId],
+    queryKey: ['new_students', schoolId, school?.name],
     enabled: !!schoolId,
     queryFn: async () => {
       // 1. Active students in the selected unit
