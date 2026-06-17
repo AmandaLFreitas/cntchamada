@@ -21,13 +21,15 @@ const STORAGE_KEY = 'cnt.activeSchoolId';
 const SchoolContext = createContext<SchoolContextType | undefined>(undefined);
 
 export function SchoolProvider({ children }: { children: ReactNode }) {
-  const [schools, setSchools] = useState<School[]>([]);
+  const [allSchools, setAllSchools] = useState<School[]>([]);
+  const [allowedIds, setAllowedIds] = useState<Set<string> | null>(null); // null => no auth filter yet
   const [schoolId, setSchoolIdState] = useState<string | null>(
     () => localStorage.getItem(STORAGE_KEY)
   );
   const [loading, setLoading] = useState(true);
   const qc = useQueryClient();
 
+  // Load all schools once (public read)
   useEffect(() => {
     let mounted = true;
     supabase
@@ -36,24 +38,60 @@ export function SchoolProvider({ children }: { children: ReactNode }) {
       .order('name')
       .then(({ data }) => {
         if (!mounted) return;
-        const list = (data ?? []) as School[];
-        setSchools(list);
-        // Validate stored id; clear if not present anymore
-        const stored = localStorage.getItem(STORAGE_KEY);
-        if (stored && !list.some(s => s.id === stored)) {
-          localStorage.removeItem(STORAGE_KEY);
-          setSchoolIdState(null);
-        }
+        setAllSchools((data ?? []) as School[]);
         setLoading(false);
       });
     return () => { mounted = false; };
   }, []);
 
+  // Track auth and load user-allowed schools
+  useEffect(() => {
+    const loadAllowed = async (userId: string | null) => {
+      if (!userId) {
+        setAllowedIds(null);
+        return;
+      }
+      const { data } = await supabase
+        .from('user_schools')
+        .select('school_id')
+        .eq('user_id', userId);
+      const ids = new Set<string>((data ?? []).map((r: any) => r.school_id));
+      setAllowedIds(ids);
+    };
+
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      loadAllowed(session?.user?.id ?? null);
+    });
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setTimeout(() => loadAllowed(session?.user?.id ?? null), 0);
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
+
+  // Restrict visible list to allowed schools when authenticated
+  const schools = allowedIds
+    ? allSchools.filter(s => allowedIds.has(s.id))
+    : allSchools;
+
+  // Validate stored schoolId against the (filtered) list
+  useEffect(() => {
+    if (loading) return;
+    if (allowedIds === null) return; // not yet authenticated; do not clear
+    if (schoolId && !schools.some(s => s.id === schoolId)) {
+      localStorage.removeItem(STORAGE_KEY);
+      setSchoolIdState(null);
+      qc.invalidateQueries();
+    }
+  }, [loading, allowedIds, schoolId, schools, qc]);
+
   const setSchoolId = (id: string) => {
     if (id === schoolId) return;
+    // Block selecting a school the user cannot access
+    if (allowedIds && !allowedIds.has(id)) return;
     localStorage.setItem(STORAGE_KEY, id);
     setSchoolIdState(id);
-    // Invalidate every query so all data reloads scoped to the new school
     qc.invalidateQueries();
   };
 
