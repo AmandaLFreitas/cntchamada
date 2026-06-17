@@ -49,7 +49,13 @@ export function StudentDetailsDialog({ open, onOpenChange, studentId }: Props) {
           if (row.time_slots) schedulesByScId[k].push(row.time_slots);
         });
       }
-      return { student, courses: scs ?? [], schedulesByScId };
+      const { data: observations } = await supabase
+        .from('student_observations')
+        .select('id, observation, created_at')
+        .eq('school_id', schoolId!)
+        .eq('student_id', studentId!)
+        .order('created_at', { ascending: false });
+      return { student, courses: scs ?? [], schedulesByScId, observations: observations ?? [] };
     },
   });
 
@@ -104,6 +110,18 @@ export function StudentDetailsDialog({ open, onOpenChange, studentId }: Props) {
                 </div>
               );
             })}
+            <div className="border rounded-lg p-3 space-y-1">
+              <p className="font-semibold">Observações</p>
+              {(data?.observations ?? []).length === 0 ? (
+                <p className="text-muted-foreground">Nenhuma observação registrada.</p>
+              ) : (
+                <div className="space-y-2">
+                  {(data?.observations ?? []).map((obs: any) => (
+                    <p key={obs.id} className="whitespace-pre-wrap">{obs.observation}</p>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
         )}
       </DialogContent>
