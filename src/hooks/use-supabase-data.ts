@@ -354,6 +354,7 @@ export function useCreateStudent() {
       qc.invalidateQueries({ queryKey: ['student_schedules'] });
       qc.invalidateQueries({ queryKey: ['slot_counts'] });
       qc.invalidateQueries({ queryKey: ['slot_students'] });
+      qc.invalidateQueries({ queryKey: ['new_students'] });
     },
   });
 }
@@ -452,6 +453,7 @@ export function useUpdateStudent() {
       qc.invalidateQueries({ queryKey: ['student_schedules'] });
       qc.invalidateQueries({ queryKey: ['slot_counts'] });
       qc.invalidateQueries({ queryKey: ['slot_students'] });
+      qc.invalidateQueries({ queryKey: ['new_students'] });
     },
   });
 }
