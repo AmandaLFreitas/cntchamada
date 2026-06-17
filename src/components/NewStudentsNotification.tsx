@@ -20,7 +20,7 @@ export function NewStudentsNotification() {
         title="Alunos novos"
       >
         <Sparkles className="h-4 w-4 text-blue-500" />
-        <span className="hidden sm:inline text-xs">Novos</span>
+        <span className="hidden sm:inline text-xs">Alunos Novos</span>
         {count > 0 && (
           <span className="absolute -top-0.5 -right-0.5 sm:static sm:ml-1 inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 text-[10px] font-semibold rounded-full bg-blue-500 text-white">
             {count}
@@ -50,6 +50,7 @@ export function NewStudentsNotification() {
                   </div>
                   <div className="mt-1 text-sm text-muted-foreground space-y-0.5">
                     <p><span className="text-foreground/70">Curso:</span> {ns.courseName}</p>
+                    <p><span className="text-foreground/70">Unidade:</span> {ns.schoolName}</p>
                     <p>
                       <span className="text-foreground/70">Início:</span> {ns.startDateFormatted || '—'}
                       {ns.isFutureStart && (
