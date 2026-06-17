@@ -138,9 +138,16 @@ export default function Attendance() {
     },
   });
 
+  // "Novo" = nunca teve presença E data de início está no futuro
   const isNewStudent = (studentId: string): boolean => {
     if (!existingAttendance) return false;
-    return !existingAttendance.has(studentId);
+    if (existingAttendance.has(studentId)) return false;
+    const st = filteredStudents.find((s: any) => s.students?.id === studentId)?.students;
+    if (!st) return false;
+    const startIso = toIso(st.first_class_date || st.enrollment_date);
+    if (!startIso) return false;
+    const todayIso = new Date().toISOString().slice(0, 10);
+    return startIso > todayIso;
   };
 
   // Parse a date string (dd/mm/yyyy or yyyy-mm-dd) into ISO yyyy-mm-dd

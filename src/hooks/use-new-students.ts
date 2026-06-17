@@ -96,9 +96,11 @@ export function useNewStudents() {
 
       return list
         .filter((sc: any) => {
+          // Rule: "Novo" only when student has NO presence AND start date is in the future
           if (hasPresence.has(sc.student_id)) return false;
           const d = parseAnyDate(sc.first_class_date || sc.enrollment_date);
-          return !!d;
+          if (!d) return false;
+          return d.getTime() > today.getTime();
         })
         .map((sc: any) => {
           const d = parseAnyDate(sc.first_class_date || sc.enrollment_date)!;
