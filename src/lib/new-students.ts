@@ -23,6 +23,7 @@ export async function fetchStudentIdsWithAnyAttendance(studentIds: string[]): Pr
         .from('attendance')
         .select('student_id')
         .in('student_id', chunk)
+        .order('id', { ascending: true })
         .range(from, from + ATTENDANCE_PAGE_SIZE - 1);
 
       if (error) throw error;
