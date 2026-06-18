@@ -130,10 +130,27 @@ export default function Attendance() {
     },
   });
 
-  // "Novo" = nenhum registro na tabela attendance
+  // Finalized students must not be flagged as new either
+  const { data: finalizedStudentIds } = useQuery({
+    queryKey: ['finalized_student_ids', studentIdsInSlot, schoolId],
+    enabled: studentIdsInSlot.length > 0 && !!schoolId,
+    queryFn: async () => {
+      const { data } = await (supabase as any)
+        .from('student_courses')
+        .select('student_id')
+        .eq('school_id', schoolId!)
+        .eq('status', 'finalizado')
+        .in('student_id', studentIdsInSlot);
+      return new Set<string>((data ?? []).map((r: any) => r.student_id));
+    },
+  });
+
+  // "Novo" = nenhum registro na tabela attendance e nenhum curso finalizado
   const isNewStudent = (studentId: string): boolean => {
     if (!existingAttendance) return false;
-    return !existingAttendance.has(studentId);
+    if (existingAttendance.has(studentId)) return false;
+    if (finalizedStudentIds?.has(studentId)) return false;
+    return true;
   };
 
   // Parse a date string (dd/mm/yyyy or yyyy-mm-dd) into ISO yyyy-mm-dd
