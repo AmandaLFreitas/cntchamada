@@ -70,7 +70,18 @@ export function useNewStudents() {
       // Do not filter by status, date, enrollment, start date, or course data.
       const hasAttendance = await fetchStudentIdsWithAnyAttendance(studentIds);
 
-      const newStudents = studentList.filter((student: any) => !hasAttendance.has(student.id));
+      // Students with any finalized course must not appear as "Novo".
+      const { data: finalizedRows } = await (supabase as any)
+        .from('student_courses')
+        .select('student_id')
+        .eq('school_id', schoolId!)
+        .eq('status', 'finalizado')
+        .in('student_id', studentIds);
+      const finalizedSet = new Set<string>((finalizedRows ?? []).map((r: any) => r.student_id));
+
+      const newStudents = studentList.filter(
+        (student: any) => !hasAttendance.has(student.id) && !finalizedSet.has(student.id)
+      );
       if (newStudents.length === 0) return [];
 
       const newStudentIds = newStudents.map((student: any) => student.id as string);
