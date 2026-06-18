@@ -26,6 +26,7 @@ import { Search } from 'lucide-react';
 import { openWhatsApp } from '@/lib/utils';
 import { useFinalizingStudents } from '@/hooks/use-finalizing-students';
 import { toast } from 'sonner';
+import { fetchStudentIdsWithAnyAttendance } from '@/lib/new-students';
 
 
 const dayNameFromDate = (date: Date): string => {
@@ -103,22 +104,13 @@ export default function Attendance() {
     return true;
   });
 
-  // Check which students have never had attendance
+  // Check which students have any attendance record; any status means the student is not new.
   const studentIdsInSlot = filteredStudents.map((s: any) => s.students?.id).filter(Boolean);
   const { data: existingAttendance } = useQuery({
     queryKey: ['has_any_attendance', studentIdsInSlot, schoolId],
     enabled: studentIdsInSlot.length > 0 && !!schoolId,
     queryFn: async () => {
-      const { data } = await supabase
-        .from('attendance')
-        .select('student_id')
-        .eq('school_id', schoolId!)
-        .in('student_id', studentIdsInSlot)
-        .eq('status', 'present')
-        .limit(1000);
-      const set = new Set<string>();
-      data?.forEach(r => set.add(r.student_id));
-      return set;
+      return fetchStudentIdsWithAnyAttendance(schoolId!, studentIdsInSlot);
     },
   });
 
@@ -138,7 +130,7 @@ export default function Attendance() {
     },
   });
 
-  // "Novo" = nenhuma presença registrada no banco
+  // "Novo" = nenhum registro na tabela attendance
   const isNewStudent = (studentId: string): boolean => {
     if (!existingAttendance) return false;
     return !existingAttendance.has(studentId);

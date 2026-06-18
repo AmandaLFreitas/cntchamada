@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useSchool } from '@/contexts/SchoolContext';
+import { fetchStudentIdsWithAnyAttendance } from '@/lib/new-students';
 
 export interface NewStudentEntry {
   studentId: string;
@@ -41,9 +42,9 @@ export const formatBR = (v: string | null | undefined): string => {
 
 /**
  * Returns students considered "new":
- * - The student has zero 'present' attendance rows in the database.
+ * - The student has zero rows in the attendance table, regardless of status.
  *
- * Once a presence is registered, the entry disappears automatically.
+ * Once any attendance record is registered, the entry disappears automatically.
  */
 export function useNewStudents() {
   const { schoolId, school } = useSchool();
@@ -65,18 +66,11 @@ export function useNewStudents() {
 
       const studentIds = studentList.map((s: any) => s.id as string);
 
-      // 2. Students that already have at least one presence
-      const { data: attRows } = await supabase
-        .from('attendance')
-        .select('student_id')
-        .eq('school_id', schoolId!)
-        .in('student_id', studentIds)
-        .eq('status', 'present')
-        .limit(5000);
-      const hasPresence = new Set<string>();
-      (attRows ?? []).forEach((r: any) => hasPresence.add(r.student_id));
+      // 2. Students that already have ANY attendance record are not new.
+      // Do not filter by status, date, enrollment, start date, or course data.
+      const hasAttendance = await fetchStudentIdsWithAnyAttendance(schoolId!, studentIds);
 
-      const newStudents = studentList.filter((student: any) => !hasPresence.has(student.id));
+      const newStudents = studentList.filter((student: any) => !hasAttendance.has(student.id));
       if (newStudents.length === 0) return [];
 
       const newStudentIds = newStudents.map((student: any) => student.id as string);
