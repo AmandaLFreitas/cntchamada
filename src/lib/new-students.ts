@@ -12,7 +12,7 @@ const uniqueChunks = (ids: string[], size: number): string[][] => {
   return chunks;
 };
 
-export async function fetchStudentIdsWithAnyAttendance(schoolId: string, studentIds: string[]): Promise<Set<string>> {
+export async function fetchStudentIdsWithAnyAttendance(studentIds: string[]): Promise<Set<string>> {
   const studentIdsWithAttendance = new Set<string>();
 
   for (const chunk of uniqueChunks(studentIds, STUDENT_ID_CHUNK_SIZE)) {
@@ -22,7 +22,6 @@ export async function fetchStudentIdsWithAnyAttendance(schoolId: string, student
       const { data, error } = await supabase
         .from('attendance')
         .select('student_id')
-        .eq('school_id', schoolId)
         .in('student_id', chunk)
         .range(from, from + ATTENDANCE_PAGE_SIZE - 1);
 

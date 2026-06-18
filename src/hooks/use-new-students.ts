@@ -68,7 +68,7 @@ export function useNewStudents() {
 
       // 2. Students that already have ANY attendance record are not new.
       // Do not filter by status, date, enrollment, start date, or course data.
-      const hasAttendance = await fetchStudentIdsWithAnyAttendance(schoolId!, studentIds);
+      const hasAttendance = await fetchStudentIdsWithAnyAttendance(studentIds);
 
       const newStudents = studentList.filter((student: any) => !hasAttendance.has(student.id));
       if (newStudents.length === 0) return [];

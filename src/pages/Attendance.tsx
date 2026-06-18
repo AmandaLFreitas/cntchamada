@@ -110,7 +110,7 @@ export default function Attendance() {
     queryKey: ['has_any_attendance', studentIdsInSlot, schoolId],
     enabled: studentIdsInSlot.length > 0 && !!schoolId,
     queryFn: async () => {
-      return fetchStudentIdsWithAnyAttendance(schoolId!, studentIdsInSlot);
+      return fetchStudentIdsWithAnyAttendance(studentIdsInSlot);
     },
   });
 
