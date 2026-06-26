@@ -17,6 +17,8 @@ import Finalizing from "./pages/Finalizing";
 import Vanderlei from "./pages/Vanderlei";
 import Amanda from "./pages/Amanda";
 import Rescue from "./pages/Rescue";
+import ConsecutiveAbsences from "./pages/ConsecutiveAbsences";
+import MissingPhones from "./pages/MissingPhones";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient({
@@ -61,6 +63,8 @@ function AppRoutes() {
         <Route path="/professor-vanderlei" element={<Vanderlei />} />
         <Route path="/profa-amanda" element={<Amanda />} />
         <Route path="/resgate" element={<Rescue />} />
+        <Route path="/faltas-consecutivas" element={<ConsecutiveAbsences />} />
+        <Route path="/sem-telefone" element={<MissingPhones />} />
         <Route path="*" element={<NotFound />} />
       </Routes>
     </Layout>
