@@ -61,14 +61,14 @@ export function useFinalizingStudents() {
     queryFn: async () => {
       const { data } = await supabase
         .from('student_schedules')
-        .select('student_id, student_course_id, time_slot_id, time_slots(start_time, end_time)')
+        .select('student_id, student_course_id, time_slot_id, time_slots(start_time, end_time, day_of_week)')
         .eq('school_id', schoolId!)
         .in('student_id', studentIds);
 
-      // Map: student_course_id -> { weeklyHours, sessions, slotIds: Set, slotHours: Record<slotId, hours> }
       const map: Record<string, {
         weeklyHours: number;
         sessions: number;
+        days: Set<string>;
         slotIds: Set<string>;
         slotHours: Record<string, number>;
       }> = {};
@@ -76,10 +76,11 @@ export function useFinalizingStudents() {
       data?.forEach((r: any) => {
         const scId = r.student_course_id;
         if (!scId) return;
-        if (!map[scId]) map[scId] = { weeklyHours: 0, sessions: 0, slotIds: new Set(), slotHours: {} };
+        if (!map[scId]) map[scId] = { weeklyHours: 0, sessions: 0, days: new Set(), slotIds: new Set(), slotHours: {} };
         const h = slotHours(r.time_slots?.start_time, r.time_slots?.end_time);
         map[scId].weeklyHours += h;
         map[scId].sessions += 1;
+        if (r.time_slots?.day_of_week) map[scId].days.add(r.time_slots.day_of_week);
         if (r.time_slot_id) {
           map[scId].slotIds.add(r.time_slot_id);
           map[scId].slotHours[r.time_slot_id] = h;
@@ -87,6 +88,7 @@ export function useFinalizingStudents() {
       });
       return map;
     },
+
   });
 
   // Real attendance — fetched once, then bucketed per student_course using slotIds
