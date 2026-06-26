@@ -159,9 +159,6 @@ export default function ConsecutiveAbsences() {
                     <p className="text-xs text-muted-foreground truncate">
                       {r.courses.join(' • ') || '—'}
                     </p>
-                    <p className="text-xs text-muted-foreground truncate">
-                      {r.courses.join(' • ') || '—'}
-                    </p>
                   </div>
                   <span className="bg-orange-100 text-orange-700 font-bold rounded-md px-2 py-1 text-sm whitespace-nowrap">
                     {r.streak} faltas
