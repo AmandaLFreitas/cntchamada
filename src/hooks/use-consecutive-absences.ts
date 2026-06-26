@@ -71,14 +71,26 @@ export function useConsecutiveAbsences(minStreak = 2) {
     queryKey: ['attendance_for_consecutive', schoolId, studentIds],
     enabled: !!schoolId && studentIds.length > 0,
     queryFn: async () => {
-      const { data } = await supabase
-        .from('attendance')
-        .select('student_id, time_slot_id, date, status, time_slots(start_time)')
-        .eq('school_id', schoolId!)
-        .in('student_id', studentIds)
-        .order('date', { ascending: false })
-        .limit(20000);
-      return data ?? [];
+      const pageSize = 1000;
+      const allRows: any[] = [];
+      let from = 0;
+
+      while (true) {
+        const { data, error } = await supabase
+          .from('attendance')
+          .select('student_id, time_slot_id, date, status, time_slots(start_time)')
+          .eq('school_id', schoolId!)
+          .in('student_id', studentIds)
+          .order('date', { ascending: false })
+          .range(from, from + pageSize - 1);
+
+        if (error) throw error;
+        allRows.push(...(data ?? []));
+        if (!data || data.length < pageSize) break;
+        from += pageSize;
+      }
+
+      return allRows;
     },
   });
 
