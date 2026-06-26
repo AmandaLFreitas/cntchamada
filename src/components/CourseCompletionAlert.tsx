@@ -52,7 +52,7 @@ export function CourseCompletionAlert() {
 
   const alerts = useMemo(() => {
     if (!students || !attendanceCounts || !scheduleCounts) return [];
-    const result: { name: string; course: string; pct: number; aulasRestantes: number }[] = [];
+    const result: { name: string; course: string; pct: number; diasRestantes: number }[] = [];
 
     (students as any[]).forEach(s => {
       (s.student_courses ?? []).filter((sc: any) => sc.is_active).forEach((sc: any) => {

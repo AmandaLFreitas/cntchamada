@@ -30,7 +30,7 @@ export default function Finalizing() {
                 <TableHead>Curso</TableHead>
                 <TableHead className="hidden md:table-cell">Data Início</TableHead>
                 <TableHead className="hidden md:table-cell">Previsão Término</TableHead>
-                <TableHead className="text-center">Aulas Restantes</TableHead>
+                <TableHead className="text-center">Dias Restantes</TableHead>
                 <TableHead className="min-w-[160px]">Conclusão</TableHead>
               </TableRow>
             </TableHeader>
@@ -43,12 +43,10 @@ export default function Finalizing() {
                   <TableCell className="hidden md:table-cell">{f.expectedEndDate || '—'}</TableCell>
                   <TableCell className="text-center">
                     <span className="font-semibold text-yellow-600">
-                      {f.lessonsRemaining}
-                    </span>
-                    <span className="text-xs text-muted-foreground ml-1">
-                      ({f.hoursRemaining}h)
+                      {f.daysRemaining} {f.daysRemaining === 1 ? 'dia' : 'dias'}
                     </span>
                   </TableCell>
+
                   <TableCell>
                     <div className="flex items-center gap-2">
                       <Progress value={f.pct} className="h-2 flex-1" />
