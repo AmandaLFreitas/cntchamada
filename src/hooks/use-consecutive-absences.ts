@@ -231,6 +231,7 @@ export function useConsecutiveAbsences(minStreak = 2) {
         startDate: fmt(startDate),
         expectedEndDate: fmt(expectedEnd),
         streak,
+        firstAbsentInStreakDate: firstAbsentInStreak ? fmt(parseDate(firstAbsentInStreak)) : null,
         lastPresentDate: lastPresent ? fmt(parseDate(lastPresent)) : null,
         lastAbsentDate: lastAbsent ? fmt(parseDate(lastAbsent)) : null,
         totalPresent,
