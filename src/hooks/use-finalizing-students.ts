@@ -16,6 +16,8 @@ export interface FinalizingStudent {
   hoursCompleted: number;
   hoursRemaining: number;
   lessonsRemaining: number;
+  daysRemaining: number;
+
   hoursPerSession: number;
   pct: number;
   source: 'real' | 'estimated';
