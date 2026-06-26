@@ -5,6 +5,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { Card, CardContent } from '@/components/ui/card';
 import { AlertOctagon, Phone, Printer, FileDown, FileSpreadsheet, X } from 'lucide-react';
+// Professor column intentionally removed — not relevant on this tab.
 import { useConsecutiveAbsences } from '@/hooks/use-consecutive-absences';
 import { useSchool } from '@/contexts/SchoolContext';
 import { StudentDetailsDialog } from '@/components/StudentDetailsDialog';
@@ -12,18 +13,8 @@ import { openWhatsApp } from '@/lib/utils';
 import jsPDF from 'jspdf';
 import * as XLSX from 'xlsx';
 
-const AMANDA_COURSES = [
-  'programação kids - scratch',
-  'lógica de programação - java',
-  'programação - html/css',
-];
 const normalize = (s: string) =>
   (s || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim();
-
-const teacherFor = (course: string): 'Amanda' | 'Vanderlei' => {
-  const n = normalize(course);
-  return AMANDA_COURSES.some(c => normalize(c) === n || n.includes(normalize(c))) ? 'Amanda' : 'Vanderlei';
-};
 
 export default function ConsecutiveAbsences() {
   const { school } = useSchool();
@@ -31,7 +22,6 @@ export default function ConsecutiveAbsences() {
 
   const [search, setSearch] = useState('');
   const [courseFilter, setCourseFilter] = useState<string>('all');
-  const [teacherFilter, setTeacherFilter] = useState<string>('all');
   const [minStreak, setMinStreak] = useState<string>('2');
   const [openStudent, setOpenStudent] = useState<string | null>(null);
 
@@ -46,23 +36,18 @@ export default function ConsecutiveAbsences() {
       if (r.streak < Number(minStreak || 2)) return false;
       if (search && !normalize(r.name).includes(normalize(search))) return false;
       if (courseFilter !== 'all' && !r.courses.includes(courseFilter)) return false;
-      if (teacherFilter !== 'all') {
-        const teachers = new Set(r.courses.map(teacherFor));
-        if (!teachers.has(teacherFilter as 'Amanda' | 'Vanderlei')) return false;
-      }
       return true;
     });
-  }, [rows, search, courseFilter, teacherFilter, minStreak]);
+  }, [rows, search, courseFilter, minStreak]);
 
   const clearFilters = () => {
-    setSearch(''); setCourseFilter('all'); setTeacherFilter('all'); setMinStreak('2');
+    setSearch(''); setCourseFilter('all'); setMinStreak('2');
   };
 
   const exportExcel = () => {
     const data = filtered.map(r => ({
       Aluno: r.name,
       Cursos: r.courses.join(' | '),
-      Professor: Array.from(new Set(r.courses.map(teacherFor))).join(' | '),
       Unidade: school?.name || '',
       Horários: r.schedule,
       'Faltas consecutivas': r.streak,
