@@ -63,6 +63,8 @@ function AppRoutes() {
         <Route path="/professor-vanderlei" element={<Vanderlei />} />
         <Route path="/profa-amanda" element={<Amanda />} />
         <Route path="/resgate" element={<Rescue />} />
+        <Route path="/faltas-consecutivas" element={<ConsecutiveAbsences />} />
+        <Route path="/sem-telefone" element={<MissingPhones />} />
         <Route path="*" element={<NotFound />} />
       </Routes>
     </Layout>
