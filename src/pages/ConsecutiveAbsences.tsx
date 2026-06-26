@@ -198,6 +198,7 @@ export default function ConsecutiveAbsences() {
                   <div><span className="text-muted-foreground">Início:</span> {r.startDate || '—'}</div>
                   <div><span className="text-muted-foreground">Previsão fim:</span> {r.expectedEndDate || '—'}</div>
                   <div><span className="text-muted-foreground">Últ. presença:</span> {r.lastPresentDate || '—'}</div>
+                  <div><span className="text-muted-foreground">1ª falta da sequência:</span> {r.firstAbsentInStreakDate || '—'}</div>
                   <div><span className="text-muted-foreground">Últ. falta:</span> {r.lastAbsentDate || '—'}</div>
                   <div className="col-span-2"><span className="text-muted-foreground">Frequência:</span> {r.attendancePct}% ({r.totalPresent}P / {r.totalAbsent}F)</div>
                 </div>
