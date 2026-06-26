@@ -17,6 +17,8 @@ import Finalizing from "./pages/Finalizing";
 import Vanderlei from "./pages/Vanderlei";
 import Amanda from "./pages/Amanda";
 import Rescue from "./pages/Rescue";
+import ConsecutiveAbsences from "./pages/ConsecutiveAbsences";
+import MissingPhones from "./pages/MissingPhones";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient({
