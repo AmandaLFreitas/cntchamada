@@ -62,6 +62,8 @@ export function useConsecutiveAbsences(minStreak = 2) {
     [students]
   );
 
+  const queryClient = useQueryClient();
+
   const { data: attendance } = useQuery({
     queryKey: ['attendance_for_consecutive', schoolId, studentIds],
     enabled: !!schoolId && studentIds.length > 0,
@@ -71,12 +73,25 @@ export function useConsecutiveAbsences(minStreak = 2) {
         .select('student_id, date, status')
         .eq('school_id', schoolId!)
         .in('student_id', studentIds)
-        .in('status', ['present', 'absent'])
         .order('date', { ascending: true })
         .limit(20000);
       return data ?? [];
     },
   });
+
+  // Realtime: any attendance change recomputes the streak instantly
+  useEffect(() => {
+    if (!schoolId) return;
+    const channel = supabase
+      .channel(`attendance-consecutive-${schoolId}`)
+      .on('postgres_changes',
+        { event: '*', schema: 'public', table: 'attendance', filter: `school_id=eq.${schoolId}` },
+        () => {
+          queryClient.invalidateQueries({ queryKey: ['attendance_for_consecutive', schoolId] });
+        })
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, [schoolId, queryClient]);
 
   const { data: observations } = useQuery({
     queryKey: ['observations_for_consecutive', schoolId, studentIds],
