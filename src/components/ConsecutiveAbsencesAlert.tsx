@@ -19,8 +19,8 @@ export function ConsecutiveAbsencesAlert() {
         .from('attendance')
         .select('student_id, status, date, students(full_name)')
         .eq('school_id', schoolId!)
-        .in('status', ['present', 'absent'])
-        .order('date', { ascending: true })
+        .in('status', ['present', 'absent', 'neutral'])
+        .order('date', { ascending: false })
         .limit(10000);
       return data ?? [];
     },
@@ -29,20 +29,25 @@ export function ConsecutiveAbsencesAlert() {
 
   const alerts = useMemo(() => {
     if (!rows) return [];
-    // Group by student_id and count current consecutive absences (ignoring neutral, since we filter them out above)
-    const byStudent = new Map<string, { name: string; streak: number }>();
+    // Group by student_id and count only the current streak from real attendance records.
+    const byStudent = new Map<string, { name: string; records: any[] }>();
     (rows as any[]).forEach(r => {
       const sid = r.student_id;
       const name = r.students?.full_name || 'Sem nome';
-      const cur = byStudent.get(sid) || { name, streak: 0 };
+      const cur = byStudent.get(sid) || { name, records: [] };
       cur.name = name;
-      if (r.status === 'absent') cur.streak += 1;
-      else if (r.status === 'present') cur.streak = 0;
+      cur.records.push(r);
       byStudent.set(sid, cur);
     });
     const result: { id: string; name: string; streak: number }[] = [];
     byStudent.forEach((v, id) => {
+      let streak = 0;
+      for (const record of v.records) {
+        if (record.status === 'absent') streak += 1;
+        else if (record.status === 'present' || record.status === 'neutral') break;
+      }
       if (v.streak > THRESHOLD) result.push({ id, name: v.name, streak: v.streak });
+      if (streak > THRESHOLD) result.push({ id, name: v.name, streak });
     });
     return result.sort((a, b) => b.streak - a.streak);
   }, [rows]);
