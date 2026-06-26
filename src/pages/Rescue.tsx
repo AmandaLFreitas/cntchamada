@@ -105,8 +105,7 @@ export default function Rescue() {
               <TableRow>
                 <TableHead>Aluno</TableHead>
                 <TableHead>Curso atual</TableHead>
-                <TableHead className="text-center">Horas restantes</TableHead>
-                <TableHead className="text-center">Aulas restantes</TableHead>
+                <TableHead className="text-center">Dias restantes</TableHead>
                 <TableHead className="min-w-[180px]">Próximo curso</TableHead>
                 <TableHead className="min-w-[180px]">Status de contato</TableHead>
                 <TableHead className="min-w-[200px]">Observações</TableHead>
@@ -117,8 +116,7 @@ export default function Rescue() {
               {flagged.map((sc: any) => {
                 const fin = finalizingMap.get(sc.id);
                 const prog = progressMap[sc.id];
-                const hoursRem = fin?.hoursRemaining ?? prog?.hoursRemaining;
-                const lessonsRem = fin?.lessonsRemaining ?? prog?.lessonsRemaining;
+                const daysRem = fin?.daysRemaining ?? prog?.daysRemaining;
                 const courseName = sc.courses?.name || sc.custom_course_name || '—';
                 const phone = sc.students?.guardian_phone || null;
                 return (
@@ -134,11 +132,9 @@ export default function Rescue() {
                     </TableCell>
                     <TableCell>{courseName}</TableCell>
                     <TableCell className="text-center font-semibold text-orange-700">
-                      {hoursRem !== undefined ? `${hoursRem}h` : '—'}
+                      {daysRem !== undefined ? `${daysRem} ${daysRem === 1 ? 'dia' : 'dias'}` : '—'}
                     </TableCell>
-                    <TableCell className="text-center font-semibold">
-                      {lessonsRem !== undefined ? lessonsRem : '—'}
-                    </TableCell>
+
                     <TableCell>
                       <Select
                         value={sc.rescue_next_course_id || ''}

@@ -8,10 +8,13 @@ export interface CourseProgress {
   workload: number;
   weeklyHours: number;
   hoursPerSession: number;
+  hoursPerDay: number;
   hoursCompleted: number;
   hoursRemaining: number;
   lessonsRemaining: number;
+  daysRemaining: number;
 }
+
 
 const parseDate = (v: string | null | undefined): Date | null => {
   if (!v) return null;
@@ -55,11 +58,12 @@ export function useCoursesProgress(studentCourseIds: string[]) {
     queryFn: async () => {
       const { data } = await supabase
         .from('student_schedules')
-        .select('student_course_id, time_slot_id, time_slots(start_time, end_time)')
+        .select('student_course_id, time_slot_id, time_slots(start_time, end_time, day_of_week)')
         .eq('school_id', schoolId!)
         .in('student_course_id', ids);
       return data || [];
     },
+
   });
 
   const studentIds = useMemo<string[]>(() => Array.from(new Set((scs ?? []).map((s: any) => s.student_id as string))), [scs]);
@@ -83,21 +87,21 @@ export function useCoursesProgress(studentCourseIds: string[]) {
     const today = new Date(); today.setHours(0, 0, 0, 0);
 
     // schedules grouped by sc id
-    const schedBySc: Record<string, { weeklyHours: number; sessions: number; slotHoursMap: Record<string, number>; slotIds: Set<string> }> = {};
+    const schedBySc: Record<string, { weeklyHours: number; sessions: number; days: Set<string>; slotHoursMap: Record<string, number>; slotIds: Set<string> }> = {};
     schedules.forEach((r: any) => {
       const k = r.student_course_id;
       if (!k) return;
-      if (!schedBySc[k]) schedBySc[k] = { weeklyHours: 0, sessions: 0, slotHoursMap: {}, slotIds: new Set() };
+      if (!schedBySc[k]) schedBySc[k] = { weeklyHours: 0, sessions: 0, days: new Set(), slotHoursMap: {}, slotIds: new Set() };
       const h = slotHours(r.time_slots?.start_time, r.time_slots?.end_time);
       schedBySc[k].weeklyHours += h;
       schedBySc[k].sessions += 1;
+      if (r.time_slots?.day_of_week) schedBySc[k].days.add(r.time_slots.day_of_week);
       if (r.time_slot_id) {
         schedBySc[k].slotIds.add(r.time_slot_id);
         schedBySc[k].slotHoursMap[r.time_slot_id] = h;
       }
     });
 
-    // attendance by student
     const attByStudent: Record<string, { time_slot_id: string }[]> = {};
     attendance.forEach((a: any) => {
       if (!attByStudent[a.student_id]) attByStudent[a.student_id] = [];
@@ -109,7 +113,9 @@ export function useCoursesProgress(studentCourseIds: string[]) {
       const sched = schedBySc[sc.id];
       const weeklyHours = sched?.weeklyHours ?? 0;
       const sessions = sched?.sessions ?? 0;
+      const distinctDays = Math.max(sched?.days.size ?? 0, 1);
       const hps = Math.max(sessions > 0 ? weeklyHours / sessions : 1, 1);
+      const hoursPerDay = Math.max(weeklyHours / distinctDays, hps);
       const slotIds = sched?.slotIds ?? new Set<string>();
 
       let realHours = 0;
@@ -129,15 +135,19 @@ export function useCoursesProgress(studentCourseIds: string[]) {
       const hoursCompleted = Math.max(realHours, estimated);
       const hoursRemaining = Math.max(workload - hoursCompleted, 0);
       const lessonsRemaining = Math.ceil(hoursRemaining / hps);
+      const daysRemaining = Math.ceil(hoursRemaining / hoursPerDay);
       result[sc.id] = {
         workload,
         weeklyHours,
         hoursPerSession: hps,
+        hoursPerDay,
         hoursCompleted: Math.round(hoursCompleted * 10) / 10,
         hoursRemaining: Math.round(hoursRemaining * 10) / 10,
         lessonsRemaining,
+        daysRemaining,
       };
     });
     return result;
   }, [scs, schedules, attendance]);
 }
+

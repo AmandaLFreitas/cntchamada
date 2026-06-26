@@ -16,6 +16,8 @@ export interface FinalizingStudent {
   hoursCompleted: number;
   hoursRemaining: number;
   lessonsRemaining: number;
+  daysRemaining: number;
+
   hoursPerSession: number;
   pct: number;
   source: 'real' | 'estimated';
@@ -59,14 +61,14 @@ export function useFinalizingStudents() {
     queryFn: async () => {
       const { data } = await supabase
         .from('student_schedules')
-        .select('student_id, student_course_id, time_slot_id, time_slots(start_time, end_time)')
+        .select('student_id, student_course_id, time_slot_id, time_slots(start_time, end_time, day_of_week)')
         .eq('school_id', schoolId!)
         .in('student_id', studentIds);
 
-      // Map: student_course_id -> { weeklyHours, sessions, slotIds: Set, slotHours: Record<slotId, hours> }
       const map: Record<string, {
         weeklyHours: number;
         sessions: number;
+        days: Set<string>;
         slotIds: Set<string>;
         slotHours: Record<string, number>;
       }> = {};
@@ -74,10 +76,11 @@ export function useFinalizingStudents() {
       data?.forEach((r: any) => {
         const scId = r.student_course_id;
         if (!scId) return;
-        if (!map[scId]) map[scId] = { weeklyHours: 0, sessions: 0, slotIds: new Set(), slotHours: {} };
+        if (!map[scId]) map[scId] = { weeklyHours: 0, sessions: 0, days: new Set(), slotIds: new Set(), slotHours: {} };
         const h = slotHours(r.time_slots?.start_time, r.time_slots?.end_time);
         map[scId].weeklyHours += h;
         map[scId].sessions += 1;
+        if (r.time_slots?.day_of_week) map[scId].days.add(r.time_slots.day_of_week);
         if (r.time_slot_id) {
           map[scId].slotIds.add(r.time_slot_id);
           map[scId].slotHours[r.time_slot_id] = h;
@@ -85,6 +88,7 @@ export function useFinalizingStudents() {
       });
       return map;
     },
+
   });
 
   // Real attendance — fetched once, then bucketed per student_course using slotIds
@@ -174,13 +178,10 @@ export function useFinalizingStudents() {
         if (pctRounded >= 80 && pctRounded < 100) {
           const hoursRemaining = Math.max(workload - hoursCompleted, 0);
           const lessonsRemaining = Math.ceil(hoursRemaining / effectiveHoursPerSession);
+          const distinctDays = Math.max(courseSched?.days.size ?? 0, 1);
+          const hoursPerDay = Math.max(weeklyHours / distinctDays, effectiveHoursPerSession);
+          const daysRemaining = Math.ceil(hoursRemaining / hoursPerDay);
 
-          // Expected end — derived from this course's weekly frequency.
-          // Examples (workload 48h, 1h/session):
-          //   1x/week (1h/wk)  → 48 weeks ≈ 12 months
-          //   2x/week (2h/wk)  → 24 weeks ≈ 6 months
-          //   3x/week (3h/wk)  → 16 weeks ≈ 4.5 months
-          //   4x/week (4h/wk)  → 12 weeks ≈ 3 months
           let expectedEnd: Date | null = null;
           if (startDate && weeklyHours > 0) {
             const totalWeeksNeeded = workload / weeklyHours;
@@ -198,11 +199,13 @@ export function useFinalizingStudents() {
             hoursCompleted: Math.round(hoursCompleted * 10) / 10,
             hoursRemaining: Math.round(hoursRemaining * 10) / 10,
             lessonsRemaining,
+            daysRemaining,
             hoursPerSession: effectiveHoursPerSession,
             pct: pctRounded,
             source,
           });
         }
+
       });
     });
 
