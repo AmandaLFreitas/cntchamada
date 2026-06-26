@@ -46,7 +46,6 @@ export function ConsecutiveAbsencesAlert() {
         if (record.status === 'absent') streak += 1;
         else if (record.status === 'present' || record.status === 'neutral') break;
       }
-      if (v.streak > THRESHOLD) result.push({ id, name: v.name, streak: v.streak });
       if (streak > THRESHOLD) result.push({ id, name: v.name, streak });
     });
     return result.sort((a, b) => b.streak - a.streak);
