@@ -108,14 +108,6 @@ export default function ConsecutiveAbsences() {
             {allCourses.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}
           </SelectContent>
         </Select>
-        <Select value={teacherFilter} onValueChange={setTeacherFilter}>
-          <SelectTrigger className="w-[180px]"><SelectValue placeholder="Professor" /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">Todos os professores</SelectItem>
-            <SelectItem value="Vanderlei">Vanderlei</SelectItem>
-            <SelectItem value="Amanda">Amanda</SelectItem>
-          </SelectContent>
-        </Select>
         <Select value={minStreak} onValueChange={setMinStreak}>
           <SelectTrigger className="w-[180px]"><SelectValue placeholder="Mín. faltas" /></SelectTrigger>
           <SelectContent>
@@ -167,8 +159,8 @@ export default function ConsecutiveAbsences() {
                     <p className="text-xs text-muted-foreground truncate">
                       {r.courses.join(' • ') || '—'}
                     </p>
-                    <p className="text-xs text-muted-foreground">
-                      Prof.: {Array.from(new Set(r.courses.map(teacherFor))).join(', ') || '—'}
+                    <p className="text-xs text-muted-foreground truncate">
+                      {r.courses.join(' • ') || '—'}
                     </p>
                   </div>
                   <span className="bg-orange-100 text-orange-700 font-bold rounded-md px-2 py-1 text-sm whitespace-nowrap">
