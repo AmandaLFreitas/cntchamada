@@ -15,34 +15,55 @@ export function ConsecutiveAbsencesAlert() {
     queryKey: ['consecutive_absences_alert', schoolId],
     enabled: !!schoolId,
     queryFn: async () => {
-      const { data } = await supabase
-        .from('attendance')
-        .select('student_id, status, date, students(full_name)')
-        .eq('school_id', schoolId!)
-        .in('status', ['present', 'absent'])
-        .order('date', { ascending: true })
-        .limit(10000);
-      return data ?? [];
+      const pageSize = 1000;
+      const allRows: any[] = [];
+      let from = 0;
+
+      while (true) {
+        const { data } = await supabase
+          .from('attendance')
+          .select('student_id, status, date, students(full_name), time_slots(start_time)')
+          .eq('school_id', schoolId!)
+          .in('status', ['present', 'absent', 'neutral'])
+          .order('date', { ascending: false })
+          .range(from, from + pageSize - 1);
+
+        allRows.push(...(data ?? []));
+        if (!data || data.length < pageSize) break;
+        from += pageSize;
+      }
+
+      return allRows;
     },
     refetchInterval: 60000,
   });
 
   const alerts = useMemo(() => {
     if (!rows) return [];
-    // Group by student_id and count current consecutive absences (ignoring neutral, since we filter them out above)
-    const byStudent = new Map<string, { name: string; streak: number }>();
+    // Group by student_id and count only the current streak from real attendance records.
+    const byStudent = new Map<string, { name: string; records: any[] }>();
     (rows as any[]).forEach(r => {
       const sid = r.student_id;
       const name = r.students?.full_name || 'Sem nome';
-      const cur = byStudent.get(sid) || { name, streak: 0 };
+      const cur = byStudent.get(sid) || { name, records: [] };
       cur.name = name;
-      if (r.status === 'absent') cur.streak += 1;
-      else if (r.status === 'present') cur.streak = 0;
+      cur.records.push(r);
       byStudent.set(sid, cur);
     });
     const result: { id: string; name: string; streak: number }[] = [];
     byStudent.forEach((v, id) => {
-      if (v.streak > THRESHOLD) result.push({ id, name: v.name, streak: v.streak });
+      const records = v.records
+        .slice()
+        .sort((a, b) =>
+          b.date.localeCompare(a.date) ||
+          (b.time_slots?.start_time || '').localeCompare(a.time_slots?.start_time || '')
+        );
+      let streak = 0;
+      for (const record of records) {
+        if (record.status === 'absent') streak += 1;
+        else if (record.status === 'present' || record.status === 'neutral') break;
+      }
+      if (streak > THRESHOLD) result.push({ id, name: v.name, streak });
     });
     return result.sort((a, b) => b.streak - a.streak);
   }, [rows]);
