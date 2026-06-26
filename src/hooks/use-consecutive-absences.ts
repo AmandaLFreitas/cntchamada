@@ -18,6 +18,7 @@ export interface ConsecutiveAbsenceRow {
   startDate: string | null;
   expectedEndDate: string | null;
   streak: number;
+  firstAbsentInStreakDate: string | null;
   lastPresentDate: string | null;
   lastAbsentDate: string | null;
   totalPresent: number;
