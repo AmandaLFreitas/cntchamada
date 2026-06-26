@@ -122,7 +122,7 @@ export function CourseCompletionAlert() {
           <AlertTriangle className="h-5 w-5 text-yellow-600 shrink-0" />
           <p className="text-sm">
             <span className="font-semibold">{a.name}</span> está finalizando o curso de{' '}
-            <span className="font-semibold">{a.course}</span> ({a.pct}% concluído — faltam {a.aulasRestantes} {a.aulasRestantes === 1 ? 'aula' : 'aulas'})
+            <span className="font-semibold">{a.course}</span> ({a.pct}% concluído — faltam {a.diasRestantes} {a.diasRestantes === 1 ? 'dia' : 'dias'})
           </p>
         </div>
       ))}
