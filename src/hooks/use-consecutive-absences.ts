@@ -34,16 +34,11 @@ const DAY_LABEL: Record<string, string> = {
   segunda: 'Segunda', terca: 'Terça', quarta: 'Quarta',
   quinta: 'Quinta', sexta: 'Sexta', sabado: 'Sábado',
 };
-// JS getDay() -> our key (0=Sun,1=Mon...)
-const DOW_TO_KEY: Record<number, string> = {
-  1: 'segunda', 2: 'terca', 3: 'quarta', 4: 'quinta', 5: 'sexta', 6: 'sabado',
-};
 
 const norm = (s: string) =>
   (s || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim();
 
 const pad = (n: number) => String(n).padStart(2, '0');
-const ymd = (d: Date) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
 
 const parseDate = (v: string | null | undefined): Date | null => {
   if (!v) return null;
@@ -59,46 +54,6 @@ const parseDate = (v: string | null | undefined): Date | null => {
 };
 const fmt = (d: Date | null) =>
   d ? `${pad(d.getDate())}/${pad(d.getMonth() + 1)}/${d.getFullYear()}` : null;
-
-// ---- Holidays & breaks ---------------------------------------------------
-const FIXED_HOLIDAYS: Array<[number, number]> = [
-  [1, 1], [4, 21], [5, 1], [9, 7], [10, 12], [11, 2], [11, 15], [12, 25],
-];
-function easterSunday(year: number): Date {
-  const a = year % 19, b = Math.floor(year / 100), c = year % 100;
-  const d = Math.floor(b / 4), e = b % 4;
-  const f = Math.floor((b + 8) / 25);
-  const g = Math.floor((b - f + 1) / 3);
-  const h = (19 * a + b - d - g + 15) % 30;
-  const i = Math.floor(c / 4), k = c % 4;
-  const l = (32 + 2 * e + 2 * i - h - k) % 7;
-  const m = Math.floor((a + 11 * h + 22 * l) / 451);
-  const month = Math.floor((h + l - 7 * m + 114) / 31);
-  const day = ((h + l - 7 * m + 114) % 31) + 1;
-  return new Date(year, month - 1, day);
-}
-function addDays(d: Date, days: number): Date {
-  const r = new Date(d); r.setDate(r.getDate() + days); return r;
-}
-function getHolidaySet(fromY: number, toY: number): Set<string> {
-  const set = new Set<string>();
-  for (let y = fromY; y <= toY; y++) {
-    FIXED_HOLIDAYS.forEach(([m, d]) => set.add(ymd(new Date(y, m - 1, d))));
-    const easter = easterSunday(y);
-    set.add(ymd(addDays(easter, -48)));
-    set.add(ymd(addDays(easter, -47)));
-    set.add(ymd(addDays(easter, -2)));
-    set.add(ymd(addDays(easter, 60)));
-  }
-  return set;
-}
-function isOnBreak(d: Date): boolean {
-  const m = d.getMonth() + 1, day = d.getDate();
-  if (m === 7 && day >= 1 && day <= 14) return true;
-  if (m === 12 && day >= 13) return true;
-  if (m === 1 && day <= 14) return true;
-  return false;
-}
 
 export function useConsecutiveAbsences(minStreak = 2) {
   const { schoolId } = useSchool();
@@ -118,10 +73,10 @@ export function useConsecutiveAbsences(minStreak = 2) {
     queryFn: async () => {
       const { data } = await supabase
         .from('attendance')
-        .select('student_id, time_slot_id, date, status')
+        .select('student_id, time_slot_id, date, status, time_slots(start_time)')
         .eq('school_id', schoolId!)
         .in('student_id', studentIds)
-        .order('date', { ascending: true })
+        .order('date', { ascending: false })
         .limit(20000);
       return data ?? [];
     },
@@ -157,9 +112,6 @@ export function useConsecutiveAbsences(minStreak = 2) {
   return useMemo<ConsecutiveAbsenceRow[]>(() => {
     if (!students || !attendance || !schedules) return [];
 
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-
     // Group schedules per student: list of { dowKey, dowNum, slotId, start, end }
     const schedByStudent: Record<string, Array<{
       dowKey: string; dowNum: number; slotId: string; start: string; end: string;
@@ -187,24 +139,16 @@ export function useConsecutiveAbsences(minStreak = 2) {
       obsByStudent[o.student_id].push(o.observation);
     });
 
-    // Attendance keyed by student -> "date|slotId" -> status, and by date alone for totals
-    const attByStudent: Record<string, Map<string, string>> = {};
-    const attDatesByStudent: Record<string, { date: string; status: string }[]> = {};
+    // Use only real attendance rows. Missing dates/classes are ignored completely.
+    const attDatesByStudent: Record<string, { date: string; status: string; start: string }[]> = {};
     (attendance as any[]).forEach(a => {
-      if (!attByStudent[a.student_id]) attByStudent[a.student_id] = new Map();
-      attByStudent[a.student_id].set(`${a.date}|${a.time_slot_id || ''}`, a.status);
       if (!attDatesByStudent[a.student_id]) attDatesByStudent[a.student_id] = [];
-      attDatesByStudent[a.student_id].push({ date: a.date, status: a.status });
+      attDatesByStudent[a.student_id].push({
+        date: a.date,
+        status: a.status,
+        start: (a.time_slots?.start_time || '').slice(0, 5),
+      });
     });
-
-    // Precompute holidays spanning relevant years
-    const holidayCache = new Map<string, Set<string>>();
-    const getHolidays = (fromY: number, toY: number) => {
-      const key = `${fromY}-${toY}`;
-      let s = holidayCache.get(key);
-      if (!s) { s = getHolidaySet(fromY, toY); holidayCache.set(key, s); }
-      return s;
-    };
 
     const out: ConsecutiveAbsenceRow[] = [];
 
@@ -222,77 +166,37 @@ export function useConsecutiveAbsences(minStreak = 2) {
         if (d && (!startDate || d < startDate)) startDate = d;
       });
       if (!startDate) return;
-      if (startDate > today) return; // hasn't started
-
-      const holidays = getHolidays(startDate.getFullYear(), today.getFullYear() + 1);
-
-      // Build set of dowNum -> slots[]
-      const slotsByDow: Record<number, typeof slots> = {};
-      slots.forEach(sl => {
-        if (!slotsByDow[sl.dowNum]) slotsByDow[sl.dowNum] = [];
-        slotsByDow[sl.dowNum].push(sl);
-      });
-
-      // Walk dates from today backwards to startDate, on each predicted class:
-      // - skip holidays/breaks
-      // - for each slot of that day, check status; multiple slots same date treated together
-      // Per spec: present/neutral -> stop streak immediately; absent or missing(past) -> +1
-      const attMap = attByStudent[s.id] ?? new Map<string, string>();
 
       let streak = 0;
       let firstAbsentInStreak: string | null = null;
       let lastAbsentInStreak: string | null = null;
-      let stopped = false;
 
-      const cursor = new Date(today);
-      while (!stopped && cursor >= startDate) {
-        const dow = cursor.getDay();
-        const key = DOW_TO_KEY[dow];
-        const daySlots = key ? slotsByDow[DAY_ORDER[key]] : undefined;
-        const dateStr = ymd(cursor);
+      const allRecs = (attDatesByStudent[s.id] ?? [])
+        .slice()
+        .sort((a, b) => b.date.localeCompare(a.date) || b.start.localeCompare(a.start));
 
-        if (daySlots && daySlots.length > 0 && !isOnBreak(cursor) && !holidays.has(dateStr)) {
-          // For this predicted day, examine each slot's status
-          let dayHasBreaker = false;
-          let dayHasAbsent = false;
-          for (const sl of daySlots) {
-            const st = attMap.get(`${dateStr}|${sl.slotId}`);
-            if (st === 'present' || st === 'neutral') {
-              dayHasBreaker = true;
-              break;
-            }
-            if (st === 'absent') {
-              dayHasAbsent = true;
-            } else if (!st) {
-              // Missing record: only counts as absent if date already passed (date < today)
-              if (cursor < today) dayHasAbsent = true;
-            }
-          }
-          if (dayHasBreaker) {
-            stopped = true;
-          } else if (dayHasAbsent) {
-            streak += 1;
-            if (!lastAbsentInStreak) lastAbsentInStreak = dateStr;
-            firstAbsentInStreak = dateStr;
-          }
-          // if nothing for today (today with no record), neither break nor count — keep walking
+      for (const rec of allRecs) {
+        if (rec.status === 'absent') {
+          streak += 1;
+          if (!lastAbsentInStreak) lastAbsentInStreak = rec.date;
+          firstAbsentInStreak = rec.date;
+          continue;
         }
-
-        cursor.setDate(cursor.getDate() - 1);
+        if (rec.status === 'present' || rec.status === 'neutral') break;
       }
 
       // Totals (real registered) + last present/absent
-      const allRecs = (attDatesByStudent[s.id] ?? []).slice().sort((a, b) => a.date.localeCompare(b.date));
+      const ascendingRecs = allRecs.slice().sort((a, b) => a.date.localeCompare(b.date) || a.start.localeCompare(b.start));
       let totalPresent = 0, totalAbsent = 0;
       let lastPresent: string | null = null;
       let lastAbsent: string | null = null;
-      allRecs.forEach(r => {
+      ascendingRecs.forEach(r => {
         if (r.status === 'present') totalPresent += 1;
         else if (r.status === 'absent') totalAbsent += 1;
       });
-      for (let i = allRecs.length - 1; i >= 0; i--) {
-        if (!lastPresent && allRecs[i].status === 'present') lastPresent = allRecs[i].date;
-        if (!lastAbsent && allRecs[i].status === 'absent') lastAbsent = allRecs[i].date;
+      for (let i = ascendingRecs.length - 1; i >= 0; i--) {
+        if (!lastPresent && ascendingRecs[i].status === 'present') lastPresent = ascendingRecs[i].date;
+        if (!lastAbsent && ascendingRecs[i].status === 'absent') lastAbsent = ascendingRecs[i].date;
         if (lastPresent && lastAbsent) break;
       }
 
