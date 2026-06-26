@@ -95,7 +95,7 @@ export default function ConsecutiveAbsences() {
         <h1 className="text-2xl font-bold">Alunos com Faltas Consecutivas</h1>
       </div>
       <p className="text-sm text-muted-foreground print:hidden">
-        Alunos com 2 ou mais faltas consecutivas nas aulas em que estavam previstos.
+        Alunos com 2 ou mais faltas consecutivas registradas na chamada.
       </p>
 
       <div className="flex flex-wrap gap-2 items-center print:hidden">
