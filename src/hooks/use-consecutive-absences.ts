@@ -137,28 +137,48 @@ export function useConsecutiveAbsences(minStreak = 2) {
       const att = attByStudent[s.id] ?? [];
       if (att.length === 0) return;
 
-      // Count trailing absence streak
+      // Aggregate by date: a day breaks the streak if it contains any present or neutral mark.
+      // Only days where every record is 'absent' count as an absent-day.
+      const byDate = new Map<string, { hasPresent: boolean; hasNeutral: boolean; hasAbsent: boolean }>();
+      att.forEach(r => {
+        const d = byDate.get(r.date) ?? { hasPresent: false, hasNeutral: false, hasAbsent: false };
+        if (r.status === 'present') d.hasPresent = true;
+        else if (r.status === 'absent') d.hasAbsent = true;
+        else d.hasNeutral = true; // neutral/holiday/etc. breaks the streak
+        byDate.set(r.date, d);
+      });
+      const dayList = Array.from(byDate.entries())
+        .map(([date, v]) => ({
+          date,
+          kind: v.hasPresent ? 'present' : v.hasNeutral ? 'neutral' : v.hasAbsent ? 'absent' : 'none',
+        }))
+        .sort((a, b) => a.date.localeCompare(b.date));
+
       let streak = 0;
+      let firstAbsentInStreak: string | null = null;
+      let lastAbsentInStreak: string | null = null;
+      for (let i = dayList.length - 1; i >= 0; i--) {
+        if (dayList[i].kind === 'absent') {
+          streak += 1;
+          if (!lastAbsentInStreak) lastAbsentInStreak = dayList[i].date;
+          firstAbsentInStreak = dayList[i].date;
+        } else {
+          break;
+        }
+      }
+
       let lastPresent: string | null = null;
       let lastAbsent: string | null = null;
       let totalPresent = 0;
       let totalAbsent = 0;
-      for (let i = att.length - 1; i >= 0; i--) {
-        const r = att[i];
-        if (r.status === 'present') {
-          if (!lastPresent) lastPresent = r.date;
-        } else if (r.status === 'absent') {
-          if (!lastAbsent) lastAbsent = r.date;
-        }
+      for (let i = dayList.length - 1; i >= 0; i--) {
+        if (!lastPresent && dayList[i].kind === 'present') lastPresent = dayList[i].date;
+        if (!lastAbsent && dayList[i].kind === 'absent') lastAbsent = dayList[i].date;
+        if (lastPresent && lastAbsent) break;
       }
-      // walking from the end (latest) for streak
-      for (let i = att.length - 1; i >= 0; i--) {
-        if (att[i].status === 'absent') streak += 1;
-        else break;
-      }
-      att.forEach(r => {
-        if (r.status === 'present') totalPresent += 1;
-        else if (r.status === 'absent') totalAbsent += 1;
+      dayList.forEach(d => {
+        if (d.kind === 'present') totalPresent += 1;
+        else if (d.kind === 'absent') totalAbsent += 1;
       });
 
       if (streak < minStreak) return;
