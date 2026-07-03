@@ -286,7 +286,7 @@ export function useCreateStudent() {
   return useMutation({
     mutationFn: async (input: {
       full_name?: string; street?: string; house_number?: string; birth_date?: string;
-      cpf?: string; guardian_name?: string; guardian_phone?: string;
+      cpf?: string; guardian_name?: string; guardian_phone?: string; phone?: string | null;
       // Course data
       course_id?: string | null; custom_course_name?: string;
       enrollment_date?: string; first_class_date?: string;
@@ -368,7 +368,7 @@ export function useUpdateStudent() {
       id: string; // student id
       studentCourseId?: string; // which course to update
       full_name?: string; street?: string; house_number?: string; birth_date?: string;
-      cpf?: string; guardian_name?: string; guardian_phone?: string;
+      cpf?: string; guardian_name?: string; guardian_phone?: string; phone?: string | null;
       // Course data
       course_id?: string | null; custom_course_name?: string;
       enrollment_date?: string; first_class_date?: string;
