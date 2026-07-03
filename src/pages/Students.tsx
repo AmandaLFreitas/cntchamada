@@ -776,7 +776,7 @@ export default function Students() {
                 <h3 className="font-semibold mb-3">Responsável</h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div><Label>Nome do responsável</Label><Input value={form.guardian_name} onChange={e => setForm(f => ({ ...f, guardian_name: e.target.value }))} /></div>
-                  <div><Label>Telefone do responsável</Label><Input value={form.guardian_phone} onChange={e => setForm(f => ({ ...f, guardian_phone: e.target.value }))} /></div>
+                  <div><Label>Telefone do responsável</Label><Input type="tel" inputMode="numeric" placeholder="(99) 99999-9999" value={form.guardian_phone} onChange={e => setForm(f => ({ ...f, guardian_phone: formatPhoneMask(e.target.value) }))} /></div>
                 </div>
               </div>
             )}
