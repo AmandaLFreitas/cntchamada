@@ -1,5 +1,6 @@
 import { Clock, Users } from 'lucide-react';
-import { MAX_STUDENTS_PER_SLOT } from '@/lib/constants';
+import { getMaxStudentsForSchool } from '@/lib/constants';
+import { useSchool } from '@/contexts/SchoolContext';
 
 interface TimeSlotCardProps {
   startTime: string;
@@ -10,7 +11,10 @@ interface TimeSlotCardProps {
 }
 
 export function TimeSlotCard({ startTime, endTime, studentCount, onClick, dayLabel }: TimeSlotCardProps) {
-  const available = MAX_STUDENTS_PER_SLOT - studentCount;
+  const { school } = useSchool();
+  const max = getMaxStudentsForSchool(school?.slug);
+  const available = Math.max(0, max - studentCount);
+  const warnThreshold = Math.max(1, max - 5);
 
   return (
     <button
@@ -27,13 +31,13 @@ export function TimeSlotCard({ startTime, endTime, studentCount, onClick, dayLab
       <div className="flex items-center gap-2">
         <Users className="h-4 w-4 text-muted-foreground" />
         <span className={`text-sm font-medium px-2 py-0.5 rounded-full ${
-          studentCount >= MAX_STUDENTS_PER_SLOT
+          studentCount >= max
             ? 'bg-destructive/10 text-destructive'
-            : studentCount > 15
+            : studentCount >= warnThreshold
             ? 'bg-yellow-100 text-yellow-800'
             : 'bg-primary/10 text-primary'
         }`}>
-          {studentCount}/{MAX_STUDENTS_PER_SLOT} alunos
+          {studentCount}/{max} alunos
         </span>
         <span className="text-xs text-muted-foreground ml-auto">
           {available} {available === 1 ? 'vaga' : 'vagas'}

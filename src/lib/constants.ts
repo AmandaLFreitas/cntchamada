@@ -19,6 +19,12 @@ export const SATURDAY_SLOTS = [
 
 export const MAX_STUDENTS_PER_SLOT = 20;
 
+/** Per-school capacity override. Toledo=20, Cascavel=15. */
+export function getMaxStudentsForSchool(slug?: string | null): number {
+  if (slug === 'cascavel') return 15;
+  return MAX_STUDENTS_PER_SLOT;
+}
+
 export function getSlotsForDay(day: string) {
   return day === 'Sábado' ? SATURDAY_SLOTS : TIME_SLOTS;
 }
