@@ -90,7 +90,7 @@ export default function MissingPhones() {
   const rows = useMemo(() => {
     if (!students) return [];
     return (students as any[])
-      .filter(s => !isPhoneValid(s.guardian_phone))
+      .filter(s => !isPhoneValid(s.phone))
       .map(s => {
         const activeCourses = (s.student_courses ?? []).filter((sc: any) => sc.is_active);
         const courses = activeCourses.map((sc: any) => sc.courses?.name || sc.custom_course_name || 'N/A');
@@ -110,7 +110,7 @@ export default function MissingPhones() {
           id: s.id,
           name: s.full_name || 'Sem nome',
           photo_url: s.photo_url,
-          phone: s.guardian_phone || '',
+          phone: s.phone || '',
           courses,
           schedule,
           enrollment_date: enrollment,
@@ -144,7 +144,7 @@ export default function MissingPhones() {
       const digits = phone.replace(/\D/g, '');
       const { error } = await (supabase as any)
         .from('students')
-        .update({ guardian_phone: digits ? formatPhoneMask(digits) : null })
+        .update({ phone: digits ? formatPhoneMask(digits) : null })
         .eq('id', studentId);
       if (error) throw error;
     },

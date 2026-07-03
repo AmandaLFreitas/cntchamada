@@ -21,11 +21,12 @@ import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { PhotoLightbox } from '@/components/PhotoLightbox';
-import { openWhatsApp } from '@/lib/utils';
+import { openWhatsApp, formatPhoneMask } from '@/lib/utils';
 
 interface StudentForm {
   full_name: string; street: string; house_number: string; birth_date: string;
   cpf: string; guardian_name: string; guardian_phone: string;
+  phone: string;
   photo_url: string;
   material_sent: boolean;
   // Course data
@@ -47,6 +48,7 @@ const PAYMENT_OPTIONS = [
 const emptyForm: StudentForm = {
   full_name: '', street: '', house_number: '', birth_date: '',
   cpf: '', guardian_name: '', guardian_phone: '',
+  phone: '',
   photo_url: '',
   material_sent: false,
   course_id: '', custom_course_name: '',
@@ -333,6 +335,7 @@ export default function Students() {
       cpf: pii?.cpf ?? student.cpf ?? '',
       guardian_name: pii?.guardian_name ?? student.guardian_name ?? '',
       guardian_phone: pii?.guardian_phone ?? student.guardian_phone ?? '',
+      phone: formatPhoneMask((student as any).phone ?? ''),
       photo_url: student.photo_url ?? '',
       material_sent: (student as any).material_sent ?? false,
       course_id: sc.course_id ?? '',
@@ -380,6 +383,7 @@ export default function Students() {
       birth_date: form.birth_date || null,
       guardian_name: form.show_guardian ? form.guardian_name || null : null,
       guardian_phone: form.show_guardian ? form.guardian_phone || null : null,
+      phone: form.phone ? formatPhoneMask(form.phone) : null,
       photo_url: form.photo_url || null,
       material_sent: form.material_sent,
     };
@@ -751,7 +755,17 @@ export default function Students() {
               <div><Label>Nome completo</Label><Input value={form.full_name} onChange={e => setForm(f => ({ ...f, full_name: e.target.value }))} disabled={!!addCourseStudentId} /></div>
               {isAdmin && <div><Label>CPF</Label><Input value={form.cpf} onChange={e => setForm(f => ({ ...f, cpf: e.target.value }))} /></div>}
               {isAdmin && <div><Label>Rua</Label><Input value={form.street} onChange={e => setForm(f => ({ ...f, street: e.target.value }))} /></div>}
-              {isAdmin && <div><Label>Número</Label><Input value={form.house_number} onChange={e => setForm(f => ({ ...f, house_number: e.target.value }))} /></div>}
+              {isAdmin && <div><Label>Número da Casa</Label><Input value={form.house_number} onChange={e => setForm(f => ({ ...f, house_number: e.target.value }))} /></div>}
+              <div>
+                <Label>Telefone</Label>
+                <Input
+                  type="tel"
+                  inputMode="numeric"
+                  placeholder="(99) 99999-9999"
+                  value={form.phone}
+                  onChange={e => setForm(f => ({ ...f, phone: formatPhoneMask(e.target.value) }))}
+                />
+              </div>
               <div><Label>Data de nascimento</Label><DateInput value={form.birth_date} onChange={v => setForm(f => ({ ...f, birth_date: v }))} /></div>
               {isAdmin && <div><Label>Data da matrícula</Label><DateInput value={form.enrollment_date} onChange={v => setForm(f => ({ ...f, enrollment_date: v }))} /></div>}
               <div><Label>Data do primeiro dia de aula</Label><DateInput value={form.first_class_date} onChange={v => setForm(f => ({ ...f, first_class_date: v }))} /></div>
@@ -762,7 +776,7 @@ export default function Students() {
                 <h3 className="font-semibold mb-3">Responsável</h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div><Label>Nome do responsável</Label><Input value={form.guardian_name} onChange={e => setForm(f => ({ ...f, guardian_name: e.target.value }))} /></div>
-                  <div><Label>Telefone do responsável</Label><Input value={form.guardian_phone} onChange={e => setForm(f => ({ ...f, guardian_phone: e.target.value }))} /></div>
+                  <div><Label>Telefone do responsável</Label><Input type="tel" inputMode="numeric" placeholder="(99) 99999-9999" value={form.guardian_phone} onChange={e => setForm(f => ({ ...f, guardian_phone: formatPhoneMask(e.target.value) }))} /></div>
                 </div>
               </div>
             )}

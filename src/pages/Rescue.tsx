@@ -42,7 +42,7 @@ export default function Rescue() {
     queryFn: async () => {
       const { data, error } = await (supabase as any)
         .from('student_courses')
-        .select('id, student_id, course_id, custom_course_name, workload, rescue_flagged, rescue_next_course_id, rescue_observations, rescue_contact_status, courses(name), students(full_name, guardian_phone)')
+        .select('id, student_id, course_id, custom_course_name, workload, rescue_flagged, rescue_next_course_id, rescue_observations, rescue_contact_status, courses(name), students(full_name, phone, guardian_phone)')
         .eq('school_id', schoolId!)
         .eq('rescue_flagged', true);
       if (error) throw error;
@@ -118,7 +118,7 @@ export default function Rescue() {
                 const prog = progressMap[sc.id];
                 const daysRem = fin?.daysRemaining ?? prog?.daysRemaining;
                 const courseName = sc.courses?.name || sc.custom_course_name || '—';
-                const phone = sc.students?.guardian_phone || null;
+                const phone = sc.students?.phone || sc.students?.guardian_phone || null;
                 return (
                   <TableRow key={sc.id} className={contactRowClass(sc.rescue_contact_status)}>
                     <TableCell className="font-medium">

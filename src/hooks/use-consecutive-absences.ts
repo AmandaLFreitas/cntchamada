@@ -231,7 +231,7 @@ export function useConsecutiveAbsences(minStreak = 2) {
         studentId: s.id,
         name: s.full_name || 'Sem nome',
         photo_url: s.photo_url ?? null,
-        phone: s.guardian_phone ?? null,
+        phone: (s as any).phone ?? s.guardian_phone ?? null,
         birth_date: s.birth_date ?? null,
         courses,
         status,
