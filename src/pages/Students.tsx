@@ -11,7 +11,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { DAYS_OF_WEEK } from '@/lib/constants';
+import { DAYS_OF_WEEK, getMaxStudentsForSchool } from '@/lib/constants';
 import { Plus, Pencil, Trash2, Search, History, BookOpen, BarChart3, Camera, MessageSquare, LifeBuoy } from 'lucide-react';
 import { StudentObservationsDialog } from '@/components/StudentObservationsDialog';
 import { StudentDetailsDialog } from '@/components/StudentDetailsDialog';
