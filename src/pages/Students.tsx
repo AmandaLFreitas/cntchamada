@@ -378,6 +378,34 @@ export default function Students() {
     const schedules = computeScheduleIds(form.daySchedules);
     const shouldDeactivate = form.status === 'finalizado' || form.status === 'desistiu';
 
+    // Enforce per-school slot capacity for new enrollments
+    if (!shouldDeactivate && schedules.length > 0 && schoolId) {
+      const max = getMaxStudentsForSchool(school?.slug);
+      // Which slots are new (not already occupied by this student_course)?
+      const existingIds = new Set<string>((editSchedules ?? []).map((r: any) => r.time_slot_id));
+      const newSlotIds = schedules.filter(id => !existingIds.has(id));
+      if (newSlotIds.length > 0) {
+        const { data: occ } = await supabase
+          .from('student_schedules')
+          .select('time_slot_id, student_id')
+          .eq('school_id', schoolId)
+          .in('time_slot_id', newSlotIds);
+        const counts = new Map<string, Set<string>>();
+        (occ ?? []).forEach((r: any) => {
+          if (editingStudentId && r.student_id === editingStudentId) return;
+          if (!counts.has(r.time_slot_id)) counts.set(r.time_slot_id, new Set());
+          counts.get(r.time_slot_id)!.add(r.student_id);
+        });
+        const full = newSlotIds.find(id => (counts.get(id)?.size ?? 0) >= max);
+        if (full) {
+          const slot = timeSlots?.find((s: any) => s.id === full);
+          toast.error(`Horário lotado (${max} alunos): ${slot ? `${slot.day_of_week} ${slot.start_time}` : ''}. Escolha outro horário.`);
+          return;
+        }
+      }
+    }
+
+
     const personalData: any = {
       full_name: form.full_name || null,
       birth_date: form.birth_date || null,
