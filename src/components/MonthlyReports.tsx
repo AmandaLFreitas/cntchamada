@@ -77,7 +77,7 @@ export function MonthlyReports() {
       if (detailView === 'dropouts') statusFilter = 'desistiu';
 
       const studentCols = isAdmin
-        ? 'id, full_name, birth_date, cpf, street, house_number, enrollment_date, first_class_date, guardian_name, guardian_phone'
+        ? 'id, full_name, birth_date, cpf, street, house_number, phone, enrollment_date, first_class_date, guardian_name, guardian_phone'
         : 'id, full_name, birth_date, enrollment_date, first_class_date';
       const { data } = await (supabase as any).from('student_courses')
         .select(`*, students(${studentCols}), courses(name, workload)`)
@@ -95,6 +95,7 @@ export function MonthlyReports() {
         first_class_date: sc.first_class_date,
         guardian_name: sc.students?.guardian_name,
         guardian_phone: sc.students?.guardian_phone,
+        phone: sc.students?.phone,
         courseName: sc.courses?.name || sc.custom_course_name || 'Sem curso',
         workload: sc.workload,
         status: sc.status,
