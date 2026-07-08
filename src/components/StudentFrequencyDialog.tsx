@@ -184,7 +184,9 @@ export function StudentFrequencyDialog({ open, onOpenChange, studentId, studentN
     doc.setFontSize(11);
     doc.text(`Presenças: ${stats.present}`, 20, y); y += 6;
     doc.text(`Faltas: ${stats.absent}`, 20, y); y += 6;
-    doc.text(`Total de aulas válidas: ${stats.total}`, 20, y); y += 6;
+    doc.text(`Faltas justificadas: ${stats.justifiedAbsent}`, 20, y); y += 6;
+    doc.text(`Faltas não justificadas: ${stats.unjustifiedAbsent}`, 20, y); y += 6;
+    doc.text(`Total de dias válidos: ${stats.total}`, 20, y); y += 6;
     doc.text(`Frequência: ${stats.pct}%`, 20, y); y += 12;
 
     // Detail table
@@ -196,8 +198,9 @@ export function StudentFrequencyDialog({ open, onOpenChange, studentId, studentN
       doc.setFontSize(9);
       doc.setFont('helvetica', 'bold');
       doc.text('Data', 20, y);
-      doc.text('Status', 90, y);
-      doc.text('Horário', 140, y);
+      doc.text('Status', 70, y);
+      doc.text('Just.', 105, y);
+      doc.text('Observação', 130, y);
       y += 5;
       doc.line(20, y, pageWidth - 20, y);
       y += 4;
@@ -208,15 +211,18 @@ export function StudentFrequencyDialog({ open, onOpenChange, studentId, studentN
           doc.addPage();
           y = 20;
         }
-        const dateStr = format(parseISO(r.date), 'dd/MM/yyyy (EEEE)', { locale: ptBR });
+        const dateStr = format(parseISO(r.date), 'dd/MM/yyyy', { locale: ptBR });
         const statusStr = r.status === 'present' ? 'Presente' : r.status === 'absent' ? 'Falta' : 'Neutro';
-        const timeStr = r.time_slots ? `${r.time_slots.start_time} - ${r.time_slots.end_time}` : '';
+        const justStr = r.status === 'absent' ? (r.isJustified ? 'Sim' : 'Não') : '—';
+        const note = r.note ? String(r.note).slice(0, 60) : '';
         doc.text(dateStr, 20, y);
-        doc.text(statusStr, 90, y);
-        doc.text(timeStr, 140, y);
+        doc.text(statusStr, 70, y);
+        doc.text(justStr, 105, y);
+        doc.text(note, 130, y);
         y += 5;
       });
     }
+
 
     doc.save(`frequencia_${studentName.replace(/\s+/g, '_')}.pdf`);
   }, [studentName, courseName, filterMode, stats, detailRecords]);
