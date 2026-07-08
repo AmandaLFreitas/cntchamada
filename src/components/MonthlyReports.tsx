@@ -185,7 +185,7 @@ export function MonthlyReports() {
     queryFn: async () => {
       const { data } = await supabase
         .from('attendance')
-        .select('date, status')
+        .select('date, status, is_justified, absence_note')
         .eq('school_id', schoolId!)
         .eq('student_id', selectedStudentId!)
         .order('date', { ascending: true });
@@ -217,10 +217,34 @@ export function MonthlyReports() {
 
   const years = Array.from({ length: 5 }, (_, i) => now.getFullYear() - i);
 
+  // Collapse individual attendance per day
+  const perDayStudentAttendance = (() => {
+    if (!studentAttendance) return [] as Array<{ date: string; status: 'present'|'absent'|'neutral'; isJustified: boolean; note: string | null }>;
+    const byDate = new Map<string, { hasPresent: boolean; hasAbsent: boolean; absents: number; just: number; notes: string[] }>();
+    (studentAttendance as any[]).forEach(r => {
+      const cur = byDate.get(r.date) || { hasPresent: false, hasAbsent: false, absents: 0, just: 0, notes: [] as string[] };
+      if (r.status === 'present') cur.hasPresent = true;
+      else if (r.status === 'absent') {
+        cur.hasAbsent = true; cur.absents += 1;
+        if (r.is_justified) cur.just += 1;
+        if (r.absence_note && String(r.absence_note).trim()) cur.notes.push(String(r.absence_note).trim());
+      }
+      byDate.set(r.date, cur);
+    });
+    return Array.from(byDate.entries()).map(([date, v]) => {
+      const status = v.hasPresent ? 'present' : v.hasAbsent ? 'absent' : 'neutral' as const;
+      const isJustified = status === 'absent' && v.absents > 0 && v.just === v.absents;
+      const note = v.notes.length ? Array.from(new Set(v.notes)).join(' | ') : null;
+      return { date, status, isJustified, note };
+    }).sort((a, b) => a.date.localeCompare(b.date));
+  })();
+
   const attendanceSummary = studentAttendance ? {
-    present: studentAttendance.filter(a => a.status === 'present').length,
-    absent: studentAttendance.filter(a => a.status === 'absent').length,
-    neutral: studentAttendance.filter(a => a.status === 'neutral').length,
+    present: perDayStudentAttendance.filter(a => a.status === 'present').length,
+    absent: perDayStudentAttendance.filter(a => a.status === 'absent').length,
+    neutral: perDayStudentAttendance.filter(a => a.status === 'neutral').length,
+    justified: perDayStudentAttendance.filter(a => a.status === 'absent' && a.isJustified).length,
+    unjustified: perDayStudentAttendance.filter(a => a.status === 'absent' && !a.isJustified).length,
   } : null;
 
   const frequencyPercent = attendanceSummary
@@ -228,6 +252,7 @@ export function MonthlyReports() {
       ? ((attendanceSummary.present / (attendanceSummary.present + attendanceSummary.absent)) * 100).toFixed(1)
       : '0'
     : '0';
+
 
   const handlePrintReport = () => window.print();
 
