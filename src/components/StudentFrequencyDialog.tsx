@@ -283,7 +283,7 @@ export function StudentFrequencyDialog({ open, onOpenChange, studentId, studentN
         )}
 
         {/* Summary */}
-        <div className="grid grid-cols-3 gap-3 mb-4">
+        <div className="grid grid-cols-3 gap-3 mb-2">
           <div className="border rounded-lg p-3 text-center">
             <p className="text-2xl font-bold text-green-600">{stats.present}</p>
             <p className="text-xs text-muted-foreground">Presenças</p>
@@ -297,17 +297,28 @@ export function StudentFrequencyDialog({ open, onOpenChange, studentId, studentN
             <p className="text-xs text-muted-foreground">Frequência</p>
           </div>
         </div>
+        <div className="grid grid-cols-2 gap-3 mb-4 text-center">
+          <div className="border rounded-lg p-2">
+            <p className="text-sm font-semibold text-green-700">{stats.justifiedAbsent}</p>
+            <p className="text-[11px] text-muted-foreground">Faltas justificadas</p>
+          </div>
+          <div className="border rounded-lg p-2">
+            <p className="text-sm font-semibold text-red-700">{stats.unjustifiedAbsent}</p>
+            <p className="text-[11px] text-muted-foreground">Faltas não justificadas</p>
+          </div>
+        </div>
 
         {/* Progress bar */}
         <div className="mb-4">
           <Progress value={stats.pct} className="h-3" />
           <div className="flex justify-between mt-1">
-            <span className="text-xs text-muted-foreground">{stats.total} aulas válidas</span>
+            <span className="text-xs text-muted-foreground">{stats.total} dias válidos</span>
             <Badge variant={stats.pct >= 75 ? 'default' : stats.pct >= 50 ? 'secondary' : 'destructive'}>
               {stats.pct >= 75 ? 'Boa' : stats.pct >= 50 ? 'Média' : 'Baixa'}
             </Badge>
           </div>
         </div>
+
 
         {/* PDF + Details buttons */}
         <div className="flex gap-2 mb-2">
