@@ -401,7 +401,11 @@ export function MonthlyReports() {
         <button onClick={() => { setDetailView('faltas'); setSearch(''); }} className="bg-card border rounded-lg p-4 text-center hover:shadow-md transition-shadow cursor-pointer">
           <p className="text-sm text-muted-foreground">Faltas</p>
           <p className="text-2xl font-bold text-destructive">{stats?.totalFaltas ?? 0}</p>
+          <p className="text-[10px] text-muted-foreground mt-1">
+            {stats?.faltasJustificadas ?? 0} just. · {stats?.faltasNaoJustificadas ?? 0} n/just.
+          </p>
         </button>
+
       </div>
 
       <Dialog open={!!detailView} onOpenChange={() => { setDetailView(null); setSelectedStudentId(null); }}>
