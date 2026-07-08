@@ -246,7 +246,18 @@ export function StudentFrequencyDialog({ open, onOpenChange, studentId, studentN
               <SelectItem value="custom">Intervalo personalizado</SelectItem>
             </SelectContent>
           </Select>
+          <Select value={justFilter} onValueChange={(v) => setJustFilter(v as any)}>
+            <SelectTrigger className="w-[180px]">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todas as faltas</SelectItem>
+              <SelectItem value="justified">Somente justificadas</SelectItem>
+              <SelectItem value="unjustified">Somente não justificadas</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
+
 
         {filterMode === 'custom' && (
           <div className="flex gap-2 mb-2">
