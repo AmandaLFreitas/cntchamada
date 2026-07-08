@@ -79,19 +79,28 @@ export default function Reports() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('attendance')
-        .select('status')
+        .select('date, status')
         .eq('school_id', schoolId!)
         .eq('student_id', selectedStudentId!);
       if (error) throw error;
+      // Collapse per date
+      const byDate = new Map<string, { hasPresent: boolean; hasAbsent: boolean }>();
+      (data ?? []).forEach((r: any) => {
+        const cur = byDate.get(r.date) || { hasPresent: false, hasAbsent: false };
+        if (r.status === 'present') cur.hasPresent = true;
+        else if (r.status === 'absent') cur.hasAbsent = true;
+        byDate.set(r.date, cur);
+      });
       const counts = { present: 0, absent: 0, neutral: 0 };
-      data?.forEach(a => {
-        if (a.status === 'present') counts.present++;
-        else if (a.status === 'absent') counts.absent++;
-        else if (a.status === 'neutral') counts.neutral++;
+      byDate.forEach(v => {
+        if (v.hasPresent) counts.present += 1;
+        else if (v.hasAbsent) counts.absent += 1;
+        else counts.neutral += 1;
       });
       return counts;
     },
   });
+
 
   if (isLoading) return <p className="text-muted-foreground">Carregando...</p>;
 
