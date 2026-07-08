@@ -53,20 +53,45 @@ export function MonthlyReports() {
 
       const { data: attendance } = await supabase
         .from('attendance')
-        .select('status, time_slot_id')
+        .select('student_id, date, status, is_justified')
         .eq('school_id', schoolId!)
         .gte('date', startDate)
         .lte('date', endDate);
+
+      // Collapse per (student, date): 1 presença OU 1 falta por dia por aluno
+      const dayMap = new Map<string, { hasPresent: boolean; hasAbsent: boolean; absents: number; justifieds: number }>();
+      (attendance ?? []).forEach((r: any) => {
+        const k = `${r.student_id}|${r.date}`;
+        const cur = dayMap.get(k) || { hasPresent: false, hasAbsent: false, absents: 0, justifieds: 0 };
+        if (r.status === 'present') cur.hasPresent = true;
+        else if (r.status === 'absent') {
+          cur.hasAbsent = true;
+          cur.absents += 1;
+          if (r.is_justified) cur.justifieds += 1;
+        }
+        dayMap.set(k, cur);
+      });
+      let presencas = 0, faltas = 0, justificadas = 0;
+      dayMap.forEach(v => {
+        if (v.hasPresent) presencas += 1;
+        else if (v.hasAbsent) {
+          faltas += 1;
+          if (v.absents > 0 && v.justifieds === v.absents) justificadas += 1;
+        }
+      });
 
       return {
         active: active?.length ?? 0,
         finalized: finalized?.length ?? 0,
         dropouts: dropouts?.length ?? 0,
-        totalPresencas: attendance?.filter(a => a.status === 'present').length ?? 0,
-        totalFaltas: attendance?.filter(a => a.status === 'absent').length ?? 0,
+        totalPresencas: presencas,
+        totalFaltas: faltas,
+        faltasJustificadas: justificadas,
+        faltasNaoJustificadas: faltas - justificadas,
       };
     },
   });
+
 
   const { data: detailStudents } = useQuery({
     queryKey: ['monthly_detail_sc', detailView, month, year, schoolId, isAdmin],
