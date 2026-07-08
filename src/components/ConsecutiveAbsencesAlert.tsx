@@ -40,7 +40,7 @@ export function ConsecutiveAbsencesAlert() {
 
   const alerts = useMemo(() => {
     if (!rows) return [];
-    // Group by student_id and count only the current streak from real attendance records.
+    // Group by student then collapse rows to one entry per date.
     const byStudent = new Map<string, { name: string; records: any[] }>();
     (rows as any[]).forEach(r => {
       const sid = r.student_id;
@@ -52,21 +52,30 @@ export function ConsecutiveAbsencesAlert() {
     });
     const result: { id: string; name: string; streak: number }[] = [];
     byStudent.forEach((v, id) => {
-      const records = v.records
-        .slice()
-        .sort((a, b) =>
-          b.date.localeCompare(a.date) ||
-          (b.time_slots?.start_time || '').localeCompare(a.time_slots?.start_time || '')
-        );
+      // Collapse to per-day status
+      const byDate = new Map<string, { hasPresent: boolean; hasAbsent: boolean }>();
+      v.records.forEach((r: any) => {
+        const cur = byDate.get(r.date) || { hasPresent: false, hasAbsent: false };
+        if (r.status === 'present') cur.hasPresent = true;
+        else if (r.status === 'absent') cur.hasAbsent = true;
+        byDate.set(r.date, cur);
+      });
+      const days = Array.from(byDate.entries())
+        .map(([date, d]) => ({
+          date,
+          status: d.hasPresent ? 'present' : d.hasAbsent ? 'absent' : 'neutral',
+        }))
+        .sort((a, b) => b.date.localeCompare(a.date));
       let streak = 0;
-      for (const record of records) {
-        if (record.status === 'absent') streak += 1;
-        else if (record.status === 'present' || record.status === 'neutral') break;
+      for (const day of days) {
+        if (day.status === 'absent') streak += 1;
+        else if (day.status === 'present' || day.status === 'neutral') break;
       }
       if (streak > THRESHOLD) result.push({ id, name: v.name, streak });
     });
     return result.sort((a, b) => b.streak - a.streak);
   }, [rows]);
+
 
   if (alerts.length === 0 || dismissed) return null;
 
