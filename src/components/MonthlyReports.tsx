@@ -135,26 +135,36 @@ export function MonthlyReports() {
     queryFn: async () => {
       const { data } = await supabase
         .from('attendance')
-        .select('student_id, status, students(full_name)')
+        .select('student_id, date, status, students(full_name)')
         .eq('school_id', schoolId!)
         .gte('date', startDate)
         .lte('date', endDate)
         .limit(10000);
-      const map = new Map<string, { id: string; full_name: string; presencas: number; faltas: number }>();
+      // Per (student, date) collapse
+      const dayMap = new Map<string, { studentId: string; name: string; hasPresent: boolean; hasAbsent: boolean }>();
       (data ?? []).forEach((r: any) => {
-        const cur = map.get(r.student_id) || {
-          id: r.student_id,
-          full_name: r.students?.full_name || 'Sem nome',
-          presencas: 0,
-          faltas: 0,
+        const k = `${r.student_id}|${r.date}`;
+        const cur = dayMap.get(k) || {
+          studentId: r.student_id,
+          name: r.students?.full_name || 'Sem nome',
+          hasPresent: false,
+          hasAbsent: false,
         };
-        if (r.status === 'present') cur.presencas += 1;
-        else if (r.status === 'absent') cur.faltas += 1;
-        map.set(r.student_id, cur);
+        if (r.status === 'present') cur.hasPresent = true;
+        else if (r.status === 'absent') cur.hasAbsent = true;
+        dayMap.set(k, cur);
+      });
+      const map = new Map<string, { id: string; full_name: string; presencas: number; faltas: number }>();
+      dayMap.forEach(v => {
+        const cur = map.get(v.studentId) || { id: v.studentId, full_name: v.name, presencas: 0, faltas: 0 };
+        if (v.hasPresent) cur.presencas += 1;
+        else if (v.hasAbsent) cur.faltas += 1;
+        map.set(v.studentId, cur);
       });
       return Array.from(map.values());
     },
   });
+
 
   const { data: studentSchedules } = useQuery({
     queryKey: ['monthly_student_schedules', selectedStudentId, schoolId],
