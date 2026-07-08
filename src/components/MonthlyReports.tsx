@@ -520,34 +520,47 @@ export function MonthlyReports() {
                 {attendanceSummary && (
                   <div className="border rounded-lg p-3">
                     <p className="font-medium mb-2">Frequência</p>
-                    <div className="flex gap-4 text-sm mb-2">
+                    <div className="flex flex-wrap gap-x-4 gap-y-1 text-sm mb-2">
                       <span className="text-green-600 font-medium">{attendanceSummary.present} presenças</span>
                       <span className="text-destructive font-medium">{attendanceSummary.absent} faltas</span>
+                      <span className="text-green-700">↳ {attendanceSummary.justified} justificadas</span>
+                      <span className="text-red-700">↳ {attendanceSummary.unjustified} não justificadas</span>
                       <span className="text-muted-foreground">{attendanceSummary.neutral} neutros</span>
                     </div>
                     <p className="text-lg font-bold text-primary">{frequencyPercent}% de frequência</p>
                   </div>
                 )}
 
-                {studentAttendance && studentAttendance.length > 0 && (
+                {perDayStudentAttendance.length > 0 && (
                   <div className="border rounded-lg p-3">
                     <p className="font-medium mb-2">Detalhes por dia</p>
                     <div className="max-h-60 overflow-auto space-y-1">
-                      {studentAttendance.map((a, i) => (
-                        <div key={i} className="flex items-center justify-between text-sm py-1 border-b last:border-0">
-                          <span>{a.date}</span>
-                          <span className={
-                            a.status === 'present' ? 'text-green-600 font-medium' :
-                            a.status === 'absent' ? 'text-destructive font-medium' :
-                            'text-muted-foreground'
-                          }>
-                            {a.status === 'present' ? '✔ Presença' : a.status === 'absent' ? '❌ Falta' : '/ Neutro'}
-                          </span>
+                      {perDayStudentAttendance.map((a, i) => (
+                        <div key={i} className="flex flex-col sm:flex-row sm:items-center sm:justify-between text-sm py-1 border-b last:border-0 gap-1">
+                          <div className="flex items-center gap-2">
+                            <span>{a.date}</span>
+                            <span className={
+                              a.status === 'present' ? 'text-green-600 font-medium' :
+                              a.status === 'absent' ? 'text-destructive font-medium' :
+                              'text-muted-foreground'
+                            }>
+                              {a.status === 'present' ? '✔ Presença' : a.status === 'absent' ? '❌ Falta' : '/ Neutro'}
+                            </span>
+                            {a.status === 'absent' && (
+                              <span className={`text-[11px] px-1.5 py-0.5 rounded ${a.isJustified ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+                                {a.isJustified ? 'Justificada' : 'Não justificada'}
+                              </span>
+                            )}
+                          </div>
+                          {a.note && (
+                            <span className="text-xs text-muted-foreground italic truncate">"{a.note}"</span>
+                          )}
                         </div>
                       ))}
                     </div>
                   </div>
                 )}
+
               </div>
             </div>
           )}
