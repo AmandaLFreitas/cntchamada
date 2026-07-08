@@ -30,6 +30,7 @@ export function StudentFrequencyDialog({ open, onOpenChange, studentId, studentN
   const [customStart, setCustomStart] = useState<Date | undefined>();
   const [customEnd, setCustomEnd] = useState<Date | undefined>();
   const [showDetails, setShowDetails] = useState(false);
+  const [justFilter, setJustFilter] = useState<'all' | 'justified' | 'unjustified'>('all');
   const { schoolId } = useSchool();
 
   const { data: attendanceRecords } = useQuery({
@@ -38,7 +39,7 @@ export function StudentFrequencyDialog({ open, onOpenChange, studentId, studentN
     queryFn: async () => {
       const { data, error } = await supabase
         .from('attendance')
-        .select('date, status, time_slot_id, time_slots(start_time, end_time, day_of_week)')
+        .select('date, status, is_justified, absence_note, time_slot_id, time_slots(start_time, end_time, day_of_week)')
         .eq('school_id', schoolId!)
         .eq('student_id', studentId!)
         .order('date', { ascending: false });
@@ -47,44 +48,95 @@ export function StudentFrequencyDialog({ open, onOpenChange, studentId, studentN
     },
   });
 
+  // Collapse all rows into 1 entry per date (per-day counting).
+  const perDayRecords = useMemo(() => {
+    if (!attendanceRecords) return [] as Array<{
+      date: string; status: 'present' | 'absent' | 'neutral';
+      isJustified: boolean; note: string | null;
+      slots: Array<{ start: string; end: string }>;
+    }>;
+    const byDate = new Map<string, {
+      hasPresent: boolean; hasAbsent: boolean;
+      absentCount: number; justifiedAbsentCount: number;
+      notes: string[]; slots: Array<{ start: string; end: string }>;
+    }>();
+    (attendanceRecords as any[]).forEach(r => {
+      const cur = byDate.get(r.date) || {
+        hasPresent: false, hasAbsent: false,
+        absentCount: 0, justifiedAbsentCount: 0,
+        notes: [] as string[], slots: [] as Array<{ start: string; end: string }>,
+      };
+      if (r.status === 'present') cur.hasPresent = true;
+      else if (r.status === 'absent') {
+        cur.hasAbsent = true;
+        cur.absentCount += 1;
+        if (r.is_justified) cur.justifiedAbsentCount += 1;
+        if (r.absence_note && String(r.absence_note).trim()) cur.notes.push(String(r.absence_note).trim());
+      }
+      if (r.time_slots) {
+        cur.slots.push({
+          start: (r.time_slots.start_time || '').slice(0, 5),
+          end: (r.time_slots.end_time || '').slice(0, 5),
+        });
+      }
+      byDate.set(r.date, cur);
+    });
+    return Array.from(byDate.entries()).map(([date, v]) => {
+      const status: 'present' | 'absent' | 'neutral' =
+        v.hasPresent ? 'present' : v.hasAbsent ? 'absent' : 'neutral';
+      const isJustified = status === 'absent' && v.absentCount > 0
+        && v.justifiedAbsentCount === v.absentCount;
+      const note = v.notes.length > 0 ? Array.from(new Set(v.notes)).join(' | ') : null;
+      return { date, status, isJustified, note, slots: v.slots };
+    }).sort((a, b) => b.date.localeCompare(a.date));
+  }, [attendanceRecords]);
+
   const filtered = useMemo(() => {
-    if (!attendanceRecords) return [];
     const now = new Date();
-    return attendanceRecords.filter((r: any) => {
+    return perDayRecords.filter(r => {
       if (r.status === 'neutral') return false;
       const d = parseISO(r.date);
       if (filterMode === 'current_month') {
-        return d >= startOfMonth(now) && d <= endOfMonth(now);
+        if (!(d >= startOfMonth(now) && d <= endOfMonth(now))) return false;
       }
       if (filterMode === 'custom' && customStart && customEnd) {
-        return d >= customStart && d <= customEnd;
-      }
-      return true; // 'all'
-    });
-  }, [attendanceRecords, filterMode, customStart, customEnd]);
-
-  const detailRecords = useMemo(() => {
-    if (!attendanceRecords) return [];
-    const now = new Date();
-    return attendanceRecords.filter((r: any) => {
-      const d = parseISO(r.date);
-      if (filterMode === 'current_month') {
-        return d >= startOfMonth(now) && d <= endOfMonth(now);
-      }
-      if (filterMode === 'custom' && customStart && customEnd) {
-        return d >= customStart && d <= customEnd;
+        if (!(d >= customStart && d <= customEnd)) return false;
       }
       return true;
     });
-  }, [attendanceRecords, filterMode, customStart, customEnd]);
+  }, [perDayRecords, filterMode, customStart, customEnd]);
+
+  const detailRecords = useMemo(() => {
+    const now = new Date();
+    return perDayRecords.filter(r => {
+      const d = parseISO(r.date);
+      if (filterMode === 'current_month') {
+        if (!(d >= startOfMonth(now) && d <= endOfMonth(now))) return false;
+      }
+      if (filterMode === 'custom' && customStart && customEnd) {
+        if (!(d >= customStart && d <= customEnd)) return false;
+      }
+      if (justFilter !== 'all' && r.status === 'absent') {
+        if (justFilter === 'justified' && !r.isJustified) return false;
+        if (justFilter === 'unjustified' && r.isJustified) return false;
+      } else if (justFilter !== 'all' && r.status !== 'absent') {
+        // when filtering by justification only show absences
+        return false;
+      }
+      return true;
+    });
+  }, [perDayRecords, filterMode, customStart, customEnd, justFilter]);
 
   const stats = useMemo(() => {
     const present = filtered.filter(r => r.status === 'present').length;
     const absent = filtered.filter(r => r.status === 'absent').length;
+    const justifiedAbsent = filtered.filter(r => r.status === 'absent' && r.isJustified).length;
+    const unjustifiedAbsent = absent - justifiedAbsent;
     const total = present + absent;
     const pct = total > 0 ? Math.round((present / total) * 100) : 0;
-    return { present, absent, total, pct };
+    return { present, absent, justifiedAbsent, unjustifiedAbsent, total, pct };
   }, [filtered]);
+
 
   const getFrequencyColor = (pct: number) => {
     if (pct >= 75) return 'text-green-600';
