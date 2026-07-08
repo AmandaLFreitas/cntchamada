@@ -703,6 +703,14 @@ export default function Attendance() {
                               onClick={() => markAttendance(student.id, 'absent')} title="Falta (clique novamente para desmarcar)">
                               <X className={cn('h-4 w-4', status !== 'absent' && 'text-destructive')} />
                             </Button>
+                            {status === 'absent' && (
+                              <AbsenceJustificationPopover
+                                isJustified={absenceJustified}
+                                note={absenceNote}
+                                onSave={(v) => updateJustification(student.id, v)}
+                              />
+                            )}
+
                             <Button size="icon" variant={status === 'neutral' ? 'default' : 'outline'}
                               className={status === 'neutral' ? 'bg-muted-foreground hover:bg-muted-foreground/90 text-white' : ''}
                               onClick={() => markAttendance(student.id, 'neutral')} title="Neutro (feriado/sem aula)">
