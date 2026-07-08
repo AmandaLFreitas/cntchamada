@@ -27,6 +27,8 @@ import { openWhatsApp } from '@/lib/utils';
 import { useFinalizingStudents } from '@/hooks/use-finalizing-students';
 import { toast } from 'sonner';
 import { fetchStudentIdsWithAnyAttendance } from '@/lib/new-students';
+import { AbsenceJustificationPopover } from '@/components/AbsenceJustificationPopover';
+
 
 
 const dayNameFromDate = (date: Date): string => {
