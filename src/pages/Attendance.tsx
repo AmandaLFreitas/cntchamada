@@ -176,8 +176,11 @@ export default function Attendance() {
     return `${d}/${m}/${y}`;
   };
 
+  const getRecord = (studentId: string) => {
+    return attendance?.find(a => a.student_id === studentId) as any;
+  };
   const getStatus = (studentId: string) => {
-    return attendance?.find(a => a.student_id === studentId)?.status ?? null;
+    return getRecord(studentId)?.status ?? null;
   };
 
   const markAttendance = (studentId: string, status: string) => {
@@ -187,6 +190,19 @@ export default function Attendance() {
     const next = current === status ? '' : status;
     saveAttendance.mutate({ studentId, timeSlotId: selectedSlotId, date: isoDate, status: next });
   };
+
+  const updateJustification = (studentId: string, values: { isJustified: boolean; note: string }) => {
+    if (!selectedSlotId) return;
+    saveAttendance.mutate({
+      studentId,
+      timeSlotId: selectedSlotId,
+      date: isoDate,
+      status: 'absent',
+      isJustified: values.isJustified,
+      absenceNote: values.note || null,
+    });
+  };
+
 
   const finalizing = useFinalizingStudents();
   const finalizingMap = new Map<string, any>();
