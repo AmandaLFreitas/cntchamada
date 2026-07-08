@@ -334,18 +334,33 @@ export function StudentFrequencyDialog({ open, onOpenChange, studentId, studentN
           <div className="space-y-1 max-h-[300px] overflow-auto">
             {detailRecords.length === 0 && <p className="text-muted-foreground text-sm text-center py-4">Nenhum registro encontrado.</p>}
             {detailRecords.map((r: any, i: number) => (
-              <div key={i} className="flex items-center justify-between border rounded px-3 py-2 text-sm">
-                <div className="flex items-center gap-2">
-                  {statusIcon(r.status)}
-                  <span>{format(parseISO(r.date), 'dd/MM/yyyy (EEEE)', { locale: ptBR })}</span>
+              <div key={i} className="border rounded px-3 py-2 text-sm space-y-1">
+                <div className="flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-2 min-w-0">
+                    {statusIcon(r.status)}
+                    <span className="truncate">{format(parseISO(r.date), 'dd/MM/yyyy (EEEE)', { locale: ptBR })}</span>
+                  </div>
+                  <div className="flex items-center gap-1 shrink-0">
+                    {r.status === 'absent' && (
+                      <Badge variant={r.isJustified ? 'default' : 'destructive'} className="text-[10px]">
+                        {r.isJustified ? '✔ Justificada' : 'Não justificada'}
+                      </Badge>
+                    )}
+                    {r.slots?.[0] && (
+                      <span className="text-xs text-muted-foreground">
+                        {r.slots[0].start}-{r.slots[0].end}{r.slots.length > 1 ? ` (+${r.slots.length - 1})` : ''}
+                      </span>
+                    )}
+                  </div>
                 </div>
-                <span className="text-xs text-muted-foreground">
-                  {(r as any).time_slots?.start_time} - {(r as any).time_slots?.end_time}
-                </span>
+                {r.note && (
+                  <p className="text-xs text-muted-foreground pl-6 italic">"{r.note}"</p>
+                )}
               </div>
             ))}
           </div>
         )}
+
       </DialogContent>
     </Dialog>
   );
