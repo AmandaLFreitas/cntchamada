@@ -229,7 +229,13 @@ export function useSaveAttendance() {
   const qc = useQueryClient();
   const { schoolId } = useSchool();
   return useMutation({
-    mutationFn: async ({ studentId, timeSlotId, date, status }: { studentId: string; timeSlotId: string; date: string; status: string }) => {
+    mutationFn: async ({
+      studentId, timeSlotId, date, status,
+      isJustified, absenceNote,
+    }: {
+      studentId: string; timeSlotId: string; date: string; status: string;
+      isJustified?: boolean; absenceNote?: string | null;
+    }) => {
       if (!schoolId) throw new Error('Nenhuma unidade selecionada');
       if (!status) {
         const { error } = await supabase
@@ -241,17 +247,24 @@ export function useSaveAttendance() {
         if (error) throw error;
         return null;
       }
+      const payload: any = {
+        student_id: studentId, time_slot_id: timeSlotId, date, status, school_id: schoolId,
+      };
+      if (status === 'absent') {
+        payload.is_justified = !!isJustified;
+        payload.absence_note = absenceNote ?? null;
+      } else {
+        payload.is_justified = false;
+        payload.absence_note = null;
+      }
       const { data, error } = await (supabase as any)
         .from('attendance')
-        .upsert(
-          { student_id: studentId, time_slot_id: timeSlotId, date, status, school_id: schoolId },
-          { onConflict: 'student_id,time_slot_id,date' }
-        )
+        .upsert(payload, { onConflict: 'student_id,time_slot_id,date' })
         .select();
       if (error) throw error;
       return data;
     },
-    onMutate: async ({ studentId, timeSlotId, date, status }) => {
+    onMutate: async ({ studentId, timeSlotId, date, status, isJustified, absenceNote }) => {
       await qc.cancelQueries({ queryKey: ['attendance', date, timeSlotId, schoolId] });
       const prev = qc.getQueryData<any[]>(['attendance', date, timeSlotId, schoolId]);
       qc.setQueryData<any[]>(['attendance', date, timeSlotId, schoolId], (old) => {
@@ -259,10 +272,14 @@ export function useSaveAttendance() {
         const idx = list.findIndex(r => r.student_id === studentId);
         if (!status) {
           if (idx >= 0) list.splice(idx, 1);
-        } else if (idx >= 0) {
-          list[idx] = { ...list[idx], status };
         } else {
-          list.push({ student_id: studentId, time_slot_id: timeSlotId, date, status, school_id: schoolId });
+          const patch = {
+            student_id: studentId, time_slot_id: timeSlotId, date, status, school_id: schoolId,
+            is_justified: status === 'absent' ? !!isJustified : false,
+            absence_note: status === 'absent' ? (absenceNote ?? null) : null,
+          };
+          if (idx >= 0) list[idx] = { ...list[idx], ...patch };
+          else list.push(patch);
         }
         return list;
       });
@@ -278,6 +295,7 @@ export function useSaveAttendance() {
     },
   });
 }
+
 
 // Create student + student_course + schedules
 export function useCreateStudent() {

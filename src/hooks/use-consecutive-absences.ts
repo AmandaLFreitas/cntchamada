@@ -151,16 +151,27 @@ export function useConsecutiveAbsences(minStreak = 2) {
       obsByStudent[o.student_id].push(o.observation);
     });
 
-    // Use only real attendance rows. Missing dates/classes are ignored completely.
-    const attDatesByStudent: Record<string, { date: string; status: string; start: string }[]> = {};
-    (attendance as any[]).forEach(a => {
-      if (!attDatesByStudent[a.student_id]) attDatesByStudent[a.student_id] = [];
-      attDatesByStudent[a.student_id].push({
-        date: a.date,
-        status: a.status,
-        start: (a.time_slots?.start_time || '').slice(0, 5),
+      // Use only real attendance rows. Missing dates/classes are ignored completely.
+      // Group by DATE: a day counts as at most one absence regardless of number of classes.
+      const attDatesByStudent: Record<string, { date: string; status: 'present' | 'absent' | 'neutral' }[]> = {};
+      const rawByStudent: Record<string, any[]> = {};
+      (attendance as any[]).forEach(a => {
+        if (!rawByStudent[a.student_id]) rawByStudent[a.student_id] = [];
+        rawByStudent[a.student_id].push(a);
       });
-    });
+      Object.entries(rawByStudent).forEach(([sid, rows]) => {
+        const byDate = new Map<string, { hasPresent: boolean; hasAbsent: boolean }>();
+        rows.forEach((r: any) => {
+          const cur = byDate.get(r.date) || { hasPresent: false, hasAbsent: false };
+          if (r.status === 'present') cur.hasPresent = true;
+          else if (r.status === 'absent') cur.hasAbsent = true;
+          byDate.set(r.date, cur);
+        });
+        attDatesByStudent[sid] = Array.from(byDate.entries()).map(([date, v]) => ({
+          date,
+          status: v.hasPresent ? 'present' : v.hasAbsent ? 'absent' : 'neutral',
+        }));
+      });
 
     const out: ConsecutiveAbsenceRow[] = [];
 
@@ -185,7 +196,7 @@ export function useConsecutiveAbsences(minStreak = 2) {
 
       const allRecs = (attDatesByStudent[s.id] ?? [])
         .slice()
-        .sort((a, b) => b.date.localeCompare(a.date) || b.start.localeCompare(a.start));
+        .sort((a, b) => b.date.localeCompare(a.date));
 
       for (const rec of allRecs) {
         if (rec.status === 'absent') {
@@ -197,8 +208,9 @@ export function useConsecutiveAbsences(minStreak = 2) {
         if (rec.status === 'present' || rec.status === 'neutral') break;
       }
 
-      // Totals (real registered) + last present/absent
-      const ascendingRecs = allRecs.slice().sort((a, b) => a.date.localeCompare(b.date) || a.start.localeCompare(b.start));
+      // Totals (per day) + last present/absent
+      const ascendingRecs = allRecs.slice().sort((a, b) => a.date.localeCompare(b.date));
+
       let totalPresent = 0, totalAbsent = 0;
       let lastPresent: string | null = null;
       let lastAbsent: string | null = null;

@@ -16,9 +16,11 @@ export type Database = {
     Tables: {
       attendance: {
         Row: {
+          absence_note: string | null
           created_at: string
           date: string
           id: string
+          is_justified: boolean
           school_id: string
           status: string
           student_id: string
@@ -26,9 +28,11 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          absence_note?: string | null
           created_at?: string
           date: string
           id?: string
+          is_justified?: boolean
           school_id: string
           status: string
           student_id: string
@@ -36,9 +40,11 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          absence_note?: string | null
           created_at?: string
           date?: string
           id?: string
+          is_justified?: boolean
           school_id?: string
           status?: string
           student_id?: string

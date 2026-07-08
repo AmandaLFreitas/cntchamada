@@ -30,6 +30,7 @@ export function StudentFrequencyDialog({ open, onOpenChange, studentId, studentN
   const [customStart, setCustomStart] = useState<Date | undefined>();
   const [customEnd, setCustomEnd] = useState<Date | undefined>();
   const [showDetails, setShowDetails] = useState(false);
+  const [justFilter, setJustFilter] = useState<'all' | 'justified' | 'unjustified'>('all');
   const { schoolId } = useSchool();
 
   const { data: attendanceRecords } = useQuery({
@@ -38,7 +39,7 @@ export function StudentFrequencyDialog({ open, onOpenChange, studentId, studentN
     queryFn: async () => {
       const { data, error } = await supabase
         .from('attendance')
-        .select('date, status, time_slot_id, time_slots(start_time, end_time, day_of_week)')
+        .select('date, status, is_justified, absence_note, time_slot_id, time_slots(start_time, end_time, day_of_week)')
         .eq('school_id', schoolId!)
         .eq('student_id', studentId!)
         .order('date', { ascending: false });
@@ -47,44 +48,95 @@ export function StudentFrequencyDialog({ open, onOpenChange, studentId, studentN
     },
   });
 
+  // Collapse all rows into 1 entry per date (per-day counting).
+  const perDayRecords = useMemo(() => {
+    if (!attendanceRecords) return [] as Array<{
+      date: string; status: 'present' | 'absent' | 'neutral';
+      isJustified: boolean; note: string | null;
+      slots: Array<{ start: string; end: string }>;
+    }>;
+    const byDate = new Map<string, {
+      hasPresent: boolean; hasAbsent: boolean;
+      absentCount: number; justifiedAbsentCount: number;
+      notes: string[]; slots: Array<{ start: string; end: string }>;
+    }>();
+    (attendanceRecords as any[]).forEach(r => {
+      const cur = byDate.get(r.date) || {
+        hasPresent: false, hasAbsent: false,
+        absentCount: 0, justifiedAbsentCount: 0,
+        notes: [] as string[], slots: [] as Array<{ start: string; end: string }>,
+      };
+      if (r.status === 'present') cur.hasPresent = true;
+      else if (r.status === 'absent') {
+        cur.hasAbsent = true;
+        cur.absentCount += 1;
+        if (r.is_justified) cur.justifiedAbsentCount += 1;
+        if (r.absence_note && String(r.absence_note).trim()) cur.notes.push(String(r.absence_note).trim());
+      }
+      if (r.time_slots) {
+        cur.slots.push({
+          start: (r.time_slots.start_time || '').slice(0, 5),
+          end: (r.time_slots.end_time || '').slice(0, 5),
+        });
+      }
+      byDate.set(r.date, cur);
+    });
+    return Array.from(byDate.entries()).map(([date, v]) => {
+      const status: 'present' | 'absent' | 'neutral' =
+        v.hasPresent ? 'present' : v.hasAbsent ? 'absent' : 'neutral';
+      const isJustified = status === 'absent' && v.absentCount > 0
+        && v.justifiedAbsentCount === v.absentCount;
+      const note = v.notes.length > 0 ? Array.from(new Set(v.notes)).join(' | ') : null;
+      return { date, status, isJustified, note, slots: v.slots };
+    }).sort((a, b) => b.date.localeCompare(a.date));
+  }, [attendanceRecords]);
+
   const filtered = useMemo(() => {
-    if (!attendanceRecords) return [];
     const now = new Date();
-    return attendanceRecords.filter((r: any) => {
+    return perDayRecords.filter(r => {
       if (r.status === 'neutral') return false;
       const d = parseISO(r.date);
       if (filterMode === 'current_month') {
-        return d >= startOfMonth(now) && d <= endOfMonth(now);
+        if (!(d >= startOfMonth(now) && d <= endOfMonth(now))) return false;
       }
       if (filterMode === 'custom' && customStart && customEnd) {
-        return d >= customStart && d <= customEnd;
-      }
-      return true; // 'all'
-    });
-  }, [attendanceRecords, filterMode, customStart, customEnd]);
-
-  const detailRecords = useMemo(() => {
-    if (!attendanceRecords) return [];
-    const now = new Date();
-    return attendanceRecords.filter((r: any) => {
-      const d = parseISO(r.date);
-      if (filterMode === 'current_month') {
-        return d >= startOfMonth(now) && d <= endOfMonth(now);
-      }
-      if (filterMode === 'custom' && customStart && customEnd) {
-        return d >= customStart && d <= customEnd;
+        if (!(d >= customStart && d <= customEnd)) return false;
       }
       return true;
     });
-  }, [attendanceRecords, filterMode, customStart, customEnd]);
+  }, [perDayRecords, filterMode, customStart, customEnd]);
+
+  const detailRecords = useMemo(() => {
+    const now = new Date();
+    return perDayRecords.filter(r => {
+      const d = parseISO(r.date);
+      if (filterMode === 'current_month') {
+        if (!(d >= startOfMonth(now) && d <= endOfMonth(now))) return false;
+      }
+      if (filterMode === 'custom' && customStart && customEnd) {
+        if (!(d >= customStart && d <= customEnd)) return false;
+      }
+      if (justFilter !== 'all' && r.status === 'absent') {
+        if (justFilter === 'justified' && !r.isJustified) return false;
+        if (justFilter === 'unjustified' && r.isJustified) return false;
+      } else if (justFilter !== 'all' && r.status !== 'absent') {
+        // when filtering by justification only show absences
+        return false;
+      }
+      return true;
+    });
+  }, [perDayRecords, filterMode, customStart, customEnd, justFilter]);
 
   const stats = useMemo(() => {
     const present = filtered.filter(r => r.status === 'present').length;
     const absent = filtered.filter(r => r.status === 'absent').length;
+    const justifiedAbsent = filtered.filter(r => r.status === 'absent' && r.isJustified).length;
+    const unjustifiedAbsent = absent - justifiedAbsent;
     const total = present + absent;
     const pct = total > 0 ? Math.round((present / total) * 100) : 0;
-    return { present, absent, total, pct };
+    return { present, absent, justifiedAbsent, unjustifiedAbsent, total, pct };
   }, [filtered]);
+
 
   const getFrequencyColor = (pct: number) => {
     if (pct >= 75) return 'text-green-600';
@@ -132,7 +184,9 @@ export function StudentFrequencyDialog({ open, onOpenChange, studentId, studentN
     doc.setFontSize(11);
     doc.text(`Presenças: ${stats.present}`, 20, y); y += 6;
     doc.text(`Faltas: ${stats.absent}`, 20, y); y += 6;
-    doc.text(`Total de aulas válidas: ${stats.total}`, 20, y); y += 6;
+    doc.text(`Faltas justificadas: ${stats.justifiedAbsent}`, 20, y); y += 6;
+    doc.text(`Faltas não justificadas: ${stats.unjustifiedAbsent}`, 20, y); y += 6;
+    doc.text(`Total de dias válidos: ${stats.total}`, 20, y); y += 6;
     doc.text(`Frequência: ${stats.pct}%`, 20, y); y += 12;
 
     // Detail table
@@ -144,8 +198,9 @@ export function StudentFrequencyDialog({ open, onOpenChange, studentId, studentN
       doc.setFontSize(9);
       doc.setFont('helvetica', 'bold');
       doc.text('Data', 20, y);
-      doc.text('Status', 90, y);
-      doc.text('Horário', 140, y);
+      doc.text('Status', 70, y);
+      doc.text('Just.', 105, y);
+      doc.text('Observação', 130, y);
       y += 5;
       doc.line(20, y, pageWidth - 20, y);
       y += 4;
@@ -156,15 +211,18 @@ export function StudentFrequencyDialog({ open, onOpenChange, studentId, studentN
           doc.addPage();
           y = 20;
         }
-        const dateStr = format(parseISO(r.date), 'dd/MM/yyyy (EEEE)', { locale: ptBR });
+        const dateStr = format(parseISO(r.date), 'dd/MM/yyyy', { locale: ptBR });
         const statusStr = r.status === 'present' ? 'Presente' : r.status === 'absent' ? 'Falta' : 'Neutro';
-        const timeStr = r.time_slots ? `${r.time_slots.start_time} - ${r.time_slots.end_time}` : '';
+        const justStr = r.status === 'absent' ? (r.isJustified ? 'Sim' : 'Não') : '—';
+        const note = r.note ? String(r.note).slice(0, 60) : '';
         doc.text(dateStr, 20, y);
-        doc.text(statusStr, 90, y);
-        doc.text(timeStr, 140, y);
+        doc.text(statusStr, 70, y);
+        doc.text(justStr, 105, y);
+        doc.text(note, 130, y);
         y += 5;
       });
     }
+
 
     doc.save(`frequencia_${studentName.replace(/\s+/g, '_')}.pdf`);
   }, [studentName, courseName, filterMode, stats, detailRecords]);
@@ -188,7 +246,18 @@ export function StudentFrequencyDialog({ open, onOpenChange, studentId, studentN
               <SelectItem value="custom">Intervalo personalizado</SelectItem>
             </SelectContent>
           </Select>
+          <Select value={justFilter} onValueChange={(v) => setJustFilter(v as any)}>
+            <SelectTrigger className="w-[180px]">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todas as faltas</SelectItem>
+              <SelectItem value="justified">Somente justificadas</SelectItem>
+              <SelectItem value="unjustified">Somente não justificadas</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
+
 
         {filterMode === 'custom' && (
           <div className="flex gap-2 mb-2">
@@ -214,7 +283,7 @@ export function StudentFrequencyDialog({ open, onOpenChange, studentId, studentN
         )}
 
         {/* Summary */}
-        <div className="grid grid-cols-3 gap-3 mb-4">
+        <div className="grid grid-cols-3 gap-3 mb-2">
           <div className="border rounded-lg p-3 text-center">
             <p className="text-2xl font-bold text-green-600">{stats.present}</p>
             <p className="text-xs text-muted-foreground">Presenças</p>
@@ -228,17 +297,28 @@ export function StudentFrequencyDialog({ open, onOpenChange, studentId, studentN
             <p className="text-xs text-muted-foreground">Frequência</p>
           </div>
         </div>
+        <div className="grid grid-cols-2 gap-3 mb-4 text-center">
+          <div className="border rounded-lg p-2">
+            <p className="text-sm font-semibold text-green-700">{stats.justifiedAbsent}</p>
+            <p className="text-[11px] text-muted-foreground">Faltas justificadas</p>
+          </div>
+          <div className="border rounded-lg p-2">
+            <p className="text-sm font-semibold text-red-700">{stats.unjustifiedAbsent}</p>
+            <p className="text-[11px] text-muted-foreground">Faltas não justificadas</p>
+          </div>
+        </div>
 
         {/* Progress bar */}
         <div className="mb-4">
           <Progress value={stats.pct} className="h-3" />
           <div className="flex justify-between mt-1">
-            <span className="text-xs text-muted-foreground">{stats.total} aulas válidas</span>
+            <span className="text-xs text-muted-foreground">{stats.total} dias válidos</span>
             <Badge variant={stats.pct >= 75 ? 'default' : stats.pct >= 50 ? 'secondary' : 'destructive'}>
               {stats.pct >= 75 ? 'Boa' : stats.pct >= 50 ? 'Média' : 'Baixa'}
             </Badge>
           </div>
         </div>
+
 
         {/* PDF + Details buttons */}
         <div className="flex gap-2 mb-2">
@@ -254,18 +334,33 @@ export function StudentFrequencyDialog({ open, onOpenChange, studentId, studentN
           <div className="space-y-1 max-h-[300px] overflow-auto">
             {detailRecords.length === 0 && <p className="text-muted-foreground text-sm text-center py-4">Nenhum registro encontrado.</p>}
             {detailRecords.map((r: any, i: number) => (
-              <div key={i} className="flex items-center justify-between border rounded px-3 py-2 text-sm">
-                <div className="flex items-center gap-2">
-                  {statusIcon(r.status)}
-                  <span>{format(parseISO(r.date), 'dd/MM/yyyy (EEEE)', { locale: ptBR })}</span>
+              <div key={i} className="border rounded px-3 py-2 text-sm space-y-1">
+                <div className="flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-2 min-w-0">
+                    {statusIcon(r.status)}
+                    <span className="truncate">{format(parseISO(r.date), 'dd/MM/yyyy (EEEE)', { locale: ptBR })}</span>
+                  </div>
+                  <div className="flex items-center gap-1 shrink-0">
+                    {r.status === 'absent' && (
+                      <Badge variant={r.isJustified ? 'default' : 'destructive'} className="text-[10px]">
+                        {r.isJustified ? '✔ Justificada' : 'Não justificada'}
+                      </Badge>
+                    )}
+                    {r.slots?.[0] && (
+                      <span className="text-xs text-muted-foreground">
+                        {r.slots[0].start}-{r.slots[0].end}{r.slots.length > 1 ? ` (+${r.slots.length - 1})` : ''}
+                      </span>
+                    )}
+                  </div>
                 </div>
-                <span className="text-xs text-muted-foreground">
-                  {(r as any).time_slots?.start_time} - {(r as any).time_slots?.end_time}
-                </span>
+                {r.note && (
+                  <p className="text-xs text-muted-foreground pl-6 italic">"{r.note}"</p>
+                )}
               </div>
             ))}
           </div>
         )}
+
       </DialogContent>
     </Dialog>
   );

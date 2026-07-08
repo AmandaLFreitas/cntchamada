@@ -53,20 +53,45 @@ export function MonthlyReports() {
 
       const { data: attendance } = await supabase
         .from('attendance')
-        .select('status, time_slot_id')
+        .select('student_id, date, status, is_justified')
         .eq('school_id', schoolId!)
         .gte('date', startDate)
         .lte('date', endDate);
+
+      // Collapse per (student, date): 1 presença OU 1 falta por dia por aluno
+      const dayMap = new Map<string, { hasPresent: boolean; hasAbsent: boolean; absents: number; justifieds: number }>();
+      (attendance ?? []).forEach((r: any) => {
+        const k = `${r.student_id}|${r.date}`;
+        const cur = dayMap.get(k) || { hasPresent: false, hasAbsent: false, absents: 0, justifieds: 0 };
+        if (r.status === 'present') cur.hasPresent = true;
+        else if (r.status === 'absent') {
+          cur.hasAbsent = true;
+          cur.absents += 1;
+          if (r.is_justified) cur.justifieds += 1;
+        }
+        dayMap.set(k, cur);
+      });
+      let presencas = 0, faltas = 0, justificadas = 0;
+      dayMap.forEach(v => {
+        if (v.hasPresent) presencas += 1;
+        else if (v.hasAbsent) {
+          faltas += 1;
+          if (v.absents > 0 && v.justifieds === v.absents) justificadas += 1;
+        }
+      });
 
       return {
         active: active?.length ?? 0,
         finalized: finalized?.length ?? 0,
         dropouts: dropouts?.length ?? 0,
-        totalPresencas: attendance?.filter(a => a.status === 'present').length ?? 0,
-        totalFaltas: attendance?.filter(a => a.status === 'absent').length ?? 0,
+        totalPresencas: presencas,
+        totalFaltas: faltas,
+        faltasJustificadas: justificadas,
+        faltasNaoJustificadas: faltas - justificadas,
       };
     },
   });
+
 
   const { data: detailStudents } = useQuery({
     queryKey: ['monthly_detail_sc', detailView, month, year, schoolId, isAdmin],
@@ -110,26 +135,36 @@ export function MonthlyReports() {
     queryFn: async () => {
       const { data } = await supabase
         .from('attendance')
-        .select('student_id, status, students(full_name)')
+        .select('student_id, date, status, students(full_name)')
         .eq('school_id', schoolId!)
         .gte('date', startDate)
         .lte('date', endDate)
         .limit(10000);
-      const map = new Map<string, { id: string; full_name: string; presencas: number; faltas: number }>();
+      // Per (student, date) collapse
+      const dayMap = new Map<string, { studentId: string; name: string; hasPresent: boolean; hasAbsent: boolean }>();
       (data ?? []).forEach((r: any) => {
-        const cur = map.get(r.student_id) || {
-          id: r.student_id,
-          full_name: r.students?.full_name || 'Sem nome',
-          presencas: 0,
-          faltas: 0,
+        const k = `${r.student_id}|${r.date}`;
+        const cur = dayMap.get(k) || {
+          studentId: r.student_id,
+          name: r.students?.full_name || 'Sem nome',
+          hasPresent: false,
+          hasAbsent: false,
         };
-        if (r.status === 'present') cur.presencas += 1;
-        else if (r.status === 'absent') cur.faltas += 1;
-        map.set(r.student_id, cur);
+        if (r.status === 'present') cur.hasPresent = true;
+        else if (r.status === 'absent') cur.hasAbsent = true;
+        dayMap.set(k, cur);
+      });
+      const map = new Map<string, { id: string; full_name: string; presencas: number; faltas: number }>();
+      dayMap.forEach(v => {
+        const cur = map.get(v.studentId) || { id: v.studentId, full_name: v.name, presencas: 0, faltas: 0 };
+        if (v.hasPresent) cur.presencas += 1;
+        else if (v.hasAbsent) cur.faltas += 1;
+        map.set(v.studentId, cur);
       });
       return Array.from(map.values());
     },
   });
+
 
   const { data: studentSchedules } = useQuery({
     queryKey: ['monthly_student_schedules', selectedStudentId, schoolId],
@@ -150,7 +185,7 @@ export function MonthlyReports() {
     queryFn: async () => {
       const { data } = await supabase
         .from('attendance')
-        .select('date, status')
+        .select('date, status, is_justified, absence_note')
         .eq('school_id', schoolId!)
         .eq('student_id', selectedStudentId!)
         .order('date', { ascending: true });
@@ -182,10 +217,34 @@ export function MonthlyReports() {
 
   const years = Array.from({ length: 5 }, (_, i) => now.getFullYear() - i);
 
+  // Collapse individual attendance per day
+  const perDayStudentAttendance = (() => {
+    if (!studentAttendance) return [] as Array<{ date: string; status: 'present'|'absent'|'neutral'; isJustified: boolean; note: string | null }>;
+    const byDate = new Map<string, { hasPresent: boolean; hasAbsent: boolean; absents: number; just: number; notes: string[] }>();
+    (studentAttendance as any[]).forEach(r => {
+      const cur = byDate.get(r.date) || { hasPresent: false, hasAbsent: false, absents: 0, just: 0, notes: [] as string[] };
+      if (r.status === 'present') cur.hasPresent = true;
+      else if (r.status === 'absent') {
+        cur.hasAbsent = true; cur.absents += 1;
+        if (r.is_justified) cur.just += 1;
+        if (r.absence_note && String(r.absence_note).trim()) cur.notes.push(String(r.absence_note).trim());
+      }
+      byDate.set(r.date, cur);
+    });
+    return Array.from(byDate.entries()).map(([date, v]) => {
+      const status = v.hasPresent ? 'present' : v.hasAbsent ? 'absent' : 'neutral' as const;
+      const isJustified = status === 'absent' && v.absents > 0 && v.just === v.absents;
+      const note = v.notes.length ? Array.from(new Set(v.notes)).join(' | ') : null;
+      return { date, status, isJustified, note };
+    }).sort((a, b) => a.date.localeCompare(b.date));
+  })();
+
   const attendanceSummary = studentAttendance ? {
-    present: studentAttendance.filter(a => a.status === 'present').length,
-    absent: studentAttendance.filter(a => a.status === 'absent').length,
-    neutral: studentAttendance.filter(a => a.status === 'neutral').length,
+    present: perDayStudentAttendance.filter(a => a.status === 'present').length,
+    absent: perDayStudentAttendance.filter(a => a.status === 'absent').length,
+    neutral: perDayStudentAttendance.filter(a => a.status === 'neutral').length,
+    justified: perDayStudentAttendance.filter(a => a.status === 'absent' && a.isJustified).length,
+    unjustified: perDayStudentAttendance.filter(a => a.status === 'absent' && !a.isJustified).length,
   } : null;
 
   const frequencyPercent = attendanceSummary
@@ -193,6 +252,7 @@ export function MonthlyReports() {
       ? ((attendanceSummary.present / (attendanceSummary.present + attendanceSummary.absent)) * 100).toFixed(1)
       : '0'
     : '0';
+
 
   const handlePrintReport = () => window.print();
 
@@ -341,7 +401,11 @@ export function MonthlyReports() {
         <button onClick={() => { setDetailView('faltas'); setSearch(''); }} className="bg-card border rounded-lg p-4 text-center hover:shadow-md transition-shadow cursor-pointer">
           <p className="text-sm text-muted-foreground">Faltas</p>
           <p className="text-2xl font-bold text-destructive">{stats?.totalFaltas ?? 0}</p>
+          <p className="text-[10px] text-muted-foreground mt-1">
+            {stats?.faltasJustificadas ?? 0} just. · {stats?.faltasNaoJustificadas ?? 0} n/just.
+          </p>
         </button>
+
       </div>
 
       <Dialog open={!!detailView} onOpenChange={() => { setDetailView(null); setSelectedStudentId(null); }}>
@@ -460,34 +524,47 @@ export function MonthlyReports() {
                 {attendanceSummary && (
                   <div className="border rounded-lg p-3">
                     <p className="font-medium mb-2">Frequência</p>
-                    <div className="flex gap-4 text-sm mb-2">
+                    <div className="flex flex-wrap gap-x-4 gap-y-1 text-sm mb-2">
                       <span className="text-green-600 font-medium">{attendanceSummary.present} presenças</span>
                       <span className="text-destructive font-medium">{attendanceSummary.absent} faltas</span>
+                      <span className="text-green-700">↳ {attendanceSummary.justified} justificadas</span>
+                      <span className="text-red-700">↳ {attendanceSummary.unjustified} não justificadas</span>
                       <span className="text-muted-foreground">{attendanceSummary.neutral} neutros</span>
                     </div>
                     <p className="text-lg font-bold text-primary">{frequencyPercent}% de frequência</p>
                   </div>
                 )}
 
-                {studentAttendance && studentAttendance.length > 0 && (
+                {perDayStudentAttendance.length > 0 && (
                   <div className="border rounded-lg p-3">
                     <p className="font-medium mb-2">Detalhes por dia</p>
                     <div className="max-h-60 overflow-auto space-y-1">
-                      {studentAttendance.map((a, i) => (
-                        <div key={i} className="flex items-center justify-between text-sm py-1 border-b last:border-0">
-                          <span>{a.date}</span>
-                          <span className={
-                            a.status === 'present' ? 'text-green-600 font-medium' :
-                            a.status === 'absent' ? 'text-destructive font-medium' :
-                            'text-muted-foreground'
-                          }>
-                            {a.status === 'present' ? '✔ Presença' : a.status === 'absent' ? '❌ Falta' : '/ Neutro'}
-                          </span>
+                      {perDayStudentAttendance.map((a, i) => (
+                        <div key={i} className="flex flex-col sm:flex-row sm:items-center sm:justify-between text-sm py-1 border-b last:border-0 gap-1">
+                          <div className="flex items-center gap-2">
+                            <span>{a.date}</span>
+                            <span className={
+                              a.status === 'present' ? 'text-green-600 font-medium' :
+                              a.status === 'absent' ? 'text-destructive font-medium' :
+                              'text-muted-foreground'
+                            }>
+                              {a.status === 'present' ? '✔ Presença' : a.status === 'absent' ? '❌ Falta' : '/ Neutro'}
+                            </span>
+                            {a.status === 'absent' && (
+                              <span className={`text-[11px] px-1.5 py-0.5 rounded ${a.isJustified ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+                                {a.isJustified ? 'Justificada' : 'Não justificada'}
+                              </span>
+                            )}
+                          </div>
+                          {a.note && (
+                            <span className="text-xs text-muted-foreground italic truncate">"{a.note}"</span>
+                          )}
                         </div>
                       ))}
                     </div>
                   </div>
                 )}
+
               </div>
             </div>
           )}

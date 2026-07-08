@@ -1,0 +1,3 @@
+ALTER TABLE public.attendance
+  ADD COLUMN IF NOT EXISTS is_justified BOOLEAN NOT NULL DEFAULT false,
+  ADD COLUMN IF NOT EXISTS absence_note TEXT;

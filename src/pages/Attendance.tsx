@@ -27,6 +27,8 @@ import { openWhatsApp } from '@/lib/utils';
 import { useFinalizingStudents } from '@/hooks/use-finalizing-students';
 import { toast } from 'sonner';
 import { fetchStudentIdsWithAnyAttendance } from '@/lib/new-students';
+import { AbsenceJustificationPopover } from '@/components/AbsenceJustificationPopover';
+
 
 
 const dayNameFromDate = (date: Date): string => {
@@ -176,8 +178,11 @@ export default function Attendance() {
     return `${d}/${m}/${y}`;
   };
 
+  const getRecord = (studentId: string) => {
+    return attendance?.find(a => a.student_id === studentId) as any;
+  };
   const getStatus = (studentId: string) => {
-    return attendance?.find(a => a.student_id === studentId)?.status ?? null;
+    return getRecord(studentId)?.status ?? null;
   };
 
   const markAttendance = (studentId: string, status: string) => {
@@ -187,6 +192,19 @@ export default function Attendance() {
     const next = current === status ? '' : status;
     saveAttendance.mutate({ studentId, timeSlotId: selectedSlotId, date: isoDate, status: next });
   };
+
+  const updateJustification = (studentId: string, values: { isJustified: boolean; note: string }) => {
+    if (!selectedSlotId) return;
+    saveAttendance.mutate({
+      studentId,
+      timeSlotId: selectedSlotId,
+      date: isoDate,
+      status: 'absent',
+      isJustified: values.isJustified,
+      absenceNote: values.note || null,
+    });
+  };
+
 
   const finalizing = useFinalizingStudents();
   const finalizingMap = new Map<string, any>();
@@ -603,6 +621,10 @@ export default function Attendance() {
                 const student = s.students;
                 if (!student) return null;
                 const status = getStatus(student.id);
+                const record = getRecord(student.id);
+                const absenceJustified = !!record?.is_justified;
+                const absenceNote: string = record?.absence_note ?? '';
+
                 const courseName = student.courses?.name || student.custom_course_name || 'N/A';
                 const materialSent = !!student.material_sent;
                 const fin = finalizingMap.get(student.id);
@@ -683,6 +705,14 @@ export default function Attendance() {
                               onClick={() => markAttendance(student.id, 'absent')} title="Falta (clique novamente para desmarcar)">
                               <X className={cn('h-4 w-4', status !== 'absent' && 'text-destructive')} />
                             </Button>
+                            {status === 'absent' && (
+                              <AbsenceJustificationPopover
+                                isJustified={absenceJustified}
+                                note={absenceNote}
+                                onSave={(v) => updateJustification(student.id, v)}
+                              />
+                            )}
+
                             <Button size="icon" variant={status === 'neutral' ? 'default' : 'outline'}
                               className={status === 'neutral' ? 'bg-muted-foreground hover:bg-muted-foreground/90 text-white' : ''}
                               onClick={() => markAttendance(student.id, 'neutral')} title="Neutro (feriado/sem aula)">
