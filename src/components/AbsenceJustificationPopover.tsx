@@ -11,9 +11,13 @@ interface Props {
   isJustified: boolean;
   note: string;
   onSave: (values: { isJustified: boolean; note: string }) => void;
+  checkboxLabel?: string;
+  triggerTitle?: string;
+  triggerClassName?: string;
+  align?: 'start' | 'center' | 'end';
 }
 
-export function AbsenceJustificationPopover({ isJustified, note, onSave }: Props) {
+export function AbsenceJustificationPopover({ isJustified, note, onSave, checkboxLabel, triggerTitle, triggerClassName, align = 'end' }: Props) {
   const [open, setOpen] = useState(false);
   const [localJustified, setLocalJustified] = useState(isJustified);
   const [localNote, setLocalNote] = useState(note || '');
