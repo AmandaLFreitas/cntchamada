@@ -13,7 +13,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import logoImg from '@/assets/logo-cnt.png';
 
 export function Layout({ children }: { children: React.ReactNode }) {
-  const { signOut, displayName } = useAuth();
+  const { signOut, displayName, isProfessor } = useAuth();
   const { schools, schoolId, setSchoolId } = useSchool();
 
   return (
