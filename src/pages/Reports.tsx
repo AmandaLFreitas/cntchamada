@@ -166,6 +166,9 @@ export default function Reports() {
           <MonthlyReports />
 
           <Separator className="my-6" />
+          <EnrollmentsReport />
+
+          <Separator className="my-6" />
           <AttendanceReport />
         </>
       ) : (
