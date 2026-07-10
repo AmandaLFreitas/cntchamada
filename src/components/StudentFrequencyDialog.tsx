@@ -268,19 +268,23 @@ export function StudentFrequencyDialog({ open, onOpenChange, studentId, studentN
         {showDetails && (
           <div className="space-y-1 max-h-[300px] overflow-auto">
             {detailRecords.length === 0 && <p className="text-muted-foreground text-sm text-center py-4">Nenhum registro encontrado.</p>}
-            {detailRecords.map((r) => (
-              <div key={r.id} className="border rounded px-3 py-2 text-sm">
-                <div className="flex items-center justify-between gap-2">
-                  <div className="flex items-center gap-2 min-w-0">
-                    {statusIcon(r.status)}
-                    <span className="truncate">
-                      {format(parseISO(r.date), 'dd/MM/yyyy (EEEE)', { locale: ptBR })}
-                      {r.start && r.end && <> — {r.start} às {r.end}</>}
-                    </span>
-                  </div>
-                </div>
+        {detailRecords.map((r) => (
+          <div key={r.id} className="border rounded px-3 py-2 text-sm">
+            <div className="flex items-center justify-between gap-2">
+              <div className="flex items-center gap-2 min-w-0">
+                {statusIcon(r.status)}
+                <span className="truncate">
+                  {format(parseISO(r.date), 'dd/MM/yyyy (EEEE)', { locale: ptBR })}
+                </span>
               </div>
-            ))}
+              {r.start && r.end && (
+                <span className="inline-flex items-center rounded-md bg-secondary px-2 py-0.5 text-xs font-medium text-secondary-foreground whitespace-nowrap">
+                  {r.start} às {r.end}
+                </span>
+              )}
+            </div>
+          </div>
+        ))}
           </div>
         )}
 
