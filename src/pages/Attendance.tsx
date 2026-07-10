@@ -193,17 +193,6 @@ export default function Attendance() {
     saveAttendance.mutate({ studentId, timeSlotId: selectedSlotId, date: isoDate, status: next });
   };
 
-  const updateJustification = (studentId: string, values: { isJustified: boolean; note: string }) => {
-    if (!selectedSlotId) return;
-    saveAttendance.mutate({
-      studentId,
-      timeSlotId: selectedSlotId,
-      date: isoDate,
-      status: 'absent',
-      isJustified: values.isJustified,
-      absenceNote: values.note || null,
-    });
-  };
 
 
   const finalizing = useFinalizingStudents();
