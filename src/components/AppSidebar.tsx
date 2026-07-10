@@ -39,7 +39,7 @@ export function AppSidebar() {
   const { isProfessor } = useAuth();
 
   const visibleItems = isProfessor
-    ? items.filter(i => i.url === '/chamada')
+    ? items.filter(i => i.url === '/chamada' || i.url === '/aniversariantes')
     : items;
 
   const handleNavClick = (url: string) => {
