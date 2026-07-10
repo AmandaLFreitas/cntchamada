@@ -11,9 +11,13 @@ interface Props {
   isJustified: boolean;
   note: string;
   onSave: (values: { isJustified: boolean; note: string }) => void;
+  checkboxLabel?: string;
+  triggerTitle?: string;
+  triggerClassName?: string;
+  align?: 'start' | 'center' | 'end';
 }
 
-export function AbsenceJustificationPopover({ isJustified, note, onSave }: Props) {
+export function AbsenceJustificationPopover({ isJustified, note, onSave, checkboxLabel, triggerTitle, triggerClassName, align = 'end' }: Props) {
   const [open, setOpen] = useState(false);
   const [localJustified, setLocalJustified] = useState(isJustified);
   const [localNote, setLocalNote] = useState(note || '');
@@ -38,8 +42,8 @@ export function AbsenceJustificationPopover({ isJustified, note, onSave }: Props
         <Button
           size="icon"
           variant="ghost"
-          className="h-8 w-8"
-          title={isJustified ? 'Falta justificada' : 'Marcar como justificada / observação'}
+          className={cn('h-8 w-8', triggerClassName)}
+          title={triggerTitle || (isJustified ? 'Falta justificada' : 'Marcar como justificada / observação')}
         >
           {isJustified ? (
             <ShieldCheck className={cn('h-4 w-4', 'text-green-600')} />
@@ -48,7 +52,7 @@ export function AbsenceJustificationPopover({ isJustified, note, onSave }: Props
           )}
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-72 space-y-3" align="end">
+      <PopoverContent className="w-72 space-y-3" align={align}>
         <div className="flex items-center gap-2">
           <Checkbox
             id="justified"
@@ -56,7 +60,7 @@ export function AbsenceJustificationPopover({ isJustified, note, onSave }: Props
             onCheckedChange={(v) => setLocalJustified(!!v)}
           />
           <Label htmlFor="justified" className="text-sm cursor-pointer">
-            Falta justificada
+            {checkboxLabel || 'Falta justificada'}
           </Label>
         </div>
         <div className="space-y-1">

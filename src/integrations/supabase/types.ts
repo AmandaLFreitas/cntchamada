@@ -584,7 +584,7 @@ export type Database = {
       has_school_access: { Args: { _school_id: string }; Returns: boolean }
     }
     Enums: {
-      app_role: "admin" | "restricted"
+      app_role: "admin" | "restricted" | "professor"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -712,7 +712,7 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
-      app_role: ["admin", "restricted"],
+      app_role: ["admin", "restricted", "professor"],
     },
   },
 } as const

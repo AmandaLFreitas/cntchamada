@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useReportData } from '@/hooks/use-supabase-data';
 import { AttendanceReport } from '@/components/AttendanceReport';
 import { MonthlyReports } from '@/components/MonthlyReports';
+import { EnrollmentsReport } from '@/components/EnrollmentsReport';
 import { Separator } from '@/components/ui/separator';
 import { Input } from '@/components/ui/input';
 import { Search, ChevronLeft, User, FileText } from 'lucide-react';
@@ -163,6 +164,9 @@ export default function Reports() {
 
           <Separator className="my-6" />
           <MonthlyReports />
+
+          <Separator className="my-6" />
+          <EnrollmentsReport />
 
           <Separator className="my-6" />
           <AttendanceReport />

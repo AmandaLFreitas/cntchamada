@@ -13,7 +13,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import logoImg from '@/assets/logo-cnt.png';
 
 export function Layout({ children }: { children: React.ReactNode }) {
-  const { signOut, displayName } = useAuth();
+  const { signOut, displayName, isProfessor } = useAuth();
   const { schools, schoolId, setSchoolId } = useSchool();
 
   return (
@@ -41,7 +41,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
                   </SelectContent>
                 </Select>
               </div>
-              <NewStudentsNotification />
+              {!isProfessor && <NewStudentsNotification />}
               {displayName && (
                 <span className="text-sm text-muted-foreground hidden sm:inline">Olá, {displayName}</span>
               )}
@@ -54,9 +54,9 @@ export function Layout({ children }: { children: React.ReactNode }) {
           <main className="flex-1 p-3 sm:p-4 md:p-6 overflow-auto">
             {children}
           </main>
-          <TrialLessonNotification />
-          <BirthdayNotification />
-          <FinalizingFloatingNotification />
+          {!isProfessor && <TrialLessonNotification />}
+          {!isProfessor && <BirthdayNotification />}
+          {!isProfessor && <FinalizingFloatingNotification />}
         </div>
       </div>
     </SidebarProvider>

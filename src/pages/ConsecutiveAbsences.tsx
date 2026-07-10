@@ -9,7 +9,11 @@ import { AlertOctagon, Phone, Printer, FileDown, FileSpreadsheet, X } from 'luci
 import { useConsecutiveAbsences } from '@/hooks/use-consecutive-absences';
 import { useSchool } from '@/contexts/SchoolContext';
 import { StudentDetailsDialog } from '@/components/StudentDetailsDialog';
+import { AbsenceJustificationPopover } from '@/components/AbsenceJustificationPopover';
 import { openWhatsApp } from '@/lib/utils';
+import { supabase } from '@/integrations/supabase/client';
+import { useQueryClient } from '@tanstack/react-query';
+import { toast } from 'sonner';
 import jsPDF from 'jspdf';
 import * as XLSX from 'xlsx';
 
@@ -17,13 +21,36 @@ const normalize = (s: string) =>
   (s || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim();
 
 export default function ConsecutiveAbsences() {
-  const { school } = useSchool();
+  const { school, schoolId } = useSchool();
   const rows = useConsecutiveAbsences(2);
+  const queryClient = useQueryClient();
 
   const [search, setSearch] = useState('');
   const [courseFilter, setCourseFilter] = useState<string>('all');
   const [minStreak, setMinStreak] = useState<string>('2');
   const [openStudent, setOpenStudent] = useState<string | null>(null);
+
+  const handleSaveStreakNote = async (
+    row: { studentId: string; firstAbsentInStreakISO: string | null; lastAbsentInStreakISO: string | null },
+    values: { isJustified: boolean; note: string }
+  ) => {
+    if (!schoolId || !row.firstAbsentInStreakISO || !row.lastAbsentInStreakISO) return;
+    const { error } = await (supabase as any)
+      .from('attendance')
+      .update({ is_justified: values.isJustified, absence_note: values.note || null })
+      .eq('school_id', schoolId)
+      .eq('student_id', row.studentId)
+      .eq('status', 'absent')
+      .gte('date', row.firstAbsentInStreakISO)
+      .lte('date', row.lastAbsentInStreakISO);
+    if (error) {
+      toast.error('Erro ao salvar observação');
+      return;
+    }
+    toast.success('Observação salva');
+    queryClient.invalidateQueries({ queryKey: ['attendance_for_consecutive', schoolId] });
+    queryClient.invalidateQueries({ queryKey: ['attendance'] });
+  };
 
   const allCourses = useMemo(() => {
     const set = new Set<string>();
@@ -177,13 +204,31 @@ export default function ConsecutiveAbsences() {
                   <div className="col-span-2"><span className="text-muted-foreground">Frequência:</span> {r.attendancePct}% ({r.totalPresent}P / {r.totalAbsent}F)</div>
                 </div>
 
-                {r.observations.length > 0 && (
-                  <p className="text-xs text-muted-foreground line-clamp-2 pt-1 border-t">
-                    <span className="font-medium">Obs:</span> {r.observations[0]}
+                {(r.streakNote || r.streakJustified) && (
+                  <p className="text-xs pt-1 border-t">
+                    <span className={r.streakJustified ? 'text-green-700 font-medium' : 'text-muted-foreground font-medium'}>
+                      {r.streakJustified ? '✔ Mensagem enviada. ' : ''}
+                    </span>
+                    {r.streakNote && (
+                      <span className="text-muted-foreground">Obs: {r.streakNote}</span>
+                    )}
                   </p>
                 )}
 
-                <div className="flex justify-end pt-1">
+                {r.observations.length > 0 && (
+                  <p className="text-xs text-muted-foreground line-clamp-2 pt-1 border-t">
+                    <span className="font-medium">Obs. gerais:</span> {r.observations[0]}
+                  </p>
+                )}
+
+                <div className="flex justify-end items-center gap-1 pt-1" onClick={(e) => e.stopPropagation()}>
+                  <AbsenceJustificationPopover
+                    isJustified={r.streakJustified}
+                    note={r.streakNote}
+                    checkboxLabel="Mensagem enviada"
+                    triggerTitle="Registrar mensagem enviada e observação da sequência"
+                    onSave={(v) => handleSaveStreakNote(r, v)}
+                  />
                   {r.phone ? (
                     <Button
                       size="sm"

@@ -33,7 +33,7 @@ const queryClient = new QueryClient({
 });
 
 function AppRoutes() {
-  const { user, loading } = useAuth();
+  const { user, loading, isProfessor } = useAuth();
   const { schoolId, loading: schoolLoading } = useSchool();
 
   if (loading || schoolLoading) {
@@ -47,6 +47,18 @@ function AppRoutes() {
   // Require both authentication AND school selection
   if (!user || !schoolId) {
     return <Login />;
+  }
+
+  // Professor role: only Chamada is accessible
+  if (isProfessor) {
+    return (
+      <Layout>
+        <Routes>
+          <Route path="/chamada" element={<Attendance />} />
+          <Route path="*" element={<Attendance />} />
+        </Routes>
+      </Layout>
+    );
   }
 
   return (
