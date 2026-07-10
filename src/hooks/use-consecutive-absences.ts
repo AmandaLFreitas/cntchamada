@@ -230,6 +230,20 @@ export function useConsecutiveAbsences(minStreak = 2) {
 
       if (streak < minStreak) return;
 
+      // Aggregate justified/note from raw rows within the streak window
+      let streakJustified = false;
+      let streakNote = '';
+      if (firstAbsentInStreak && lastAbsentInStreak) {
+        const streakRaws = (rawByStudent[s.id] ?? []).filter((r: any) =>
+          r.status === 'absent' &&
+          r.date >= firstAbsentInStreak! &&
+          r.date <= lastAbsentInStreak!
+        );
+        streakJustified = streakRaws.some((r: any) => !!r.is_justified);
+        const note = streakRaws.map((r: any) => (r.absence_note || '').trim()).find((n: string) => n);
+        streakNote = note || '';
+      }
+
       // Schedule display
       const ordered = slots
         .map(sl => ({ ...sl, dayLabel: DAY_LABEL[sl.dowKey] || sl.dowKey }))
@@ -258,12 +272,16 @@ export function useConsecutiveAbsences(minStreak = 2) {
         expectedEndDate: null,
         streak,
         firstAbsentInStreakDate: firstAbsentInStreak ? fmt(parseDate(firstAbsentInStreak)) : null,
+        firstAbsentInStreakISO: firstAbsentInStreak,
+        lastAbsentInStreakISO: lastAbsentInStreak,
         lastPresentDate: lastPresent ? fmt(parseDate(lastPresent)) : null,
         lastAbsentDate: lastAbsent ? fmt(parseDate(lastAbsent)) : null,
         totalPresent,
         totalAbsent,
         attendancePct: pct,
         observations: obsByStudent[s.id] ?? [],
+        streakJustified,
+        streakNote,
       });
     });
 
