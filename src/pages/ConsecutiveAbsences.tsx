@@ -204,13 +204,31 @@ export default function ConsecutiveAbsences() {
                   <div className="col-span-2"><span className="text-muted-foreground">Frequência:</span> {r.attendancePct}% ({r.totalPresent}P / {r.totalAbsent}F)</div>
                 </div>
 
-                {r.observations.length > 0 && (
-                  <p className="text-xs text-muted-foreground line-clamp-2 pt-1 border-t">
-                    <span className="font-medium">Obs:</span> {r.observations[0]}
+                {(r.streakNote || r.streakJustified) && (
+                  <p className="text-xs pt-1 border-t">
+                    <span className={r.streakJustified ? 'text-green-700 font-medium' : 'text-muted-foreground font-medium'}>
+                      {r.streakJustified ? '✔ Mensagem enviada. ' : ''}
+                    </span>
+                    {r.streakNote && (
+                      <span className="text-muted-foreground">Obs: {r.streakNote}</span>
+                    )}
                   </p>
                 )}
 
-                <div className="flex justify-end pt-1">
+                {r.observations.length > 0 && (
+                  <p className="text-xs text-muted-foreground line-clamp-2 pt-1 border-t">
+                    <span className="font-medium">Obs. gerais:</span> {r.observations[0]}
+                  </p>
+                )}
+
+                <div className="flex justify-end items-center gap-1 pt-1" onClick={(e) => e.stopPropagation()}>
+                  <AbsenceJustificationPopover
+                    isJustified={r.streakJustified}
+                    note={r.streakNote}
+                    checkboxLabel="Mensagem enviada"
+                    triggerTitle="Registrar mensagem enviada e observação da sequência"
+                    onSave={(v) => handleSaveStreakNote(r, v)}
+                  />
                   {r.phone ? (
                     <Button
                       size="sm"
