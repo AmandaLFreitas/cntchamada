@@ -13,6 +13,7 @@ import {
   SidebarMenuItem,
   useSidebar,
 } from '@/components/ui/sidebar';
+import { useAuth } from '@/contexts/AuthContext';
 
 const items = [
   { title: 'Visão Geral', url: '/', icon: LayoutDashboard },
@@ -35,6 +36,11 @@ export function AppSidebar() {
   const collapsed = state === 'collapsed';
   const isMobile = useIsMobile();
   const navigate = useNavigate();
+  const { isProfessor } = useAuth();
+
+  const visibleItems = isProfessor
+    ? items.filter(i => i.url === '/chamada')
+    : items;
 
   const handleNavClick = (url: string) => {
     if (isMobile) {
