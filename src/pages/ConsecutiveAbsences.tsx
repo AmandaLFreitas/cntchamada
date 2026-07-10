@@ -174,7 +174,7 @@ export default function ConsecutiveAbsences() {
             <Card
               key={r.studentId}
               className="border-l-4 border-l-orange-500 cursor-pointer hover:shadow-lg transition-shadow"
-              onClick={() => setOpenStudent(r.studentId)}
+              onClick={() => setStreakDialogRow(r)}
             >
               <CardContent className="p-4 space-y-2">
                 <div className="flex items-start gap-3">
