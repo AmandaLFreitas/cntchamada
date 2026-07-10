@@ -255,6 +255,21 @@ export default function ConsecutiveAbsences() {
         onOpenChange={(o) => !o && setOpenStudent(null)}
         studentId={openStudent}
       />
+      <AbsenceStreakDialog
+        open={!!streakDialogRow}
+        onOpenChange={(o) => !o && setStreakDialogRow(null)}
+        row={streakDialogRow ? {
+          studentId: streakDialogRow.studentId,
+          studentName: streakDialogRow.name,
+          firstAbsentInStreakISO: streakDialogRow.firstAbsentInStreakISO,
+          lastAbsentInStreakISO: streakDialogRow.lastAbsentInStreakISO,
+          streak: streakDialogRow.streak,
+          streakJustified: streakDialogRow.streakJustified,
+          streakNote: streakDialogRow.streakNote,
+        } : null}
+        schoolId={schoolId}
+        onSave={(v) => streakDialogRow && handleSaveStreakNote(streakDialogRow, v)}
+      />
     </div>
   );
 }
