@@ -41,7 +41,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
                   </SelectContent>
                 </Select>
               </div>
-              <NewStudentsNotification />
+              {!isProfessor && <NewStudentsNotification />}
               {displayName && (
                 <span className="text-sm text-muted-foreground hidden sm:inline">Olá, {displayName}</span>
               )}
