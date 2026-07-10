@@ -19,7 +19,7 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
-  const [role, setRole] = useState<'admin' | 'restricted' | null>(null);
+  const [role, setRole] = useState<'admin' | 'restricted' | 'professor' | null>(null);
   const [displayName, setDisplayName] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -27,7 +27,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const { data, error } = await supabase
       .rpc('get_user_role', { _user_id: userId });
     if (!error && data) {
-      setRole(data as 'admin' | 'restricted');
+      setRole(data as 'admin' | 'restricted' | 'professor');
     }
     // Also get display name
     const { data: roleData } = await supabase
