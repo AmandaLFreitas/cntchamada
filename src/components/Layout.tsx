@@ -54,9 +54,9 @@ export function Layout({ children }: { children: React.ReactNode }) {
           <main className="flex-1 p-3 sm:p-4 md:p-6 overflow-auto">
             {children}
           </main>
-          <TrialLessonNotification />
-          <BirthdayNotification />
-          <FinalizingFloatingNotification />
+          {!isProfessor && <TrialLessonNotification />}
+          {!isProfessor && <BirthdayNotification />}
+          {!isProfessor && <FinalizingFloatingNotification />}
         </div>
       </div>
     </SidebarProvider>
