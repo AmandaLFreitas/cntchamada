@@ -29,6 +29,7 @@ export default function ConsecutiveAbsences() {
   const [courseFilter, setCourseFilter] = useState<string>('all');
   const [minStreak, setMinStreak] = useState<string>('2');
   const [openStudent, setOpenStudent] = useState<string | null>(null);
+  const [streakDialogRow, setStreakDialogRow] = useState<any | null>(null);
 
   const handleSaveStreakNote = async (
     row: { studentId: string; firstAbsentInStreakISO: string | null; lastAbsentInStreakISO: string | null },
