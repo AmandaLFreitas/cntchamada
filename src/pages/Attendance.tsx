@@ -27,7 +27,7 @@ import { openWhatsApp } from '@/lib/utils';
 import { useFinalizingStudents } from '@/hooks/use-finalizing-students';
 import { toast } from 'sonner';
 import { fetchStudentIdsWithAnyAttendance } from '@/lib/new-students';
-import { AbsenceJustificationPopover } from '@/components/AbsenceJustificationPopover';
+
 
 
 
@@ -193,17 +193,6 @@ export default function Attendance() {
     saveAttendance.mutate({ studentId, timeSlotId: selectedSlotId, date: isoDate, status: next });
   };
 
-  const updateJustification = (studentId: string, values: { isJustified: boolean; note: string }) => {
-    if (!selectedSlotId) return;
-    saveAttendance.mutate({
-      studentId,
-      timeSlotId: selectedSlotId,
-      date: isoDate,
-      status: 'absent',
-      isJustified: values.isJustified,
-      absenceNote: values.note || null,
-    });
-  };
 
 
   const finalizing = useFinalizingStudents();
@@ -621,9 +610,8 @@ export default function Attendance() {
                 const student = s.students;
                 if (!student) return null;
                 const status = getStatus(student.id);
-                const record = getRecord(student.id);
-                const absenceJustified = !!record?.is_justified;
-                const absenceNote: string = record?.absence_note ?? '';
+                
+
 
                 const courseName = student.courses?.name || student.custom_course_name || 'N/A';
                 const materialSent = !!student.material_sent;
@@ -705,13 +693,8 @@ export default function Attendance() {
                               onClick={() => markAttendance(student.id, 'absent')} title="Falta (clique novamente para desmarcar)">
                               <X className={cn('h-4 w-4', status !== 'absent' && 'text-destructive')} />
                             </Button>
-                            {status === 'absent' && (
-                              <AbsenceJustificationPopover
-                                isJustified={absenceJustified}
-                                note={absenceNote}
-                                onSave={(v) => updateJustification(student.id, v)}
-                              />
-                            )}
+
+
 
                             <Button size="icon" variant={status === 'neutral' ? 'default' : 'outline'}
                               className={status === 'neutral' ? 'bg-muted-foreground hover:bg-muted-foreground/90 text-white' : ''}

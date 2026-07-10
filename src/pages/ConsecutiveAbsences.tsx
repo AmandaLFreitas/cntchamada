@@ -9,7 +9,7 @@ import { AlertOctagon, Phone, Printer, FileDown, FileSpreadsheet, X } from 'luci
 import { useConsecutiveAbsences } from '@/hooks/use-consecutive-absences';
 import { useSchool } from '@/contexts/SchoolContext';
 import { StudentDetailsDialog } from '@/components/StudentDetailsDialog';
-import { AbsenceJustificationPopover } from '@/components/AbsenceJustificationPopover';
+import { AbsenceStreakDialog } from '@/components/AbsenceStreakDialog';
 import { openWhatsApp } from '@/lib/utils';
 import { supabase } from '@/integrations/supabase/client';
 import { useQueryClient } from '@tanstack/react-query';
@@ -29,6 +29,7 @@ export default function ConsecutiveAbsences() {
   const [courseFilter, setCourseFilter] = useState<string>('all');
   const [minStreak, setMinStreak] = useState<string>('2');
   const [openStudent, setOpenStudent] = useState<string | null>(null);
+  const [streakDialogRow, setStreakDialogRow] = useState<any | null>(null);
 
   const handleSaveStreakNote = async (
     row: { studentId: string; firstAbsentInStreakISO: string | null; lastAbsentInStreakISO: string | null },
@@ -173,7 +174,7 @@ export default function ConsecutiveAbsences() {
             <Card
               key={r.studentId}
               className="border-l-4 border-l-orange-500 cursor-pointer hover:shadow-lg transition-shadow"
-              onClick={() => setOpenStudent(r.studentId)}
+              onClick={() => setStreakDialogRow(r)}
             >
               <CardContent className="p-4 space-y-2">
                 <div className="flex items-start gap-3">
@@ -221,14 +222,15 @@ export default function ConsecutiveAbsences() {
                   </p>
                 )}
 
-                <div className="flex justify-end items-center gap-1 pt-1" onClick={(e) => e.stopPropagation()}>
-                  <AbsenceJustificationPopover
-                    isJustified={r.streakJustified}
-                    note={r.streakNote}
-                    checkboxLabel="Mensagem enviada"
-                    triggerTitle="Registrar mensagem enviada e observação da sequência"
-                    onSave={(v) => handleSaveStreakNote(r, v)}
-                  />
+                <div className="flex justify-between items-center gap-1 pt-1" onClick={(e) => e.stopPropagation()}>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className="text-xs"
+                    onClick={(e) => { e.stopPropagation(); setOpenStudent(r.studentId); }}
+                  >
+                    Ver dados do aluno
+                  </Button>
                   {r.phone ? (
                     <Button
                       size="sm"
@@ -252,6 +254,21 @@ export default function ConsecutiveAbsences() {
         open={!!openStudent}
         onOpenChange={(o) => !o && setOpenStudent(null)}
         studentId={openStudent}
+      />
+      <AbsenceStreakDialog
+        open={!!streakDialogRow}
+        onOpenChange={(o) => !o && setStreakDialogRow(null)}
+        row={streakDialogRow ? {
+          studentId: streakDialogRow.studentId,
+          studentName: streakDialogRow.name,
+          firstAbsentInStreakISO: streakDialogRow.firstAbsentInStreakISO,
+          lastAbsentInStreakISO: streakDialogRow.lastAbsentInStreakISO,
+          streak: streakDialogRow.streak,
+          streakJustified: streakDialogRow.streakJustified,
+          streakNote: streakDialogRow.streakNote,
+        } : null}
+        schoolId={schoolId}
+        onSave={(v) => streakDialogRow && handleSaveStreakNote(streakDialogRow, v)}
       />
     </div>
   );
