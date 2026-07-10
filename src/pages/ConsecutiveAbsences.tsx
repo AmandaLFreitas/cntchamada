@@ -222,14 +222,15 @@ export default function ConsecutiveAbsences() {
                   </p>
                 )}
 
-                <div className="flex justify-end items-center gap-1 pt-1" onClick={(e) => e.stopPropagation()}>
-                  <AbsenceJustificationPopover
-                    isJustified={r.streakJustified}
-                    note={r.streakNote}
-                    checkboxLabel="Mensagem enviada"
-                    triggerTitle="Registrar mensagem enviada e observação da sequência"
-                    onSave={(v) => handleSaveStreakNote(r, v)}
-                  />
+                <div className="flex justify-between items-center gap-1 pt-1" onClick={(e) => e.stopPropagation()}>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className="text-xs"
+                    onClick={(e) => { e.stopPropagation(); setOpenStudent(r.studentId); }}
+                  >
+                    Ver dados do aluno
+                  </Button>
                   {r.phone ? (
                     <Button
                       size="sm"
