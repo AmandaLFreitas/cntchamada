@@ -82,7 +82,7 @@ export function useConsecutiveAbsences(minStreak = 2) {
       while (true) {
         const { data, error } = await supabase
           .from('attendance')
-          .select('student_id, time_slot_id, date, status, time_slots(start_time)')
+          .select('student_id, time_slot_id, date, status, is_justified, absence_note, time_slots(start_time)')
           .eq('school_id', schoolId!)
           .in('student_id', studentIds)
           .order('date', { ascending: false })
