@@ -55,7 +55,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
             {children}
           </main>
           {!isProfessor && <TrialLessonNotification />}
-          {!isProfessor && <BirthdayNotification />}
+          <BirthdayNotification />
           {!isProfessor && <FinalizingFloatingNotification />}
         </div>
       </div>
