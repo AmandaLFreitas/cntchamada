@@ -21,13 +21,36 @@ const normalize = (s: string) =>
   (s || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim();
 
 export default function ConsecutiveAbsences() {
-  const { school } = useSchool();
+  const { school, schoolId } = useSchool();
   const rows = useConsecutiveAbsences(2);
+  const queryClient = useQueryClient();
 
   const [search, setSearch] = useState('');
   const [courseFilter, setCourseFilter] = useState<string>('all');
   const [minStreak, setMinStreak] = useState<string>('2');
   const [openStudent, setOpenStudent] = useState<string | null>(null);
+
+  const handleSaveStreakNote = async (
+    row: { studentId: string; firstAbsentInStreakISO: string | null; lastAbsentInStreakISO: string | null },
+    values: { isJustified: boolean; note: string }
+  ) => {
+    if (!schoolId || !row.firstAbsentInStreakISO || !row.lastAbsentInStreakISO) return;
+    const { error } = await (supabase as any)
+      .from('attendance')
+      .update({ is_justified: values.isJustified, absence_note: values.note || null })
+      .eq('school_id', schoolId)
+      .eq('student_id', row.studentId)
+      .eq('status', 'absent')
+      .gte('date', row.firstAbsentInStreakISO)
+      .lte('date', row.lastAbsentInStreakISO);
+    if (error) {
+      toast.error('Erro ao salvar observação');
+      return;
+    }
+    toast.success('Observação salva');
+    queryClient.invalidateQueries({ queryKey: ['attendance_for_consecutive', schoolId] });
+    queryClient.invalidateQueries({ queryKey: ['attendance'] });
+  };
 
   const allCourses = useMemo(() => {
     const set = new Set<string>();
