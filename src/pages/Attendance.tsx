@@ -611,8 +611,7 @@ export default function Attendance() {
                 if (!student) return null;
                 const status = getStatus(student.id);
                 const record = getRecord(student.id);
-                const absenceJustified = !!record?.is_justified;
-                const absenceNote: string = record?.absence_note ?? '';
+
 
                 const courseName = student.courses?.name || student.custom_course_name || 'N/A';
                 const materialSent = !!student.material_sent;
