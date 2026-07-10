@@ -9,7 +9,11 @@ import { AlertOctagon, Phone, Printer, FileDown, FileSpreadsheet, X } from 'luci
 import { useConsecutiveAbsences } from '@/hooks/use-consecutive-absences';
 import { useSchool } from '@/contexts/SchoolContext';
 import { StudentDetailsDialog } from '@/components/StudentDetailsDialog';
+import { AbsenceJustificationPopover } from '@/components/AbsenceJustificationPopover';
 import { openWhatsApp } from '@/lib/utils';
+import { supabase } from '@/integrations/supabase/client';
+import { useQueryClient } from '@tanstack/react-query';
+import { toast } from 'sonner';
 import jsPDF from 'jspdf';
 import * as XLSX from 'xlsx';
 
