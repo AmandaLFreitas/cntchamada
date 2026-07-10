@@ -19,12 +19,16 @@ export interface ConsecutiveAbsenceRow {
   expectedEndDate: string | null;
   streak: number;
   firstAbsentInStreakDate: string | null;
+  firstAbsentInStreakISO: string | null;
+  lastAbsentInStreakISO: string | null;
   lastPresentDate: string | null;
   lastAbsentDate: string | null;
   totalPresent: number;
   totalAbsent: number;
   attendancePct: number;
   observations: string[];
+  streakJustified: boolean;
+  streakNote: string;
 }
 
 const DAY_ORDER: Record<string, number> = {
