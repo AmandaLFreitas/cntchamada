@@ -55,6 +55,7 @@ function AppRoutes() {
       <Layout>
         <Routes>
           <Route path="/chamada" element={<Attendance />} />
+          <Route path="/aniversariantes" element={<Birthdays />} />
           <Route path="*" element={<Attendance />} />
         </Routes>
       </Layout>
