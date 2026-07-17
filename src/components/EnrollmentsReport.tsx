@@ -14,6 +14,7 @@ const MONTHS = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','A
 
 type Row = {
   student_name: string;
+  phone: string | null;
   enrollment_date: string;
   enrollment_date_iso: string;
   course: string;
