@@ -78,6 +78,7 @@ export function EnrollmentsReport() {
   const exportExcel = () => {
     const data = rows.map(r => ({
       Aluno: r.student_name,
+      Telefone: r.phone || '-',
       'Data da matrícula': r.enrollment_date,
       Curso: r.course,
       Unidade: r.school_name,
@@ -162,6 +163,7 @@ export function EnrollmentsReport() {
                 <tr className="border-b text-left text-xs text-muted-foreground">
                   <th className="py-2 pr-2">#</th>
                   <th className="py-2 pr-2">Aluno</th>
+                  <th className="py-2 pr-2">Telefone</th>
                   <th className="py-2 pr-2">Data da matrícula</th>
                   <th className="py-2 pr-2">Curso</th>
                   <th className="py-2 pr-2">Unidade</th>
@@ -172,6 +174,7 @@ export function EnrollmentsReport() {
                   <tr key={idx} className="border-b last:border-b-0">
                     <td className="py-2 pr-2 text-muted-foreground">{idx + 1}</td>
                     <td className="py-2 pr-2 font-medium">{r.student_name}</td>
+                    <td className="py-2 pr-2 whitespace-nowrap">{r.phone || '-'}</td>
                     <td className="py-2 pr-2">{r.enrollment_date}</td>
                     <td className="py-2 pr-2">{r.course}</td>
                     <td className="py-2 pr-2">{r.school_name}</td>
