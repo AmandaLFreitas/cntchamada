@@ -3,8 +3,12 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useSchool } from '@/contexts/SchoolContext';
+import { useAuth } from '@/contexts/AuthContext';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { PhotoLightbox } from '@/components/PhotoLightbox';
+import { formatPhoneMask, openWhatsApp } from '@/lib/utils';
+import { Phone, MessageCircle } from 'lucide-react';
+import { formatBR } from '@/hooks/use-new-students';
 
 interface Props {
   open: boolean;
@@ -18,8 +22,32 @@ const STATUS_LABELS: Record<string, string> = {
   desistiu: 'Desistiu',
 };
 
+const PAYMENT_LABELS: Record<string, string> = {
+  dinheiro: 'Dinheiro',
+  pix: 'PIX',
+  cartao: 'Cartão',
+  boleto: 'Boleto',
+  transferencia: 'Transferência',
+};
+
+function calcAge(birth?: string | null): number | null {
+  if (!birth) return null;
+  const m = birth.match(/^(\d{2})\/(\d{2})\/(\d{4})$/) || birth.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (!m) return null;
+  let d: Date;
+  if (birth.includes('/')) d = new Date(Number(m[3]), Number(m[2]) - 1, Number(m[1]));
+  else d = new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
+  const now = new Date();
+  let age = now.getFullYear() - d.getFullYear();
+  const mo = now.getMonth() - d.getMonth();
+  if (mo < 0 || (mo === 0 && now.getDate() < d.getDate())) age--;
+  return age;
+}
+
 export function StudentDetailsDialog({ open, onOpenChange, studentId }: Props) {
   const { schoolId } = useSchool();
+  const { role } = useAuth();
+  const isRestricted = role === 'restricted';
   const [lightboxOpen, setLightboxOpen] = useState(false);
 
   const { data } = useQuery({
@@ -59,7 +87,14 @@ export function StudentDetailsDialog({ open, onOpenChange, studentId }: Props) {
     },
   });
 
-  const student = data?.student;
+  const student: any = data?.student;
+  const age = calcAge(student?.birth_date);
+  const isMinor = age !== null && age < 18;
+  const address = [student?.street, student?.house_number].filter(Boolean).join(', ');
+
+  const Row = ({ label, value }: { label: string; value: React.ReactNode }) => (
+    <p><span className="text-muted-foreground">{label}:</span> {value ?? '—'}</p>
+  );
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -82,8 +117,50 @@ export function StudentDetailsDialog({ open, onOpenChange, studentId }: Props) {
               </button>
               <div className="min-w-0">
                 <p className="font-semibold truncate">{student.full_name || 'Aluno'}</p>
+                {age !== null && <p className="text-muted-foreground text-xs">{age} anos</p>}
               </div>
             </div>
+
+            <div className="border rounded-lg p-3 space-y-1">
+              <p className="font-semibold mb-1">Dados pessoais</p>
+              <Row label="Nome completo" value={student.full_name} />
+              <Row label="Data de nascimento" value={formatBR(student.birth_date) || student.birth_date || '—'} />
+              {!isRestricted && <Row label="CPF" value={student.cpf} />}
+              {!isRestricted && <Row label="Endereço" value={address || '—'} />}
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="text-muted-foreground">Telefone:</span>
+                <span>{formatPhoneMask(student.phone) || '—'}</span>
+                {student.phone && (
+                  <>
+                    <a href={`tel:${student.phone.replace(/\D/g, '')}`} className="inline-flex items-center gap-1 text-xs text-primary hover:underline">
+                      <Phone className="h-3 w-3" /> Ligar
+                    </a>
+                    <button type="button" onClick={() => openWhatsApp(student.phone)} className="inline-flex items-center gap-1 text-xs text-green-600 hover:underline">
+                      <MessageCircle className="h-3 w-3" /> WhatsApp
+                    </button>
+                  </>
+                )}
+              </div>
+              {isMinor && (
+                <>
+                  <Row label="Responsável" value={student.guardian_name} />
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="text-muted-foreground">Telefone do responsável:</span>
+                    <span>{formatPhoneMask(student.guardian_phone) || '—'}</span>
+                    {student.guardian_phone && (
+                      <button type="button" onClick={() => openWhatsApp(student.guardian_phone)} className="inline-flex items-center gap-1 text-xs text-green-600 hover:underline">
+                        <MessageCircle className="h-3 w-3" /> WhatsApp
+                      </button>
+                    )}
+                  </div>
+                </>
+              )}
+              {!isRestricted && <Row label="Data de matrícula" value={formatBR(student.enrollment_date) || student.enrollment_date || '—'} />}
+              {!isRestricted && <Row label="Forma de pagamento" value={PAYMENT_LABELS[student.payment_method] || student.payment_method || '—'} />}
+              <Row label="Material enviado" value={student.material_sent ? 'Sim' : 'Não'} />
+              <Row label="Situação" value={student.is_active ? 'Ativo' : 'Inativo'} />
+            </div>
+
             {(data?.courses ?? []).length === 0 && (
               <p className="text-muted-foreground">Sem cursos cadastrados.</p>
             )}
@@ -92,9 +169,9 @@ export function StudentDetailsDialog({ open, onOpenChange, studentId }: Props) {
               return (
                 <div key={sc.id} className="border rounded-lg p-3 space-y-1">
                   <p className="font-semibold">{sc.courses?.name || sc.custom_course_name || 'Sem curso'}</p>
-                  <p><span className="text-muted-foreground">Início:</span> {sc.first_class_date || sc.enrollment_date || '—'}</p>
-                  <p><span className="text-muted-foreground">Carga horária:</span> {sc.workload}h</p>
-                  <p><span className="text-muted-foreground">Status:</span> {STATUS_LABELS[sc.status] || sc.status}</p>
+                  <Row label="Início" value={formatBR(sc.first_class_date || sc.enrollment_date) || '—'} />
+                  <Row label="Carga horária" value={`${sc.workload}h`} />
+                  <Row label="Status" value={STATUS_LABELS[sc.status] || sc.status} />
                   <div>
                     <span className="text-muted-foreground">Horários:</span>
                     {scheds.length === 0 ? (
