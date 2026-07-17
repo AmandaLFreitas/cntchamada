@@ -170,6 +170,10 @@ export default function Reports() {
           <EnrollmentsReport />
 
           <Separator className="my-6" />
+          <TrialLessonsScheduledReport />
+
+
+          <Separator className="my-6" />
           <AttendanceReport />
         </>
       ) : (
