@@ -107,7 +107,11 @@ export default function Attendance() {
     const student = s.students;
     if (!student) return false;
     if (!isEnrolledByDate(student.enrollment_date, isoDate)) return false;
-    if (searchTerm.length >= 2 && !(student.full_name || '').toLowerCase().includes(searchTerm)) return false;
+    if (searchTerm.length >= 2) {
+      const nameMatch = (student.full_name || '').toLowerCase().includes(searchTerm);
+      const phoneMatch = (student.phone || '').toLowerCase().includes(searchTerm) || (student.phone || '').replace(/\D/g, '').includes(searchTerm.replace(/\D/g, ''));
+      if (!nameMatch && !phoneMatch) return false;
+    }
     return true;
   });
 
