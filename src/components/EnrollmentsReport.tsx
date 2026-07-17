@@ -43,7 +43,7 @@ export function EnrollmentsReport() {
     queryFn: async () => {
       const { data, error } = await (supabase as any)
         .from('student_courses')
-        .select('enrollment_date, custom_course_name, students(full_name), courses(name)')
+        .select('enrollment_date, custom_course_name, students(full_name, phone), courses(name)')
         .eq('school_id', schoolId!);
       if (error) throw error;
       return data ?? [];
@@ -59,6 +59,7 @@ export function EnrollmentsReport() {
       if (d.getFullYear() !== year || d.getMonth() !== month) return;
       filtered.push({
         student_name: sc.students?.full_name || 'Sem nome',
+        phone: sc.students?.phone || null,
         enrollment_date: sc.enrollment_date,
         enrollment_date_iso: `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`,
         course: sc.courses?.name || sc.custom_course_name || 'N/A',
