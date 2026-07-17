@@ -9,15 +9,13 @@ import { auth, defineMcp } from "npm:@lovable.dev/mcp-js@0.23.0";
 import { defineTool } from "npm:@lovable.dev/mcp-js@0.23.0";
 import { createClient } from "npm:@supabase/supabase-js@^2.99.2";
 import { z } from "npm:zod@^4.4.3";
+var SUPABASE_URL = "https://vbffeprxfveocgcrdten.supabase.co";
+var SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZiZmZlcHJ4ZnZlb2NnY3JkdGVuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQwMDU2NjcsImV4cCI6MjA4OTU4MTY2N30.3Q1I03r5Gtj3ZFJoLE_Fk9PsVekKmkk9wIOyaAFVZkw";
 function client(ctx) {
-  return createClient(
-    process.env.SUPABASE_URL,
-    process.env.SUPABASE_PUBLISHABLE_KEY ?? process.env.SUPABASE_ANON_KEY,
-    {
-      global: { headers: { Authorization: `Bearer ${ctx.getToken()}` } },
-      auth: { persistSession: false, autoRefreshToken: false }
-    }
-  );
+  return createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+    global: { headers: { Authorization: `Bearer ${ctx.getToken()}` } },
+    auth: { persistSession: false, autoRefreshToken: false }
+  });
 }
 var list_students_default = defineTool({
   name: "list_students",
@@ -46,15 +44,13 @@ var list_students_default = defineTool({
 import { defineTool as defineTool2 } from "npm:@lovable.dev/mcp-js@0.23.0";
 import { createClient as createClient2 } from "npm:@supabase/supabase-js@^2.99.2";
 import { z as z2 } from "npm:zod@^4.4.3";
+var SUPABASE_URL2 = "https://vbffeprxfveocgcrdten.supabase.co";
+var SUPABASE_ANON_KEY2 = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZiZmZlcHJ4ZnZlb2NnY3JkdGVuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQwMDU2NjcsImV4cCI6MjA4OTU4MTY2N30.3Q1I03r5Gtj3ZFJoLE_Fk9PsVekKmkk9wIOyaAFVZkw";
 function client2(ctx) {
-  return createClient2(
-    process.env.SUPABASE_URL,
-    process.env.SUPABASE_PUBLISHABLE_KEY ?? process.env.SUPABASE_ANON_KEY,
-    {
-      global: { headers: { Authorization: `Bearer ${ctx.getToken()}` } },
-      auth: { persistSession: false, autoRefreshToken: false }
-    }
-  );
+  return createClient2(SUPABASE_URL2, SUPABASE_ANON_KEY2, {
+    global: { headers: { Authorization: `Bearer ${ctx.getToken()}` } },
+    auth: { persistSession: false, autoRefreshToken: false }
+  });
 }
 var get_attendance_default = defineTool2({
   name: "get_attendance",
@@ -85,15 +81,13 @@ var get_attendance_default = defineTool2({
 import { defineTool as defineTool3 } from "npm:@lovable.dev/mcp-js@0.23.0";
 import { createClient as createClient3 } from "npm:@supabase/supabase-js@^2.99.2";
 import { z as z3 } from "npm:zod@^4.4.3";
+var SUPABASE_URL3 = "https://vbffeprxfveocgcrdten.supabase.co";
+var SUPABASE_ANON_KEY3 = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZiZmZlcHJ4ZnZlb2NnY3JkdGVuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQwMDU2NjcsImV4cCI6MjA4OTU4MTY2N30.3Q1I03r5Gtj3ZFJoLE_Fk9PsVekKmkk9wIOyaAFVZkw";
 function client3(ctx) {
-  return createClient3(
-    process.env.SUPABASE_URL,
-    process.env.SUPABASE_PUBLISHABLE_KEY ?? process.env.SUPABASE_ANON_KEY,
-    {
-      global: { headers: { Authorization: `Bearer ${ctx.getToken()}` } },
-      auth: { persistSession: false, autoRefreshToken: false }
-    }
-  );
+  return createClient3(SUPABASE_URL3, SUPABASE_ANON_KEY3, {
+    global: { headers: { Authorization: `Bearer ${ctx.getToken()}` } },
+    auth: { persistSession: false, autoRefreshToken: false }
+  });
 }
 var list_birthdays_default = defineTool3({
   name: "list_birthdays",
