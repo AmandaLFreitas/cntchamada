@@ -14,6 +14,7 @@ const MONTHS = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','A
 
 type Row = {
   student_name: string;
+  phone: string | null;
   enrollment_date: string;
   enrollment_date_iso: string;
   course: string;
@@ -42,7 +43,7 @@ export function EnrollmentsReport() {
     queryFn: async () => {
       const { data, error } = await (supabase as any)
         .from('student_courses')
-        .select('enrollment_date, custom_course_name, students(full_name), courses(name)')
+        .select('enrollment_date, custom_course_name, students(full_name, phone), courses(name)')
         .eq('school_id', schoolId!);
       if (error) throw error;
       return data ?? [];
@@ -58,6 +59,7 @@ export function EnrollmentsReport() {
       if (d.getFullYear() !== year || d.getMonth() !== month) return;
       filtered.push({
         student_name: sc.students?.full_name || 'Sem nome',
+        phone: sc.students?.phone || null,
         enrollment_date: sc.enrollment_date,
         enrollment_date_iso: `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`,
         course: sc.courses?.name || sc.custom_course_name || 'N/A',
@@ -76,6 +78,7 @@ export function EnrollmentsReport() {
   const exportExcel = () => {
     const data = rows.map(r => ({
       Aluno: r.student_name,
+      Telefone: r.phone || '-',
       'Data da matrícula': r.enrollment_date,
       Curso: r.course,
       Unidade: r.school_name,
@@ -160,6 +163,7 @@ export function EnrollmentsReport() {
                 <tr className="border-b text-left text-xs text-muted-foreground">
                   <th className="py-2 pr-2">#</th>
                   <th className="py-2 pr-2">Aluno</th>
+                  <th className="py-2 pr-2">Telefone</th>
                   <th className="py-2 pr-2">Data da matrícula</th>
                   <th className="py-2 pr-2">Curso</th>
                   <th className="py-2 pr-2">Unidade</th>
@@ -170,6 +174,7 @@ export function EnrollmentsReport() {
                   <tr key={idx} className="border-b last:border-b-0">
                     <td className="py-2 pr-2 text-muted-foreground">{idx + 1}</td>
                     <td className="py-2 pr-2 font-medium">{r.student_name}</td>
+                    <td className="py-2 pr-2 whitespace-nowrap">{r.phone || '-'}</td>
                     <td className="py-2 pr-2">{r.enrollment_date}</td>
                     <td className="py-2 pr-2">{r.course}</td>
                     <td className="py-2 pr-2">{r.school_name}</td>
