@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Route, Routes } from "react-router-dom";
+import { BrowserRouter, Route, Routes, useLocation } from "react-router-dom";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
@@ -19,6 +19,7 @@ import Amanda from "./pages/Amanda";
 import Rescue from "./pages/Rescue";
 import ConsecutiveAbsences from "./pages/ConsecutiveAbsences";
 import MissingPhones from "./pages/MissingPhones";
+import OAuthConsent from "./pages/OAuthConsent";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient({
@@ -35,6 +36,8 @@ const queryClient = new QueryClient({
 function AppRoutes() {
   const { user, loading, isProfessor } = useAuth();
   const { schoolId, loading: schoolLoading } = useSchool();
+  const location = useLocation();
+  const isConsentRoute = location.pathname === "/.lovable/oauth/consent";
 
   if (loading || schoolLoading) {
     return (
@@ -42,6 +45,13 @@ function AppRoutes() {
         <p className="text-muted-foreground">Carregando...</p>
       </div>
     );
+  }
+
+  // OAuth consent route: only requires an authenticated session (no school gate).
+  // If unauthenticated, render Login; after sign-in the URL is preserved so we land back here.
+  if (isConsentRoute) {
+    if (!user) return <Login />;
+    return <OAuthConsent />;
   }
 
   // Require both authentication AND school selection
