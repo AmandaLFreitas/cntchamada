@@ -85,7 +85,9 @@ export default function Overview() {
   const searchTerm = search.trim().toLowerCase();
   const filteredSlotStudents = (slotStudents ?? []).filter((s: any) => {
     if (searchTerm.length < 2) return true;
-    return (s.students?.full_name || '').toLowerCase().includes(searchTerm);
+    const nameMatch = (s.students?.full_name || '').toLowerCase().includes(searchTerm);
+    const phoneMatch = (s.students?.phone || '').toLowerCase().includes(searchTerm) || (s.students?.phone || '').replace(/\D/g, '').includes(searchTerm.replace(/\D/g, ''));
+    return nameMatch || phoneMatch;
   });
 
   const studentIds = filteredSlotStudents.map((s: any) => s.students?.id).filter(Boolean) ?? [];
