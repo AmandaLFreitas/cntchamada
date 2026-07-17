@@ -406,11 +406,12 @@ export default function Students() {
     }
 
 
+    const guardianVisible = form.show_guardian || isMinor(form.birth_date);
     const personalData: any = {
       full_name: form.full_name || null,
       birth_date: form.birth_date || null,
-      guardian_name: form.show_guardian ? form.guardian_name || null : null,
-      guardian_phone: form.show_guardian ? form.guardian_phone || null : null,
+      guardian_name: guardianVisible ? (form.guardian_name?.trim() || null) : null,
+      guardian_phone: guardianVisible ? (form.guardian_phone?.trim() ? formatPhoneMask(form.guardian_phone) : null) : null,
       phone: form.phone ? formatPhoneMask(form.phone) : null,
       photo_url: form.photo_url || null,
       material_sent: form.material_sent,
