@@ -53,13 +53,18 @@ export default function Overview() {
     queryKey: ['overview_search_all', schoolId, search.trim().toLowerCase()],
     enabled: !!schoolId && search.trim().length >= 2,
     queryFn: async () => {
-      const term = `%${search.trim()}%`;
-      const { data: matched } = await supabase
-        .from('students')
-        .select('id')
-        .eq('school_id', schoolId!)
-        .ilike('full_name', term);
-      const ids = (matched ?? []).map((r: any) => r.id);
+      const raw = search.trim().toLowerCase();
+      const term = `%${raw}%`;
+      const digitTerm = raw.replace(/\D/g, '');
+      const queries = [
+        supabase.from('students').select('id').eq('school_id', schoolId!).ilike('full_name', term),
+        supabase.from('students').select('id').eq('school_id', schoolId!).ilike('phone', term),
+      ];
+      if (digitTerm) {
+        queries.push(supabase.from('students').select('id').eq('school_id', schoolId!).ilike('phone', `%${digitTerm}%`));
+      }
+      const results = await Promise.all(queries);
+      const ids = results.flatMap(r => (r.data ?? []).map((x: any) => x.id));
       if (ids.length === 0) return new Set<string>();
       const { data: scheds } = await supabase
         .from('student_schedules')
