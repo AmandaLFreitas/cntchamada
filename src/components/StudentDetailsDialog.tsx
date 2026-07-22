@@ -155,8 +155,7 @@ export function StudentDetailsDialog({ open, onOpenChange, studentId }: Props) {
                   </div>
                 </>
               )}
-              {!isRestricted && <Row label="Data de matrícula" value={formatBR(student.enrollment_date) || student.enrollment_date || '—'} />}
-              {!isRestricted && <Row label="Forma de pagamento" value={PAYMENT_LABELS[student.payment_method] || student.payment_method || '—'} />}
+              {/* Matrícula e forma de pagamento agora vivem por curso em student_courses (exibidos abaixo). */}
               <Row label="Material enviado" value={student.material_sent ? 'Sim' : 'Não'} />
               <Row label="Situação" value={student.is_active ? 'Ativo' : 'Inativo'} />
             </div>
