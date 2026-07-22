@@ -345,12 +345,8 @@ export type Database = {
       students: {
         Row: {
           birth_date: string | null
-          course_id: string | null
           cpf: string | null
           created_at: string
-          custom_course_name: string | null
-          enrollment_date: string | null
-          first_class_date: string | null
           full_name: string | null
           guardian_name: string | null
           guardian_phone: string | null
@@ -358,23 +354,16 @@ export type Database = {
           id: string
           is_active: boolean
           material_sent: boolean
-          payment_method: string | null
           phone: string | null
           photo_url: string | null
           school_id: string
-          status: string
           street: string | null
           updated_at: string
-          workload: number
         }
         Insert: {
           birth_date?: string | null
-          course_id?: string | null
           cpf?: string | null
           created_at?: string
-          custom_course_name?: string | null
-          enrollment_date?: string | null
-          first_class_date?: string | null
           full_name?: string | null
           guardian_name?: string | null
           guardian_phone?: string | null
@@ -382,23 +371,16 @@ export type Database = {
           id?: string
           is_active?: boolean
           material_sent?: boolean
-          payment_method?: string | null
           phone?: string | null
           photo_url?: string | null
           school_id: string
-          status?: string
           street?: string | null
           updated_at?: string
-          workload?: number
         }
         Update: {
           birth_date?: string | null
-          course_id?: string | null
           cpf?: string | null
           created_at?: string
-          custom_course_name?: string | null
-          enrollment_date?: string | null
-          first_class_date?: string | null
           full_name?: string | null
           guardian_name?: string | null
           guardian_phone?: string | null
@@ -406,23 +388,13 @@ export type Database = {
           id?: string
           is_active?: boolean
           material_sent?: boolean
-          payment_method?: string | null
           phone?: string | null
           photo_url?: string | null
           school_id?: string
-          status?: string
           street?: string | null
           updated_at?: string
-          workload?: number
         }
         Relationships: [
-          {
-            foreignKeyName: "students_course_id_fkey"
-            columns: ["course_id"]
-            isOneToOne: false
-            referencedRelation: "courses"
-            referencedColumns: ["id"]
-          },
           {
             foreignKeyName: "students_school_id_fkey"
             columns: ["school_id"]
