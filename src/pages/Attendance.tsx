@@ -291,9 +291,20 @@ export default function Attendance() {
       // Fetch students + courses + schedules for this school
       const { data: scheds, error: e1 } = await (supabase as any)
         .from('student_schedules')
-        .select('time_slot_id, student_course_id, students:students(id, full_name, birth_date, enrollment_date, first_class_date, workload, courses:courses(name), custom_course_name)')
+        .select('time_slot_id, student_course_id, students:students(id, full_name, birth_date), student_courses:student_courses!student_schedules_student_course_id_fkey(enrollment_date, first_class_date, workload, custom_course_name, courses:courses(name))')
         .eq('school_id', schoolId);
       if (e1) throw e1;
+
+      // Flatten sc fields onto student for downstream code
+      (scheds ?? []).forEach((r: any) => {
+        if (r.students && r.student_courses) {
+          r.students.enrollment_date = r.student_courses.enrollment_date;
+          r.students.first_class_date = r.student_courses.first_class_date;
+          r.students.workload = r.student_courses.workload;
+          r.students.custom_course_name = r.student_courses.custom_course_name;
+          r.students.courses = r.student_courses.courses;
+        }
+      });
 
       // Weekly hours per student (sum of slot durations across all their schedules)
       const slotById = new Map<string, any>();
