@@ -654,6 +654,18 @@ export default function TrialLessons() {
               </Select>
             </div>
             <div>
+              <Label>Agendado por</Label>
+              <Select value={form.created_by_name} onValueChange={val => setForm(f => ({ ...f, created_by_name: val }))}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecionar responsável" />
+                </SelectTrigger>
+                <SelectContent>
+                  {SCHEDULERS.map(s => (
+                    <SelectItem key={s} value={s}>{s}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            <div>
               <Label>Observações</Label>
               <Textarea
                 value={form.observations}
