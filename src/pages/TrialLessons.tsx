@@ -126,6 +126,8 @@ const isoToDDMMYYYY = (v: string) => {
   return `${d}/${m}/${y}`;
 };
 
+const SCHEDULERS = ['Elisa', 'Duda', 'Cris'] as const;
+
 const emptyForm = {
   student_name: '',
   phone: '',
@@ -135,12 +137,13 @@ const emptyForm = {
   status: 'PENDENTE',
   observations: '',
   school_id: '',
+  created_by_name: '',
 };
 
 export default function TrialLessons() {
   const queryClient = useQueryClient();
   const { schoolId } = useSchool();
-  const { user, displayName, canManageAllTrialLessons } = useAuth();
+  const { user, displayName } = useAuth();
   const now = new Date();
   const [search, setSearch] = useState('');
   const [filterMonth, setFilterMonth] = useState<string>(String(now.getMonth()));
@@ -183,17 +186,14 @@ export default function TrialLessons() {
   }, [allSchools]);
 
   const { data: lessons = [], isLoading } = useQuery({
-    queryKey: ['trial_lessons', schoolId, canManageAllTrialLessons],
-    enabled: !!schoolId || canManageAllTrialLessons,
+    queryKey: ['trial_lessons', schoolId],
+    enabled: !!schoolId,
     queryFn: async () => {
-      let q = (supabase as any)
+      const { data, error } = await (supabase as any)
         .from('trial_lessons')
         .select('*')
+        .eq('school_id', schoolId!)
         .order('lesson_date', { ascending: false });
-      if (!canManageAllTrialLessons) {
-        q = q.eq('school_id', schoolId!);
-      }
-      const { data, error } = await q;
       if (error) throw error;
       return data as TrialLesson[];
     },
@@ -223,13 +223,13 @@ export default function TrialLessons() {
         status: values.status,
         observations: values.observations || null,
         school_id: targetSchool,
+        created_by_name: values.created_by_name || null,
       };
       if (values.id) {
         const { error } = await (supabase as any).from('trial_lessons').update(payload).eq('id', values.id);
         if (error) throw error;
       } else {
         payload.created_by_user_id = user?.id ?? null;
-        payload.created_by_name = displayName ?? null;
         const { error } = await (supabase as any).from('trial_lessons').insert(payload);
         if (error) throw error;
       }
@@ -287,6 +287,7 @@ export default function TrialLessons() {
       status: lesson.status,
       observations: lesson.observations || '',
       school_id: lesson.school_id || '',
+      created_by_name: lesson.created_by_name || '',
     });
     setDialogOpen(true);
   };
@@ -333,7 +334,7 @@ export default function TrialLessons() {
       toast.error('Data inválida. Use o formato dd/mm/aaaa');
       return;
     }
-    if (canManageAllTrialLessons && !form.school_id) {
+    if (!form.school_id) {
       toast.error('Selecione a unidade');
       return;
     }
@@ -344,7 +345,8 @@ export default function TrialLessons() {
     `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}/${d.getFullYear()}`;
 
   const openNew = () => {
-    setForm({ ...emptyForm, school_id: canManageAllTrialLessons ? '' : (schoolId ?? '') });
+    const defaultScheduler = (SCHEDULERS as readonly string[]).includes(displayName || '') ? (displayName as string) : '';
+    setForm({ ...emptyForm, school_id: schoolId ?? '', created_by_name: defaultScheduler });
     setDialogOpen(true);
   };
 
@@ -582,21 +584,19 @@ export default function TrialLessons() {
             <DialogTitle>{editingId ? 'Editar Aula Experimental' : 'Nova Aula Experimental'}</DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
-            {canManageAllTrialLessons && (
-              <div>
-                <Label>Unidade *</Label>
-                <Select value={form.school_id} onValueChange={val => setForm(f => ({ ...f, school_id: val }))}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Selecionar unidade" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {allSchools.map(s => (
-                      <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            )}
+            <div>
+              <Label>Unidade *</Label>
+              <Select value={form.school_id} onValueChange={val => setForm(f => ({ ...f, school_id: val }))}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecionar unidade" />
+                </SelectTrigger>
+                <SelectContent>
+                  {allSchools.map(s => (
+                    <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
             <div>
               <Label>Aluno *</Label>
               <Input value={form.student_name} onChange={e => setForm(f => ({ ...f, student_name: e.target.value }))} />
@@ -649,6 +649,19 @@ export default function TrialLessons() {
                 <SelectContent>
                   {STATUSES.map(s => (
                     <SelectItem key={s} value={s}>{STATUS_LABELS[s] ?? s}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label>Agendado por</Label>
+              <Select value={form.created_by_name} onValueChange={val => setForm(f => ({ ...f, created_by_name: val }))}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecionar responsável" />
+                </SelectTrigger>
+                <SelectContent>
+                  {SCHEDULERS.map(s => (
+                    <SelectItem key={s} value={s}>{s}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
