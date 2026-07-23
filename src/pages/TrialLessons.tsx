@@ -167,15 +167,33 @@ export default function TrialLessons() {
 
   const hasActiveFilters = !!search || filterMonth !== ALL_MONTHS || filterYear !== ALL_YEARS || !!filterDate || filterStatuses.length > 0;
 
-  const { data: lessons = [], isLoading } = useQuery({
-    queryKey: ['trial_lessons', schoolId],
-    enabled: !!schoolId,
+  // Fetch all schools (bypass user-allowed filter, so Cris sees Toledo + Cascavel here)
+  const { data: allSchools = [] } = useQuery({
+    queryKey: ['trial_lessons_schools'],
     queryFn: async () => {
-      const { data, error } = await supabase
+      const { data, error } = await supabase.from('schools').select('id, name').order('name');
+      if (error) throw error;
+      return (data ?? []) as SchoolOption[];
+    },
+  });
+  const schoolNameById = useMemo(() => {
+    const m = new Map<string, string>();
+    allSchools.forEach(s => m.set(s.id, s.name));
+    return m;
+  }, [allSchools]);
+
+  const { data: lessons = [], isLoading } = useQuery({
+    queryKey: ['trial_lessons', schoolId, canManageAllTrialLessons],
+    enabled: !!schoolId || canManageAllTrialLessons,
+    queryFn: async () => {
+      let q = (supabase as any)
         .from('trial_lessons')
         .select('*')
-        .eq('school_id', schoolId!)
         .order('lesson_date', { ascending: false });
+      if (!canManageAllTrialLessons) {
+        q = q.eq('school_id', schoolId!);
+      }
+      const { data, error } = await q;
       if (error) throw error;
       return data as TrialLesson[];
     },
@@ -192,10 +210,11 @@ export default function TrialLessons() {
 
   const upsert = useMutation({
     mutationFn: async (values: typeof emptyForm & { id?: string }) => {
-      if (!schoolId) throw new Error('Nenhuma unidade selecionada');
+      const targetSchool = values.school_id || schoolId;
+      if (!targetSchool) throw new Error('Selecione a unidade da aula experimental');
       const isoDate = ddmmyyyyToISO(values.lesson_date);
       if (!isoDate) throw new Error('Data inválida');
-      const payload = {
+      const payload: any = {
         student_name: values.student_name,
         phone: values.phone.replace(/\D/g, '') || null,
         course: values.course || null,
@@ -203,12 +222,15 @@ export default function TrialLessons() {
         lesson_date: isoDate,
         status: values.status,
         observations: values.observations || null,
+        school_id: targetSchool,
       };
       if (values.id) {
         const { error } = await (supabase as any).from('trial_lessons').update(payload).eq('id', values.id);
         if (error) throw error;
       } else {
-        const { error } = await (supabase as any).from('trial_lessons').insert({ ...payload, school_id: schoolId });
+        payload.created_by_user_id = user?.id ?? null;
+        payload.created_by_name = displayName ?? null;
+        const { error } = await (supabase as any).from('trial_lessons').insert(payload);
         if (error) throw error;
       }
     },
@@ -217,8 +239,9 @@ export default function TrialLessons() {
       toast.success(editingId ? 'Registro atualizado' : 'Registro cadastrado');
       closeDialog();
     },
-    onError: () => toast.error('Erro ao salvar registro'),
+    onError: (e: any) => toast.error(e?.message || 'Erro ao salvar registro'),
   });
+
 
   const remove = useMutation({
     mutationFn: async (id: string) => {
