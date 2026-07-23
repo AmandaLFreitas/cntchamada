@@ -83,6 +83,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       user, session, role, displayName,
       isAdmin: role === 'admin',
       isProfessor: role === 'professor',
+      canManageAllTrialLessons: displayName === 'Cris',
       loading, signIn, signOut,
     }}>
       {children}
