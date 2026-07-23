@@ -334,7 +334,7 @@ export default function TrialLessons() {
       toast.error('Data inválida. Use o formato dd/mm/aaaa');
       return;
     }
-    if (canManageAllTrialLessons && !form.school_id) {
+    if (!form.school_id) {
       toast.error('Selecione a unidade');
       return;
     }
@@ -345,7 +345,8 @@ export default function TrialLessons() {
     `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}/${d.getFullYear()}`;
 
   const openNew = () => {
-    setForm({ ...emptyForm, school_id: canManageAllTrialLessons ? '' : (schoolId ?? '') });
+    const defaultScheduler = (SCHEDULERS as readonly string[]).includes(displayName || '') ? (displayName as string) : '';
+    setForm({ ...emptyForm, school_id: schoolId ?? '', created_by_name: defaultScheduler });
     setDialogOpen(true);
   };
 
