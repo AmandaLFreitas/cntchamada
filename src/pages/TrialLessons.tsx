@@ -287,6 +287,7 @@ export default function TrialLessons() {
       status: lesson.status,
       observations: lesson.observations || '',
       school_id: lesson.school_id || '',
+      created_by_name: lesson.created_by_name || '',
     });
     setDialogOpen(true);
   };
