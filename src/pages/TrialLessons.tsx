@@ -332,6 +332,7 @@ export default function TrialLessons() {
     if (!ddmmyyyyToISO(form.lesson_date)) {
       toast.error('Data inválida. Use o formato dd/mm/aaaa');
       return;
+    }
     if (canManageAllTrialLessons && !form.school_id) {
       toast.error('Selecione a unidade');
       return;
