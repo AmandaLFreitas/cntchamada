@@ -432,6 +432,8 @@ export type Database = {
         Row: {
           course: string | null
           created_at: string
+          created_by_name: string | null
+          created_by_user_id: string | null
           id: string
           lesson_date: string
           observations: string | null
@@ -445,6 +447,8 @@ export type Database = {
         Insert: {
           course?: string | null
           created_at?: string
+          created_by_name?: string | null
+          created_by_user_id?: string | null
           id?: string
           lesson_date?: string
           observations?: string | null
@@ -458,6 +462,8 @@ export type Database = {
         Update: {
           course?: string | null
           created_at?: string
+          created_by_name?: string | null
+          created_by_user_id?: string | null
           id?: string
           lesson_date?: string
           observations?: string | null
@@ -554,6 +560,7 @@ export type Database = {
         Returns: boolean
       }
       has_school_access: { Args: { _school_id: string }; Returns: boolean }
+      has_trial_lessons_all_access: { Args: never; Returns: boolean }
     }
     Enums: {
       app_role: "admin" | "restricted" | "professor"
