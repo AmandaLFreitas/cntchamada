@@ -137,6 +137,7 @@ export function TrialLessonsScheduledReport() {
       'Data da Aula': r.lesson_date_br,
       Horário: r.time_slot,
       Unidade: r.school_name,
+      'Agendado por': r.created_by_name,
       Situação: r.status,
       Observação: r.observations,
     }));
