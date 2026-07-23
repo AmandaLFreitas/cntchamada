@@ -14,6 +14,7 @@ import {
   useSidebar,
 } from '@/components/ui/sidebar';
 import { useAuth } from '@/contexts/AuthContext';
+import { useSchool } from '@/contexts/SchoolContext';
 
 const items = [
   { title: 'Visão Geral', url: '/', icon: LayoutDashboard },
@@ -37,10 +38,12 @@ export function AppSidebar() {
   const isMobile = useIsMobile();
   const navigate = useNavigate();
   const { isProfessor } = useAuth();
+  const { school } = useSchool();
 
-  const visibleItems = isProfessor
+  const visibleItems = (isProfessor
     ? items.filter(i => i.url === '/chamada' || i.url === '/aniversariantes')
-    : items;
+    : items
+  ).filter(i => !(i.url === '/profa-amanda' && school?.slug === 'cascavel'));
 
   const handleNavClick = (url: string) => {
     if (isMobile) {
