@@ -524,6 +524,8 @@ export default function TrialLessons() {
                     <TableCell className="hidden sm:table-cell">{l.course || '—'}</TableCell>
                     <TableCell className="hidden md:table-cell">{l.time_slot || '—'}</TableCell>
                     <TableCell>{isoToDDMMYYYY(l.lesson_date)}</TableCell>
+                    <TableCell className="hidden md:table-cell">{schoolNameById.get(l.school_id) || '—'}</TableCell>
+                    <TableCell className="hidden lg:table-cell">{l.created_by_name || '—'}</TableCell>
                     <TableCell>
                       <Select
                         value={l.status}
