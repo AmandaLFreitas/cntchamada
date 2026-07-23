@@ -665,6 +665,7 @@ export default function TrialLessons() {
                   ))}
                 </SelectContent>
               </Select>
+            </div>
             <div>
               <Label>Observações</Label>
               <Textarea
