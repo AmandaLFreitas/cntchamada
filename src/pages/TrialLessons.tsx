@@ -50,6 +50,13 @@ interface TrialLesson {
   lesson_date: string;
   status: string;
   observations?: string | null;
+  school_id: string;
+  created_by_name?: string | null;
+}
+
+interface SchoolOption {
+  id: string;
+  name: string;
 }
 
 const todayISO = () => {
