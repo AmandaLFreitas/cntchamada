@@ -96,6 +96,7 @@ export function TrialLessonsScheduledReport() {
         school_name: school?.name || '',
         status: l.status || 'OK',
         observations: l.observations || '',
+        created_by_name: l.created_by_name || '—',
       }));
   }, [allLessons, range, school]);
 
