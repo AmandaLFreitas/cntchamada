@@ -339,11 +339,16 @@ export default function TrialLessons() {
   const formatSelectedDate = (d: Date) =>
     `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}/${d.getFullYear()}`;
 
+  const openNew = () => {
+    setForm({ ...emptyForm, school_id: canManageAllTrialLessons ? '' : (schoolId ?? '') });
+    setDialogOpen(true);
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <h1 className="text-2xl font-bold text-foreground">Aulas Experimentais</h1>
-        <Button onClick={() => { setForm(emptyForm); setDialogOpen(true); }}>
+        <Button onClick={openNew}>
           <Plus className="h-4 w-4 mr-1" /> Nova Aula
         </Button>
       </div>
