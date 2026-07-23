@@ -186,17 +186,14 @@ export default function TrialLessons() {
   }, [allSchools]);
 
   const { data: lessons = [], isLoading } = useQuery({
-    queryKey: ['trial_lessons', schoolId, canManageAllTrialLessons],
-    enabled: !!schoolId || canManageAllTrialLessons,
+    queryKey: ['trial_lessons', schoolId],
+    enabled: !!schoolId,
     queryFn: async () => {
-      let q = (supabase as any)
+      const { data, error } = await (supabase as any)
         .from('trial_lessons')
         .select('*')
+        .eq('school_id', schoolId!)
         .order('lesson_date', { ascending: false });
-      if (!canManageAllTrialLessons) {
-        q = q.eq('school_id', schoolId!);
-      }
-      const { data, error } = await q;
       if (error) throw error;
       return data as TrialLesson[];
     },
