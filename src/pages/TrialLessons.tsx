@@ -223,13 +223,13 @@ export default function TrialLessons() {
         status: values.status,
         observations: values.observations || null,
         school_id: targetSchool,
+        created_by_name: values.created_by_name || null,
       };
       if (values.id) {
         const { error } = await (supabase as any).from('trial_lessons').update(payload).eq('id', values.id);
         if (error) throw error;
       } else {
         payload.created_by_user_id = user?.id ?? null;
-        payload.created_by_name = displayName ?? null;
         const { error } = await (supabase as any).from('trial_lessons').insert(payload);
         if (error) throw error;
       }
