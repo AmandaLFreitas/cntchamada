@@ -584,21 +584,19 @@ export default function TrialLessons() {
             <DialogTitle>{editingId ? 'Editar Aula Experimental' : 'Nova Aula Experimental'}</DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
-            {canManageAllTrialLessons && (
-              <div>
-                <Label>Unidade *</Label>
-                <Select value={form.school_id} onValueChange={val => setForm(f => ({ ...f, school_id: val }))}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Selecionar unidade" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {allSchools.map(s => (
-                      <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            )}
+            <div>
+              <Label>Unidade *</Label>
+              <Select value={form.school_id} onValueChange={val => setForm(f => ({ ...f, school_id: val }))}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecionar unidade" />
+                </SelectTrigger>
+                <SelectContent>
+                  {allSchools.map(s => (
+                    <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
             <div>
               <Label>Aluno *</Label>
               <Input value={form.student_name} onChange={e => setForm(f => ({ ...f, student_name: e.target.value }))} />
