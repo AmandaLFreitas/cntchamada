@@ -286,6 +286,7 @@ export default function TrialLessons() {
       lesson_date: isoToDDMMYYYY(lesson.lesson_date),
       status: lesson.status,
       observations: lesson.observations || '',
+      school_id: lesson.school_id || '',
     });
     setDialogOpen(true);
   };
