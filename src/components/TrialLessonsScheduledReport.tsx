@@ -26,6 +26,7 @@ type Row = {
   school_name: string;
   status: string;
   observations: string;
+  created_by_name: string;
 };
 
 function toBrDate(iso: string): string {
