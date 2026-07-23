@@ -56,7 +56,7 @@ export function TrialLessonsScheduledReport() {
     queryFn: async () => {
       const { data, error } = await (supabase as any)
         .from('trial_lessons')
-        .select('id, student_name, course, time_slot, lesson_date, status, observations, created_at')
+        .select('id, student_name, course, time_slot, lesson_date, status, observations, created_at, created_by_name, school_id')
         .eq('school_id', schoolId!)
         .order('created_at', { ascending: false });
       if (error) throw error;
