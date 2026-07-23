@@ -483,6 +483,8 @@ export default function TrialLessons() {
                 <TableHead className="hidden sm:table-cell">Curso</TableHead>
                 <TableHead className="hidden md:table-cell">Horário</TableHead>
                 <TableHead>Data</TableHead>
+                <TableHead className="hidden md:table-cell">Unidade</TableHead>
+                <TableHead className="hidden lg:table-cell">Agendado por</TableHead>
                 <TableHead>Situação</TableHead>
                 <TableHead className="min-w-[180px]">Observações</TableHead>
                 <TableHead className="w-[80px]">Ações</TableHead>
