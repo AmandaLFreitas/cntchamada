@@ -9,6 +9,7 @@ interface AuthContextType {
   displayName: string | null;
   isAdmin: boolean;
   isProfessor: boolean;
+  canManageAllTrialLessons: boolean;
   loading: boolean;
   signIn: (email: string, password: string) => Promise<{ error: string | null }>;
   signOut: () => Promise<void>;
