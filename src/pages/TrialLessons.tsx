@@ -134,11 +134,13 @@ const emptyForm = {
   lesson_date: todayDDMMYYYY,
   status: 'PENDENTE',
   observations: '',
+  school_id: '',
 };
 
 export default function TrialLessons() {
   const queryClient = useQueryClient();
   const { schoolId } = useSchool();
+  const { user, displayName, canManageAllTrialLessons } = useAuth();
   const now = new Date();
   const [search, setSearch] = useState('');
   const [filterMonth, setFilterMonth] = useState<string>(String(now.getMonth()));
