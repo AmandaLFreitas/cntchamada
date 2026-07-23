@@ -126,6 +126,8 @@ const isoToDDMMYYYY = (v: string) => {
   return `${d}/${m}/${y}`;
 };
 
+const SCHEDULERS = ['Elisa', 'Duda', 'Cris'] as const;
+
 const emptyForm = {
   student_name: '',
   phone: '',
@@ -135,6 +137,7 @@ const emptyForm = {
   status: 'PENDENTE',
   observations: '',
   school_id: '',
+  created_by_name: '',
 };
 
 export default function TrialLessons() {
