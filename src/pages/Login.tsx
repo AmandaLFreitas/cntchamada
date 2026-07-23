@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useSchool } from '@/contexts/SchoolContext';
+import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -17,6 +18,18 @@ export default function Login() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
+  const { signOut } = useAuth();
+
+  const validateSchoolAccess = async (userId: string, schoolIdToCheck: string): Promise<boolean> => {
+    const { data } = await supabase
+      .from('user_schools')
+      .select('school_id')
+      .eq('user_id', userId)
+      .eq('school_id', schoolIdToCheck)
+      .maybeSingle();
+    return !!data;
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
@@ -28,11 +41,16 @@ export default function Login() {
 
     setLoading(true);
 
-    // Save the selected school first so the app loads scoped data
-    setSchoolId(selectedSchool);
-
-    // If user is already authenticated, just selecting school is enough
+    // If user is already authenticated, validate access before saving
     if (user) {
+      const ok = await validateSchoolAccess(user.id, selectedSchool);
+      if (!ok) {
+        const schoolName = schools.find(s => s.id === selectedSchool)?.name ?? 'esta unidade';
+        setError(`Você não possui permissão para acessar a unidade ${schoolName}.`);
+        setLoading(false);
+        return;
+      }
+      setSchoolId(selectedSchool);
       setLoading(false);
       return;
     }
@@ -43,9 +61,26 @@ export default function Login() {
     const { error: err } = await signIn(loginEmail, password);
     if (err) {
       setError('Usuário ou senha incorretos');
+      setLoading(false);
+      return;
+    }
+
+    // After sign-in, verify the selected school is allowed for this user
+    const { data: { user: newUser } } = await supabase.auth.getUser();
+    if (newUser) {
+      const ok = await validateSchoolAccess(newUser.id, selectedSchool);
+      if (!ok) {
+        const schoolName = schools.find(s => s.id === selectedSchool)?.name ?? 'esta unidade';
+        setError(`Você não possui permissão para acessar a unidade ${schoolName}.`);
+        await signOut();
+        setLoading(false);
+        return;
+      }
+      setSchoolId(selectedSchool);
     }
     setLoading(false);
   };
+
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-background p-4">

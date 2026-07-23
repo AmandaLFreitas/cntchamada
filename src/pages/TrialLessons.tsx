@@ -16,6 +16,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Badge } from '@/components/ui/badge';
 import { cn, openWhatsApp } from '@/lib/utils';
 import { useSchool } from '@/contexts/SchoolContext';
+import { useAuth } from '@/contexts/AuthContext';
 import { Textarea } from '@/components/ui/textarea';
 import { Filter, X } from 'lucide-react';
 
@@ -49,6 +50,13 @@ interface TrialLesson {
   lesson_date: string;
   status: string;
   observations?: string | null;
+  school_id: string;
+  created_by_name?: string | null;
+}
+
+interface SchoolOption {
+  id: string;
+  name: string;
 }
 
 const todayISO = () => {
@@ -126,11 +134,13 @@ const emptyForm = {
   lesson_date: todayDDMMYYYY,
   status: 'PENDENTE',
   observations: '',
+  school_id: '',
 };
 
 export default function TrialLessons() {
   const queryClient = useQueryClient();
   const { schoolId } = useSchool();
+  const { user, displayName, canManageAllTrialLessons } = useAuth();
   const now = new Date();
   const [search, setSearch] = useState('');
   const [filterMonth, setFilterMonth] = useState<string>(String(now.getMonth()));
@@ -157,15 +167,33 @@ export default function TrialLessons() {
 
   const hasActiveFilters = !!search || filterMonth !== ALL_MONTHS || filterYear !== ALL_YEARS || !!filterDate || filterStatuses.length > 0;
 
-  const { data: lessons = [], isLoading } = useQuery({
-    queryKey: ['trial_lessons', schoolId],
-    enabled: !!schoolId,
+  // Fetch all schools (bypass user-allowed filter, so Cris sees Toledo + Cascavel here)
+  const { data: allSchools = [] } = useQuery({
+    queryKey: ['trial_lessons_schools'],
     queryFn: async () => {
-      const { data, error } = await supabase
+      const { data, error } = await supabase.from('schools').select('id, name').order('name');
+      if (error) throw error;
+      return (data ?? []) as SchoolOption[];
+    },
+  });
+  const schoolNameById = useMemo(() => {
+    const m = new Map<string, string>();
+    allSchools.forEach(s => m.set(s.id, s.name));
+    return m;
+  }, [allSchools]);
+
+  const { data: lessons = [], isLoading } = useQuery({
+    queryKey: ['trial_lessons', schoolId, canManageAllTrialLessons],
+    enabled: !!schoolId || canManageAllTrialLessons,
+    queryFn: async () => {
+      let q = (supabase as any)
         .from('trial_lessons')
         .select('*')
-        .eq('school_id', schoolId!)
         .order('lesson_date', { ascending: false });
+      if (!canManageAllTrialLessons) {
+        q = q.eq('school_id', schoolId!);
+      }
+      const { data, error } = await q;
       if (error) throw error;
       return data as TrialLesson[];
     },
@@ -182,10 +210,11 @@ export default function TrialLessons() {
 
   const upsert = useMutation({
     mutationFn: async (values: typeof emptyForm & { id?: string }) => {
-      if (!schoolId) throw new Error('Nenhuma unidade selecionada');
+      const targetSchool = values.school_id || schoolId;
+      if (!targetSchool) throw new Error('Selecione a unidade da aula experimental');
       const isoDate = ddmmyyyyToISO(values.lesson_date);
       if (!isoDate) throw new Error('Data inválida');
-      const payload = {
+      const payload: any = {
         student_name: values.student_name,
         phone: values.phone.replace(/\D/g, '') || null,
         course: values.course || null,
@@ -193,12 +222,15 @@ export default function TrialLessons() {
         lesson_date: isoDate,
         status: values.status,
         observations: values.observations || null,
+        school_id: targetSchool,
       };
       if (values.id) {
         const { error } = await (supabase as any).from('trial_lessons').update(payload).eq('id', values.id);
         if (error) throw error;
       } else {
-        const { error } = await (supabase as any).from('trial_lessons').insert({ ...payload, school_id: schoolId });
+        payload.created_by_user_id = user?.id ?? null;
+        payload.created_by_name = displayName ?? null;
+        const { error } = await (supabase as any).from('trial_lessons').insert(payload);
         if (error) throw error;
       }
     },
@@ -207,8 +239,9 @@ export default function TrialLessons() {
       toast.success(editingId ? 'Registro atualizado' : 'Registro cadastrado');
       closeDialog();
     },
-    onError: () => toast.error('Erro ao salvar registro'),
+    onError: (e: any) => toast.error(e?.message || 'Erro ao salvar registro'),
   });
+
 
   const remove = useMutation({
     mutationFn: async (id: string) => {
@@ -253,6 +286,7 @@ export default function TrialLessons() {
       lesson_date: isoToDDMMYYYY(lesson.lesson_date),
       status: lesson.status,
       observations: lesson.observations || '',
+      school_id: lesson.school_id || '',
     });
     setDialogOpen(true);
   };
@@ -299,17 +333,26 @@ export default function TrialLessons() {
       toast.error('Data inválida. Use o formato dd/mm/aaaa');
       return;
     }
+    if (canManageAllTrialLessons && !form.school_id) {
+      toast.error('Selecione a unidade');
+      return;
+    }
     upsert.mutate(editingId ? { ...form, id: editingId } : form);
   };
 
   const formatSelectedDate = (d: Date) =>
     `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}/${d.getFullYear()}`;
 
+  const openNew = () => {
+    setForm({ ...emptyForm, school_id: canManageAllTrialLessons ? '' : (schoolId ?? '') });
+    setDialogOpen(true);
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <h1 className="text-2xl font-bold text-foreground">Aulas Experimentais</h1>
-        <Button onClick={() => { setForm(emptyForm); setDialogOpen(true); }}>
+        <Button onClick={openNew}>
           <Plus className="h-4 w-4 mr-1" /> Nova Aula
         </Button>
       </div>
@@ -444,6 +487,8 @@ export default function TrialLessons() {
                 <TableHead className="hidden sm:table-cell">Curso</TableHead>
                 <TableHead className="hidden md:table-cell">Horário</TableHead>
                 <TableHead>Data</TableHead>
+                <TableHead className="hidden md:table-cell">Unidade</TableHead>
+                <TableHead className="hidden lg:table-cell">Agendado por</TableHead>
                 <TableHead>Situação</TableHead>
                 <TableHead className="min-w-[180px]">Observações</TableHead>
                 <TableHead className="w-[80px]">Ações</TableHead>
@@ -483,6 +528,8 @@ export default function TrialLessons() {
                     <TableCell className="hidden sm:table-cell">{l.course || '—'}</TableCell>
                     <TableCell className="hidden md:table-cell">{l.time_slot || '—'}</TableCell>
                     <TableCell>{isoToDDMMYYYY(l.lesson_date)}</TableCell>
+                    <TableCell className="hidden md:table-cell">{schoolNameById.get(l.school_id) || '—'}</TableCell>
+                    <TableCell className="hidden lg:table-cell">{l.created_by_name || '—'}</TableCell>
                     <TableCell>
                       <Select
                         value={l.status}
@@ -535,6 +582,21 @@ export default function TrialLessons() {
             <DialogTitle>{editingId ? 'Editar Aula Experimental' : 'Nova Aula Experimental'}</DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
+            {canManageAllTrialLessons && (
+              <div>
+                <Label>Unidade *</Label>
+                <Select value={form.school_id} onValueChange={val => setForm(f => ({ ...f, school_id: val }))}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecionar unidade" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {allSchools.map(s => (
+                      <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
             <div>
               <Label>Aluno *</Label>
               <Input value={form.student_name} onChange={e => setForm(f => ({ ...f, student_name: e.target.value }))} />

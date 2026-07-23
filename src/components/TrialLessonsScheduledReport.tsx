@@ -26,6 +26,7 @@ type Row = {
   school_name: string;
   status: string;
   observations: string;
+  created_by_name: string;
 };
 
 function toBrDate(iso: string): string {
@@ -55,7 +56,7 @@ export function TrialLessonsScheduledReport() {
     queryFn: async () => {
       const { data, error } = await (supabase as any)
         .from('trial_lessons')
-        .select('id, student_name, course, time_slot, lesson_date, status, observations, created_at')
+        .select('id, student_name, course, time_slot, lesson_date, status, observations, created_at, created_by_name, school_id')
         .eq('school_id', schoolId!)
         .order('created_at', { ascending: false });
       if (error) throw error;
@@ -95,6 +96,7 @@ export function TrialLessonsScheduledReport() {
         school_name: school?.name || '',
         status: l.status || 'OK',
         observations: l.observations || '',
+        created_by_name: l.created_by_name || '—',
       }));
   }, [allLessons, range, school]);
 
@@ -135,6 +137,7 @@ export function TrialLessonsScheduledReport() {
       'Data da Aula': r.lesson_date_br,
       Horário: r.time_slot,
       Unidade: r.school_name,
+      'Agendado por': r.created_by_name,
       Situação: r.status,
       Observação: r.observations,
     }));
@@ -237,6 +240,7 @@ export function TrialLessonsScheduledReport() {
                   <th className="py-2 pr-2">Data da aula</th>
                   <th className="py-2 pr-2">Horário</th>
                   <th className="py-2 pr-2">Unidade</th>
+                  <th className="py-2 pr-2">Agendado por</th>
                   <th className="py-2 pr-2">Situação</th>
                   <th className="py-2 pr-2">Observação</th>
                 </tr>
@@ -252,6 +256,7 @@ export function TrialLessonsScheduledReport() {
                     <td className="py-2 pr-2">{r.lesson_date_br}</td>
                     <td className="py-2 pr-2">{r.time_slot}</td>
                     <td className="py-2 pr-2">{r.school_name}</td>
+                    <td className="py-2 pr-2">{r.created_by_name}</td>
                     <td className="py-2 pr-2">{r.status}</td>
                     <td className="py-2 pr-2 text-muted-foreground">{r.observations || '—'}</td>
                   </tr>

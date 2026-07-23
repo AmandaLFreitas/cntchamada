@@ -9,6 +9,7 @@ interface AuthContextType {
   displayName: string | null;
   isAdmin: boolean;
   isProfessor: boolean;
+  canManageAllTrialLessons: boolean;
   loading: boolean;
   signIn: (email: string, password: string) => Promise<{ error: string | null }>;
   signOut: () => Promise<void>;
@@ -82,6 +83,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       user, session, role, displayName,
       isAdmin: role === 'admin',
       isProfessor: role === 'professor',
+      canManageAllTrialLessons: displayName === 'Cris',
       loading, signIn, signOut,
     }}>
       {children}
