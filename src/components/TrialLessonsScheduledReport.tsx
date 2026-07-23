@@ -240,6 +240,7 @@ export function TrialLessonsScheduledReport() {
                   <th className="py-2 pr-2">Data da aula</th>
                   <th className="py-2 pr-2">Horário</th>
                   <th className="py-2 pr-2">Unidade</th>
+                  <th className="py-2 pr-2">Agendado por</th>
                   <th className="py-2 pr-2">Situação</th>
                   <th className="py-2 pr-2">Observação</th>
                 </tr>
