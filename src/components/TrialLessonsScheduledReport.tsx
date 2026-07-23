@@ -256,6 +256,7 @@ export function TrialLessonsScheduledReport() {
                     <td className="py-2 pr-2">{r.lesson_date_br}</td>
                     <td className="py-2 pr-2">{r.time_slot}</td>
                     <td className="py-2 pr-2">{r.school_name}</td>
+                    <td className="py-2 pr-2">{r.created_by_name}</td>
                     <td className="py-2 pr-2">{r.status}</td>
                     <td className="py-2 pr-2 text-muted-foreground">{r.observations || '—'}</td>
                   </tr>
