@@ -37,11 +37,11 @@ export function AppSidebar() {
   const collapsed = state === 'collapsed';
   const isMobile = useIsMobile();
   const navigate = useNavigate();
-  const { isProfessor } = useAuth();
+  const { isProfessor, canAccessTrialLessons } = useAuth();
   const { school } = useSchool();
 
   const visibleItems = (isProfessor
-    ? items.filter(i => i.url === '/chamada' || i.url === '/aniversariantes')
+    ? items.filter(i => i.url === '/chamada' || i.url === '/aniversariantes' || (i.url === '/experimentais' && canAccessTrialLessons))
     : items
   ).filter(i => !(i.url === '/profa-amanda' && school?.slug === 'cascavel'));
 

@@ -539,6 +539,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      can_manage_trial_lessons: { Args: never; Returns: boolean }
       get_student_course_payment: { Args: { _id: string }; Returns: string }
       get_student_pii: {
         Args: { _id: string }

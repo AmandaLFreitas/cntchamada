@@ -13,7 +13,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import logoImg from '@/assets/logo-cnt.png';
 
 export function Layout({ children }: { children: React.ReactNode }) {
-  const { signOut, displayName, isProfessor } = useAuth();
+  const { signOut, displayName, isProfessor, canAccessTrialLessons } = useAuth();
   const { schools, schoolId, setSchoolId } = useSchool();
 
   return (
@@ -54,7 +54,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
           <main className="flex-1 p-3 sm:p-4 md:p-6 overflow-auto">
             {children}
           </main>
-          {!isProfessor && <TrialLessonNotification />}
+          {canAccessTrialLessons && <TrialLessonNotification />}
           <BirthdayNotification />
           {!isProfessor && <FinalizingFloatingNotification />}
         </div>
