@@ -623,22 +623,24 @@ export default function TrialLessons() {
                 </SelectContent>
               </Select>
             </div>
-            <div>
-              <Label>Horário</Label>
-              <Input
-                value={form.time_slot}
-                onChange={e => setForm(f => ({ ...f, time_slot: e.target.value }))}
-                onBlur={e => setForm(f => ({ ...f, time_slot: formatTimeSlot(e.target.value) }))}
-                inputMode="numeric"
-                placeholder="Ex: 08:00 ou 0830"
-              />
-            </div>
-            <div>
-              <Label>Data</Label>
-              <SmartDateInput
-                value={form.lesson_date}
-                onChange={val => setForm(f => ({ ...f, lesson_date: val }))}
-              />
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <Label>Horário</Label>
+                <Input
+                  value={form.time_slot}
+                  onChange={e => setForm(f => ({ ...f, time_slot: e.target.value }))}
+                  onBlur={e => setForm(f => ({ ...f, time_slot: formatTimeSlot(e.target.value) }))}
+                  inputMode="numeric"
+                  placeholder="Ex: 08:00 ou 0830"
+                />
+              </div>
+              <div>
+                <Label>Data</Label>
+                <SmartDateInput
+                  value={form.lesson_date}
+                  onChange={val => setForm(f => ({ ...f, lesson_date: val }))}
+                />
+              </div>
             </div>
             <div>
               <Label>Situação</Label>
