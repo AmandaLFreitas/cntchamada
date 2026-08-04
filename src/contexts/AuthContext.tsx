@@ -10,6 +10,7 @@ interface AuthContextType {
   isAdmin: boolean;
   isProfessor: boolean;
   canManageAllTrialLessons: boolean;
+  canAccessTrialLessons: boolean;
   loading: boolean;
   signIn: (email: string, password: string) => Promise<{ error: string | null }>;
   signOut: () => Promise<void>;
@@ -84,6 +85,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       isAdmin: role === 'admin',
       isProfessor: role === 'professor',
       canManageAllTrialLessons: displayName === 'Cris',
+      canAccessTrialLessons: role !== 'professor' || displayName === 'Rafael',
       loading, signIn, signOut,
     }}>
       {children}

@@ -34,7 +34,7 @@ const queryClient = new QueryClient({
 });
 
 function AppRoutes() {
-  const { user, loading, isProfessor } = useAuth();
+  const { user, loading, isProfessor, canAccessTrialLessons } = useAuth();
   const { schoolId, loading: schoolLoading } = useSchool();
   const location = useLocation();
   const isConsentRoute = location.pathname === "/.lovable/oauth/consent";
@@ -66,6 +66,7 @@ function AppRoutes() {
         <Routes>
           <Route path="/chamada" element={<Attendance />} />
           <Route path="/aniversariantes" element={<Birthdays />} />
+          {canAccessTrialLessons && <Route path="/experimentais" element={<TrialLessons />} />}
           <Route path="*" element={<Attendance />} />
         </Routes>
       </Layout>
