@@ -384,6 +384,18 @@ export default function TrialLessons() {
             className="pl-9"
           />
         </div>
+        {selectableSchools.length > 1 && (
+          <Select value={activeSchoolId ?? ''} onValueChange={setViewSchoolId}>
+            <SelectTrigger className="w-[170px]">
+              <SelectValue placeholder="Unidade" />
+            </SelectTrigger>
+            <SelectContent>
+              {selectableSchools.map(s => (
+                <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        )}
         <Select value={filterMonth} onValueChange={setFilterMonth}>
           <SelectTrigger className="w-[160px]">
             <SelectValue placeholder="Mês" />
