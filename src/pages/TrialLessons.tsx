@@ -142,10 +142,11 @@ const emptyForm = {
 
 export default function TrialLessons() {
   const queryClient = useQueryClient();
-  const { schoolId } = useSchool();
-  const { user, displayName } = useAuth();
+  const { schoolId, schools } = useSchool();
+  const { user, displayName, canManageAllTrialLessons } = useAuth();
   const now = new Date();
   const [search, setSearch] = useState('');
+  const [viewSchoolId, setViewSchoolId] = useState<string | null>(schoolId);
   const [filterMonth, setFilterMonth] = useState<string>(String(now.getMonth()));
   const [filterYear, setFilterYear] = useState<string>(String(now.getFullYear()));
   const [filterDate, setFilterDate] = useState<Date | undefined>(undefined);
@@ -155,6 +156,11 @@ export default function TrialLessons() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState(emptyForm);
+
+  useEffect(() => {
+    setViewSchoolId(schoolId);
+  }, [schoolId]);
+
 
   const toggleStatus = (s: string) => {
     setFilterStatuses(prev => prev.includes(s) ? prev.filter(x => x !== s) : [...prev, s]);
