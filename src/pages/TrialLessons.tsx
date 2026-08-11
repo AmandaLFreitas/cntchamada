@@ -191,19 +191,28 @@ export default function TrialLessons() {
     return m;
   }, [allSchools]);
 
+  // Units the user may browse here: their own units + all units for cross-unit access (Cris)
+  const selectableSchools = useMemo(() => {
+    if (canManageAllTrialLessons) return allSchools;
+    return allSchools.filter(s => schools.some(us => us.id === s.id));
+  }, [allSchools, schools, canManageAllTrialLessons]);
+
+  const activeSchoolId = viewSchoolId ?? schoolId;
+
   const { data: lessons = [], isLoading } = useQuery({
-    queryKey: ['trial_lessons', schoolId],
-    enabled: !!schoolId,
+    queryKey: ['trial_lessons', activeSchoolId],
+    enabled: !!activeSchoolId,
     queryFn: async () => {
       const { data, error } = await (supabase as any)
         .from('trial_lessons')
         .select('*')
-        .eq('school_id', schoolId!)
+        .eq('school_id', activeSchoolId!)
         .order('lesson_date', { ascending: false });
       if (error) throw error;
       return data as TrialLesson[];
     },
   });
+
 
   const { data: courses = [] } = useQuery({
     queryKey: ['courses'],
