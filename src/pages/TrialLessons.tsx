@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
@@ -142,10 +142,11 @@ const emptyForm = {
 
 export default function TrialLessons() {
   const queryClient = useQueryClient();
-  const { schoolId } = useSchool();
-  const { user, displayName } = useAuth();
+  const { schoolId, schools } = useSchool();
+  const { user, displayName, canManageAllTrialLessons } = useAuth();
   const now = new Date();
   const [search, setSearch] = useState('');
+  const [viewSchoolId, setViewSchoolId] = useState<string | null>(schoolId);
   const [filterMonth, setFilterMonth] = useState<string>(String(now.getMonth()));
   const [filterYear, setFilterYear] = useState<string>(String(now.getFullYear()));
   const [filterDate, setFilterDate] = useState<Date | undefined>(undefined);
@@ -155,6 +156,11 @@ export default function TrialLessons() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState(emptyForm);
+
+  useEffect(() => {
+    setViewSchoolId(schoolId);
+  }, [schoolId]);
+
 
   const toggleStatus = (s: string) => {
     setFilterStatuses(prev => prev.includes(s) ? prev.filter(x => x !== s) : [...prev, s]);
@@ -185,19 +191,28 @@ export default function TrialLessons() {
     return m;
   }, [allSchools]);
 
+  // Units the user may browse here: their own units + all units for cross-unit access (Cris)
+  const selectableSchools = useMemo(() => {
+    if (canManageAllTrialLessons) return allSchools;
+    return allSchools.filter(s => schools.some(us => us.id === s.id));
+  }, [allSchools, schools, canManageAllTrialLessons]);
+
+  const activeSchoolId = viewSchoolId ?? schoolId;
+
   const { data: lessons = [], isLoading } = useQuery({
-    queryKey: ['trial_lessons', schoolId],
-    enabled: !!schoolId,
+    queryKey: ['trial_lessons', activeSchoolId],
+    enabled: !!activeSchoolId,
     queryFn: async () => {
       const { data, error } = await (supabase as any)
         .from('trial_lessons')
         .select('*')
-        .eq('school_id', schoolId!)
+        .eq('school_id', activeSchoolId!)
         .order('lesson_date', { ascending: false });
       if (error) throw error;
       return data as TrialLesson[];
     },
   });
+
 
   const { data: courses = [] } = useQuery({
     queryKey: ['courses'],
@@ -210,7 +225,7 @@ export default function TrialLessons() {
 
   const upsert = useMutation({
     mutationFn: async (values: typeof emptyForm & { id?: string }) => {
-      const targetSchool = values.school_id || schoolId;
+      const targetSchool = values.school_id || activeSchoolId;
       if (!targetSchool) throw new Error('Selecione a unidade da aula experimental');
       const isoDate = ddmmyyyyToISO(values.lesson_date);
       if (!isoDate) throw new Error('Data inválida');
@@ -346,7 +361,7 @@ export default function TrialLessons() {
 
   const openNew = () => {
     const defaultScheduler = (SCHEDULERS as readonly string[]).includes(displayName || '') ? (displayName as string) : '';
-    setForm({ ...emptyForm, school_id: schoolId ?? '', created_by_name: defaultScheduler });
+    setForm({ ...emptyForm, school_id: activeSchoolId ?? '', created_by_name: defaultScheduler });
     setDialogOpen(true);
   };
 
@@ -369,6 +384,18 @@ export default function TrialLessons() {
             className="pl-9"
           />
         </div>
+        {selectableSchools.length > 1 && (
+          <Select value={activeSchoolId ?? ''} onValueChange={setViewSchoolId}>
+            <SelectTrigger className="w-[170px]">
+              <SelectValue placeholder="Unidade" />
+            </SelectTrigger>
+            <SelectContent>
+              {selectableSchools.map(s => (
+                <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        )}
         <Select value={filterMonth} onValueChange={setFilterMonth}>
           <SelectTrigger className="w-[160px]">
             <SelectValue placeholder="Mês" />
