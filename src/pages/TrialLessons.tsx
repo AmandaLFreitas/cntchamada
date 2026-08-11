@@ -225,7 +225,7 @@ export default function TrialLessons() {
 
   const upsert = useMutation({
     mutationFn: async (values: typeof emptyForm & { id?: string }) => {
-      const targetSchool = values.school_id || schoolId;
+      const targetSchool = values.school_id || activeSchoolId;
       if (!targetSchool) throw new Error('Selecione a unidade da aula experimental');
       const isoDate = ddmmyyyyToISO(values.lesson_date);
       if (!isoDate) throw new Error('Data inválida');
@@ -361,7 +361,7 @@ export default function TrialLessons() {
 
   const openNew = () => {
     const defaultScheduler = (SCHEDULERS as readonly string[]).includes(displayName || '') ? (displayName as string) : '';
-    setForm({ ...emptyForm, school_id: schoolId ?? '', created_by_name: defaultScheduler });
+    setForm({ ...emptyForm, school_id: activeSchoolId ?? '', created_by_name: defaultScheduler });
     setDialogOpen(true);
   };
 
