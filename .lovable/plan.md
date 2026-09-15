@@ -1,84 +1,38 @@
-# Plano de Ajustes do Sistema CNT
+# Nova aba — Alunos por Período de Início
 
-Vou implementar os 13 itens em blocos lógicos. Antes de começar, preciso confirmar alguns pontos críticos que afetam a viabilidade/segurança.
+## Objetivo
+Criar uma aba de consulta, separada por unidade, que organize os cursos dos alunos pela data real do primeiro dia de aula e permita exportar exatamente o resultado selecionado.
 
-## ⚠️ Pontos que precisam de decisão antes de executar
+## O que será criado
+- Nova opção **Alunos por Período de Início** no menu e nova página acessível aos usuários administrativos/restritos atuais; professores continuam apenas com suas abas permitidas.
+- Seletor de **ano**, iniciado no ano atual, e busca por nome/telefone/curso.
+- Duas seções independentes:
+  1. **Início de janeiro a junho**: cursos cuja data de primeiro dia esteja entre 01/01 e 30/06 do ano escolhido.
+  2. **Início de junho a setembro e 4h+ semanais**: cursos cuja data esteja entre 01/06 e 30/09 e cuja soma dos horários semanais vinculados ao curso seja de pelo menos 4 horas.
+- Junho poderá aparecer nas duas seções, conforme os intervalos solicitados.
+- Um aluno com mais de um curso poderá aparecer uma vez por curso elegível, sempre com a data, carga e horários correspondentes àquele curso.
 
-### A) Item 12 — "Criptografia de CPF, Telefone, Nome completo"
-Criptografar **nome completo** quebra o sistema inteiro: busca de alunos, listagens, chamada, certificados, relatórios, ordenação alfabética. O nome é exibido em praticamente toda tela. Recomendo:
-- **Manter nome em texto claro** (já está protegido por autenticação + RLS)
-- **Não criptografar CPF/telefone no banco** — em vez disso, restringir visualização via roles (Amanda/Henrique já não veem CPF). Criptografia simétrica no Postgres exigiria descriptografar em quase todas as queries, destruindo a performance que o item 9 pede para melhorar.
-- **Mascarar** CPF/telefone na UI para perfis restritos (já parcialmente feito).
+## Informações e interação
+- Cada linha mostrará os dados principais para conferência: aluno, telefone, curso, data de início, carga horária total, carga semanal, dias/horários, status e unidade.
+- Ao clicar no aluno, abrir as informações completas já cadastradas, reutilizando a visualização existente e respeitando as restrições de dados por perfil.
+- Registros sem uma data válida de primeiro dia de aula não entrarão nas seções; não será usada a data de cadastro nem a data de matrícula como substituição.
+- A lista será derivada diretamente de alunos, cursos e horários existentes, sem criar tabela ou duplicar dados.
 
-Se você insistir em criptografia real, será preciso reescrever várias telas e a performance vai piorar — o oposto do item 9.
+## Exportações
+- **PDF** e **Imprimir**: documento com cabeçalho da unidade/ano e as duas seções claramente identificadas.
+- **Excel**: arquivo com duas planilhas separadas, uma para cada seção.
+- Busca e ano selecionado serão respeitados nas três formas de exportação.
+- Os campos exportados serão os mesmos apresentados na listagem de cada curso.
 
-### B) Item 12 — "Backup automático do banco"
-O Lovable Cloud já faz **backups diários automáticos** da infraestrutura. Não há nada para implementar no código. Posso só confirmar isso na resposta.
+## Regras técnicas
+- Todas as consultas serão filtradas pela unidade ativa, mantendo Toledo e Cascavel isoladas.
+- A carga semanal será calculada pela duração real de cada horário ligado ao `student_course`, somando cada faixa de dia/horário uma única vez.
+- Alterações em data de início, curso, carga total ou horários refletirão automaticamente após a atualização dos dados existentes.
+- Nenhuma funcionalidade ou estrutura atual do banco será alterada.
 
-### C) Item 11 — "Remover ícone de notificações da navegação"
-Existem 4 sininhos hoje: **Finalizando** (header), **Aniversariantes** (popup), **Aulas experimentais** (popup), **Conclusão de curso** (popup). Vou assumir **remover apenas o sininho do header (FinalizingNotification)** e manter os popups flutuantes — me avise se quiser remover todos.
-
-### D) Item 10 — "Aba Resgate"
-Critério: aluno a **1 mês de finalizar** = previsão de término ≤ 30 dias. O cálculo já existe (Start Date + total horas / horas semanais). Vou:
-- Criar página `/resgate` no menu
-- Mostrar automaticamente todo aluno com previsão ≤ 30 dias E < 100% concluído
-- Adicionar ícone na chamada que abre/marca o aluno; mas como você disse "ao clicar no ícone aluno é enviado", vou interpretar como **toggle manual** (campo `rescue_flagged` no `student_courses`) **somado** ao critério automático.
-
----
-
-## 📋 Implementação (assumindo aprovação dos itens acima)
-
-### Bloco 1 — Aulas Experimentais (itens 1, 2, 3, 4)
-- `src/pages/TrialLessons.tsx`: 
-  - Cores de fundo da linha por status: `OK`/`OK.FECHOU`→verde claro, `NÃO VEIO`→vermelho claro + **borda laranja + badge "Entrar em contato"**, `DESMARCOU`→roxo + alerta laranja, `REMARCOU`→roxo
-  - Linha azul claro para destacar registros do dia
-  - Nova coluna **Observações** após Situação (texto livre, salvo na tabela)
-- Migração: adicionar coluna `observations TEXT` em `trial_lessons`
-- `TrialLessonNotification.tsx`: badge laranja quando houver "NÃO VEIO" ou "DESMARCOU"
-
-### Bloco 2 — WhatsApp (item 5)
-- Função `openWhatsApp(phone)` em `src/lib/utils.ts` — abre `https://wa.me/55<numero>` em nova aba
-- Aplicar em: `TrialLessons` (nome + telefone), `Students` (nome + telefone), `Birthdays`, `Finalizing`, `Resgate`
-
-### Bloco 3 — Chamada (itens 6, 7, 8)
-- `Attendance.tsx`:
-  - **Toggle**: clicar de novo no botão atual desmarca (volta para neutro/null) — hoje só substitui
-  - Cor verde para presença, vermelha para falta (já existe parcialmente, reforçar)
-  - Novo ícone de **apostila** (📘 `BookOpen`) ao lado do ícone de observação:
-    - azul se `material_sent=true`, vermelho se `false`
-    - clicável para alternar (admin) ou só visual (restrito)
-  - Ícone de **resgate** (item 10): aparece quando previsão ≤ 30 dias, clicável p/ marcar
-
-### Bloco 4 — Aba Resgate (item 10)
-- Migração: `ALTER TABLE student_courses ADD COLUMN rescue_flagged BOOLEAN DEFAULT false`
-- Nova rota `/resgate` + `pages/Rescue.tsx`
-- Item no `AppSidebar`
-- Lista alunos com `rescue_flagged=true` OU previsão ≤ 30 dias e < 100%
-- Mesma estrutura visual da chamada/finalizando
-
-### Bloco 5 — Header (item 11)
-- Remover `<FinalizingNotification />` do `Layout.tsx`
-
-### Bloco 6 — Performance (item 9)
-- Adicionar índices: `attendance(student_id, date)`, `attendance(school_id, date)`, `student_schedules(time_slot_id)`, `student_courses(student_id, school_id)`
-- Aumentar `staleTime` no `QueryClient` (60s) e `gcTime`
-- `useSaveAttendance`: usar **mutation otimista** (atualiza UI antes da resposta)
-- Reduzir invalidações em cascata; invalidar só a query afetada
-- Paginar/limitar queries de listagem ao `school_id` ativo
-
-### Bloco 7 — Segurança (item 12, versão pragmática)
-- Endurecer RLS: substituir `USING (true)` por `USING (auth.uid() IS NOT NULL)` em todas as tabelas — atualmente qualquer pessoa com a anon key consegue ler tudo.
-- Manter mascaramento de CPF/telefone na UI para `restricted`.
-- Confirmar backups automáticos do Cloud.
-- **Sem criptografia de coluna** (ver item A acima).
-
----
-
-## ❓ Confirme antes de eu começar
-
-1. **OK em não criptografar nome/CPF/telefone** e em vez disso reforçar RLS + mascaramento? (recomendado)
-2. **Remover só o sino do header** (Finalizando) e manter popups? Ou remover todos?
-3. **Aba Resgate**: critério automático (≤30 dias) + toggle manual via ícone na chamada — ok?
-4. **Coluna Observações nas experimentais**: editável inline (clicar e digitar) ou via dialog?
-
-Responda essas 4 e eu executo tudo de uma vez.
+## Validação
+- Conferir os limites dos períodos, inclusive 01/01, 30/06, 01/06 e 30/09.
+- Conferir cursos com exatamente 4h semanais, acima e abaixo desse limite.
+- Conferir aluno com vários cursos e a troca de unidade.
+- Conferir busca, ano e conteúdo das exportações.
+- Validar a página em telas grandes e pequenas e confirmar que não há erros na aplicação.
