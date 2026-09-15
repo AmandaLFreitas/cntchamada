@@ -19,6 +19,7 @@ import Amanda from "./pages/Amanda";
 import Rescue from "./pages/Rescue";
 import ConsecutiveAbsences from "./pages/ConsecutiveAbsences";
 import MissingPhones from "./pages/MissingPhones";
+import StudentsByStartPeriod from "./pages/StudentsByStartPeriod";
 import OAuthConsent from "./pages/OAuthConsent";
 import NotFound from "./pages/NotFound";
 
@@ -89,6 +90,7 @@ function AppRoutes() {
         <Route path="/resgate" element={<Rescue />} />
         <Route path="/faltas-consecutivas" element={<ConsecutiveAbsences />} />
         <Route path="/sem-telefone" element={<MissingPhones />} />
+        <Route path="/alunos-por-periodo" element={<StudentsByStartPeriod />} />
         <Route path="*" element={<NotFound />} />
       </Routes>
     </Layout>
