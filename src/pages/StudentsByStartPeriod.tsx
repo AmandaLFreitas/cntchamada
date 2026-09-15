@@ -132,7 +132,7 @@ function PeriodTable({ rows, onStudentClick }: { rows: PeriodRow[]; onStudentCli
           <TableHead>Curso</TableHead>
           <TableHead>Data de início</TableHead>
           <TableHead>Carga total</TableHead>
-          <TableHead>Carga semanal</TableHead>
+          <TableHead>Horas por semana</TableHead>
           <TableHead className="min-w-[230px]">Dias e horários</TableHead>
           <TableHead>Status</TableHead>
           <TableHead>Unidade</TableHead>
@@ -257,7 +257,7 @@ export default function StudentsByStartPeriod() {
     Curso: row.courseName,
     'Data de início': formatDate(row.firstClassDate),
     'Carga total': formatHours(row.workload),
-    'Carga semanal': formatHours(row.weeklyHours),
+    'Horas por semana': formatHours(row.weeklyHours),
     'Dias e horários': formatSchedules(row.schedules),
     Status: STATUS_LABELS[row.status] || row.status || '—',
     Unidade: row.schoolName,
@@ -281,7 +281,7 @@ export default function StudentsByStartPeriod() {
       { label: 'Curso', width: 39 },
       { label: 'Início', width: 22 },
       { label: 'Total', width: 16 },
-      { label: 'Semanal', width: 19 },
+      { label: 'Horas/semana', width: 19 },
       { label: 'Dias e horários', width: 68 },
       { label: 'Status', width: 27 },
       { label: 'Unidade', width: 18 },
