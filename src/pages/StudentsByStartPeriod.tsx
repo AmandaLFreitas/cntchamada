@@ -177,6 +177,7 @@ export default function StudentsByStartPeriod() {
         .from('student_courses')
         .select('id, student_id, first_class_date, workload, status, custom_course_name, students(id, full_name, phone), courses(name)')
         .eq('school_id', schoolId)
+        .not('status', 'in', '(finalizado,desistiu)')
         .order('first_class_date', { ascending: true })
         .range(from, to));
       const schedules = await fetchAllRows((from, to) => (supabase as any)
@@ -198,6 +199,7 @@ export default function StudentsByStartPeriod() {
     });
 
     return (data?.courses ?? []).flatMap((course: any) => {
+      if (course.status === 'finalizado' || course.status === 'desistiu') return [];
       const date = parseCourseDate(course.first_class_date);
       if (!date || !course.students) return [];
       const schedules = byCourse.get(course.id) ?? [];
