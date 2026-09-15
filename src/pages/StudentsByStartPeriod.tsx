@@ -105,6 +105,22 @@ function formatSchedules(slots: TimeSlot[]): string {
     .join(', ');
 }
 
+function ScheduleLines({ slots }: { slots: TimeSlot[] }) {
+  if (slots.length === 0) return <span>—</span>;
+
+  return (
+    <div className="space-y-0.5">
+      {[...slots]
+        .sort((a, b) => (DAY_ORDER[a.day_of_week] ?? 99) - (DAY_ORDER[b.day_of_week] ?? 99) || a.start_time.localeCompare(b.start_time))
+        .map(slot => (
+          <div key={`${slot.id}-${slot.day_of_week}-${slot.start_time}`} className="leading-tight">
+            {slot.day_of_week} {slot.start_time.slice(0, 5)}–{slot.end_time.slice(0, 5)}
+          </div>
+        ))}
+    </div>
+  );
+}
+
 async function fetchAllRows(queryFactory: (from: number, to: number) => PromiseLike<{ data: any[] | null; error: any }>) {
   const pageSize = 1000;
   const rows: any[] = [];
@@ -124,36 +140,36 @@ function PeriodTable({ rows, onStudentClick }: { rows: PeriodRow[]; onStudentCli
   }
 
   return (
-    <Table>
+    <Table className="w-full table-fixed text-xs">
       <TableHeader>
         <TableRow>
-          <TableHead>Aluno</TableHead>
-          <TableHead>Telefone</TableHead>
-          <TableHead>Curso</TableHead>
-          <TableHead>Data de início</TableHead>
-          <TableHead>Carga total</TableHead>
-          <TableHead>Horas por semana</TableHead>
-          <TableHead className="min-w-[230px]">Dias e horários</TableHead>
-          <TableHead>Status</TableHead>
-          <TableHead>Unidade</TableHead>
+          <TableHead className="w-[16%] px-2">Aluno</TableHead>
+          <TableHead className="w-[11%] px-2">Telefone</TableHead>
+          <TableHead className="w-[13%] px-2">Curso</TableHead>
+          <TableHead className="w-[9%] px-2">Data de início</TableHead>
+          <TableHead className="w-[7%] px-2">Carga total</TableHead>
+          <TableHead className="w-[8%] px-2">Horas por semana</TableHead>
+          <TableHead className="w-[18%] px-2">Dias e horários</TableHead>
+          <TableHead className="w-[10%] px-2">Status</TableHead>
+          <TableHead className="w-[8%] px-2">Unidade</TableHead>
         </TableRow>
       </TableHeader>
       <TableBody>
         {rows.map(row => (
           <TableRow key={row.studentCourseId}>
-            <TableCell className="font-medium">
-              <Button variant="link" className="h-auto p-0 text-left font-medium print:text-foreground" onClick={() => onStudentClick(row.studentId)}>
+            <TableCell className="break-words px-2 font-medium">
+              <Button variant="link" className="h-auto max-w-full whitespace-normal break-words p-0 text-left text-xs font-medium leading-tight print:text-foreground" onClick={() => onStudentClick(row.studentId)}>
                 {row.studentName}
               </Button>
             </TableCell>
-            <TableCell>{formatPhoneMask(row.phone) || '—'}</TableCell>
-            <TableCell>{row.courseName}</TableCell>
-            <TableCell className="whitespace-nowrap">{formatDate(row.firstClassDate)}</TableCell>
-            <TableCell>{formatHours(row.workload)}</TableCell>
-            <TableCell>{formatHours(row.weeklyHours)}</TableCell>
-            <TableCell className="text-xs">{formatSchedules(row.schedules)}</TableCell>
-            <TableCell>{STATUS_LABELS[row.status] || row.status || '—'}</TableCell>
-            <TableCell>{row.schoolName}</TableCell>
+            <TableCell className="whitespace-nowrap px-2">{formatPhoneMask(row.phone) || '—'}</TableCell>
+            <TableCell className="break-words px-2 leading-tight">{row.courseName}</TableCell>
+            <TableCell className="px-2">{formatDate(row.firstClassDate)}</TableCell>
+            <TableCell className="px-2">{formatHours(row.workload)}</TableCell>
+            <TableCell className="px-2">{formatHours(row.weeklyHours)}</TableCell>
+            <TableCell className="break-words px-2"><ScheduleLines slots={row.schedules} /></TableCell>
+            <TableCell className="break-words px-2 leading-tight">{STATUS_LABELS[row.status] || row.status || '—'}</TableCell>
+            <TableCell className="break-words px-2">{row.schoolName}</TableCell>
           </TableRow>
         ))}
       </TableBody>
