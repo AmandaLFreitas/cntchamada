@@ -1,7 +1,6 @@
-import { useMemo, useRef, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { CalendarRange, Download, FileSpreadsheet, Printer, Search } from 'lucide-react';
-import html2canvas from 'html2canvas';
 import jsPDF from 'jspdf';
 import * as XLSX from 'xlsx';
 import { supabase } from '@/integrations/supabase/client';
@@ -168,7 +167,6 @@ export default function StudentsByStartPeriod() {
   const [year, setYear] = useState(String(currentYear));
   const [search, setSearch] = useState('');
   const [selectedStudentId, setSelectedStudentId] = useState<string | null>(null);
-  const reportRef = useRef<HTMLDivElement>(null);
 
   const { data, isLoading, error } = useQuery({
     queryKey: ['students_by_start_period', schoolId],
@@ -235,6 +233,10 @@ export default function StudentsByStartPeriod() {
       if (!date || date.getFullYear() !== Number(year)) return false;
       if (!normalized) return true;
       return `${row.studentName} ${row.phone} ${row.courseName}`.toLocaleLowerCase('pt-BR').includes(normalized);
+    }).sort((a, b) => {
+      const aTime = parseCourseDate(a.firstClassDate)?.getTime() ?? 0;
+      const bTime = parseCourseDate(b.firstClassDate)?.getTime() ?? 0;
+      return aTime - bTime || a.studentName.localeCompare(b.studentName, 'pt-BR');
     });
   }, [allRows, search, year]);
 
@@ -266,23 +268,104 @@ export default function StudentsByStartPeriod() {
     XLSX.writeFile(workbook, `alunos-por-periodo-${school?.slug || 'unidade'}-${year}.xlsx`);
   };
 
-  const exportPDF = async () => {
-    if (!reportRef.current) return;
-    const backgroundColor = getComputedStyle(document.documentElement).getPropertyValue('--card').trim();
-    const canvas = await html2canvas(reportRef.current, {
-      scale: 2,
-      backgroundColor: backgroundColor ? `hsl(${backgroundColor})` : undefined,
-      useCORS: true,
-    });
+  const exportPDF = () => {
     const pdf = new jsPDF('l', 'mm', 'a4');
     const pageWidth = pdf.internal.pageSize.getWidth();
     const pageHeight = pdf.internal.pageSize.getHeight();
-    const imageHeight = canvas.height * pageWidth / canvas.width;
-    const image = canvas.toDataURL('image/png');
-    for (let y = 0, page = 0; y < imageHeight; y += pageHeight, page += 1) {
-      if (page > 0) pdf.addPage();
-      pdf.addImage(image, 'PNG', 0, -y, pageWidth, imageHeight);
-    }
+    const margin = 10;
+    const columns = [
+      { label: 'Aluno', width: 43 },
+      { label: 'Telefone', width: 25 },
+      { label: 'Curso', width: 39 },
+      { label: 'Início', width: 22 },
+      { label: 'Total', width: 16 },
+      { label: 'Semanal', width: 19 },
+      { label: 'Dias e horários', width: 68 },
+      { label: 'Status', width: 27 },
+      { label: 'Unidade', width: 18 },
+    ];
+    let y = margin;
+
+    const drawDocumentHeader = () => {
+      pdf.setFont('helvetica', 'bold');
+      pdf.setFontSize(15);
+      pdf.text('Alunos por Período de Início', margin, y);
+      y += 6;
+      pdf.setFont('helvetica', 'normal');
+      pdf.setFontSize(9);
+      pdf.text(`Unidade: ${school?.name || '—'}  |  Ano: ${year}`, margin, y);
+      y += 8;
+    };
+
+    const drawTableHeader = () => {
+      pdf.setFont('helvetica', 'bold');
+      pdf.setFontSize(7);
+      let x = margin;
+      columns.forEach(column => {
+        pdf.rect(x, y, column.width, 7);
+        pdf.text(column.label, x + 1.5, y + 4.5);
+        x += column.width;
+      });
+      y += 7;
+    };
+
+    const addPage = () => {
+      pdf.addPage();
+      y = margin;
+      drawDocumentHeader();
+      drawTableHeader();
+    };
+
+    const drawSection = (title: string, rows: PeriodRow[], startOnNewPage: boolean) => {
+      if (startOnNewPage) {
+        pdf.addPage();
+        y = margin;
+        drawDocumentHeader();
+      }
+      pdf.setFont('helvetica', 'bold');
+      pdf.setFontSize(11);
+      pdf.text(`${title} (${rows.length} ${rows.length === 1 ? 'curso' : 'cursos'})`, margin, y);
+      y += 6;
+      drawTableHeader();
+
+      if (rows.length === 0) {
+        pdf.setFont('helvetica', 'normal');
+        pdf.setFontSize(8);
+        pdf.text('Nenhum curso encontrado para este período.', margin + 1.5, y + 5);
+        y += 9;
+        return;
+      }
+
+      rows.forEach(row => {
+        const values = [
+          row.studentName,
+          formatPhoneMask(row.phone) || '—',
+          row.courseName,
+          formatDate(row.firstClassDate),
+          formatHours(row.workload),
+          formatHours(row.weeklyHours),
+          formatSchedules(row.schedules),
+          STATUS_LABELS[row.status] || row.status || '—',
+          row.schoolName,
+        ];
+        pdf.setFont('helvetica', 'normal');
+        pdf.setFontSize(6.5);
+        const lines = values.map((value, index) => pdf.splitTextToSize(value, columns[index].width - 3));
+        const rowHeight = Math.max(7, Math.max(...lines.map(value => value.length)) * 3.2 + 2);
+        if (y + rowHeight > pageHeight - margin) addPage();
+        let x = margin;
+        lines.forEach((value, index) => {
+          pdf.rect(x, y, columns[index].width, rowHeight);
+          pdf.text(value, x + 1.5, y + 3.8);
+          x += columns[index].width;
+        });
+        y += rowHeight;
+      });
+    };
+
+    drawDocumentHeader();
+    drawSection('Início entre janeiro e junho', januaryToJune, false);
+    drawSection('Início entre junho e setembro — 4h ou mais por semana', juneToSeptember, true);
     pdf.save(`alunos-por-periodo-${school?.slug || 'unidade'}-${year}.pdf`);
   };
 
@@ -319,7 +402,7 @@ export default function StudentsByStartPeriod() {
       {error && <p className="py-10 text-center text-destructive">Não foi possível carregar os dados.</p>}
 
       {!isLoading && !error && (
-        <div ref={reportRef} data-report-print className="space-y-8 bg-card p-4 sm:p-5">
+        <div data-report-print className="space-y-8 bg-card p-4 sm:p-5">
           <header className="border-b pb-3">
             <h2 className="text-xl font-bold">Alunos por Período de Início</h2>
             <p className="text-sm text-muted-foreground">Unidade: {school?.name || '—'} · Ano: {year}</p>
