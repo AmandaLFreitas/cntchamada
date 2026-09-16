@@ -138,3 +138,45 @@ export function addEffectiveWeeks(start: Date, weeks: number): Date {
   }
   return cursor;
 }
+
+type WeeklyScheduledHours = {
+  dayOfWeek: number;
+  hours: number;
+};
+
+/**
+ * Projects a course end date by accumulating the real duration of each
+ * scheduled weekday, while skipping the same holidays and breaks used by the
+ * rest of the system. The start date is included when it is a scheduled day.
+ */
+export function calculateScheduledCourseEndDate(
+  start: Date,
+  workload: number,
+  weeklySchedule: WeeklyScheduledHours[],
+): Date | null {
+  if (workload <= 0 || weeklySchedule.length === 0) return null;
+
+  const hoursByDay = new Map<number, number>();
+  weeklySchedule.forEach(({ dayOfWeek, hours }) => {
+    if (dayOfWeek < 0 || dayOfWeek > 6 || hours <= 0) return;
+    hoursByDay.set(dayOfWeek, (hoursByDay.get(dayOfWeek) ?? 0) + hours);
+  });
+  if (hoursByDay.size === 0) return null;
+
+  const holidays = getHolidaySet(start.getFullYear(), start.getFullYear() + 5);
+  const cursor = new Date(start);
+  cursor.setHours(0, 0, 0, 0);
+  let accumulatedHours = 0;
+  const cap = 365 * 5;
+
+  for (let safety = 0; safety < cap; safety++) {
+    const scheduledHours = hoursByDay.get(cursor.getDay()) ?? 0;
+    if (scheduledHours > 0 && !isOnBreak(cursor) && !holidays.has(ymd(cursor))) {
+      accumulatedHours += scheduledHours;
+      if (accumulatedHours >= workload) return new Date(cursor);
+    }
+    cursor.setDate(cursor.getDate() + 1);
+  }
+
+  return null;
+}
