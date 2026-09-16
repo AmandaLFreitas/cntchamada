@@ -12,6 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { StudentDetailsDialog } from '@/components/StudentDetailsDialog';
 import { formatPhoneMask } from '@/lib/utils';
+import { calculateScheduledCourseEndDate } from '@/lib/calendar-breaks';
 
 type TimeSlot = {
   id: string;
@@ -29,6 +30,7 @@ type PeriodRow = {
   firstClassDate: string;
   workload: number;
   weeklyHours: number;
+  expectedEndDate: string;
   schedules: TimeSlot[];
   status: string;
   schoolName: string;
@@ -56,6 +58,22 @@ const DAY_ORDER: Record<string, number> = {
   Domingo: 7,
 };
 
+const JS_DAY_BY_NAME: Record<string, number> = {
+  Segunda: 1,
+  'Segunda-feira': 1,
+  Terça: 2,
+  'Terça-feira': 2,
+  Quarta: 3,
+  'Quarta-feira': 3,
+  Quinta: 4,
+  'Quinta-feira': 4,
+  Sexta: 5,
+  'Sexta-feira': 5,
+  Sábado: 6,
+  Sabado: 6,
+  Domingo: 0,
+};
+
 function parseCourseDate(value?: string | null): Date | null {
   if (!value) return null;
   const iso = value.match(/^(\d{4})-(\d{2})-(\d{2})/);
@@ -78,6 +96,11 @@ function formatDate(value: string): string {
   return `${String(date.getDate()).padStart(2, '0')}/${String(date.getMonth() + 1).padStart(2, '0')}/${date.getFullYear()}`;
 }
 
+function formatDateObject(value: Date | null): string {
+  if (!value) return '—';
+  return `${String(value.getDate()).padStart(2, '0')}/${String(value.getMonth() + 1).padStart(2, '0')}/${value.getFullYear()}`;
+}
+
 function timeToMinutes(value: string): number {
   const [hours, minutes] = value.slice(0, 5).split(':').map(Number);
   if (!Number.isFinite(hours) || !Number.isFinite(minutes)) return 0;
@@ -91,6 +114,17 @@ function calculateWeeklyHours(slots: TimeSlot[]): number {
     return total + Math.max(0, timeToMinutes(slot.end_time) - timeToMinutes(slot.start_time));
   }, 0);
   return minutes / 60;
+}
+
+function calculateExpectedEndDate(start: Date, workload: number, slots: TimeSlot[]): string {
+  const unique = new Map<string, TimeSlot>();
+  slots.forEach(slot => unique.set(`${slot.day_of_week}|${slot.start_time}|${slot.end_time}`, slot));
+  const weeklySchedule = Array.from(unique.values()).flatMap(slot => {
+    const dayOfWeek = JS_DAY_BY_NAME[slot.day_of_week];
+    const hours = Math.max(0, timeToMinutes(slot.end_time) - timeToMinutes(slot.start_time)) / 60;
+    return dayOfWeek === undefined ? [] : [{ dayOfWeek, hours }];
+  });
+  return formatDateObject(calculateScheduledCourseEndDate(start, workload, weeklySchedule));
 }
 
 function formatHours(hours: number): string {
@@ -143,15 +177,16 @@ function PeriodTable({ rows, onStudentClick }: { rows: PeriodRow[]; onStudentCli
     <Table className="w-full table-fixed text-xs">
       <TableHeader>
         <TableRow>
-          <TableHead className="w-[16%] px-2">Aluno</TableHead>
-          <TableHead className="w-[11%] px-2">Telefone</TableHead>
-          <TableHead className="w-[13%] px-2">Curso</TableHead>
-          <TableHead className="w-[9%] px-2">Data de início</TableHead>
+          <TableHead className="w-[14%] px-2">Aluno</TableHead>
+          <TableHead className="w-[10%] px-2">Telefone</TableHead>
+          <TableHead className="w-[11%] px-2">Curso</TableHead>
+          <TableHead className="w-[8%] px-2">Data de início</TableHead>
+          <TableHead className="w-[10%] px-2">Previsão de Finalização</TableHead>
           <TableHead className="w-[7%] px-2">Carga total</TableHead>
           <TableHead className="w-[8%] px-2">Horas por semana</TableHead>
-          <TableHead className="w-[18%] px-2">Dias e horários</TableHead>
-          <TableHead className="w-[10%] px-2">Status</TableHead>
-          <TableHead className="w-[8%] px-2">Unidade</TableHead>
+          <TableHead className="w-[16%] px-2">Dias e horários</TableHead>
+          <TableHead className="w-[9%] px-2">Status</TableHead>
+          <TableHead className="w-[7%] px-2">Unidade</TableHead>
         </TableRow>
       </TableHeader>
       <TableBody>
@@ -165,6 +200,7 @@ function PeriodTable({ rows, onStudentClick }: { rows: PeriodRow[]; onStudentCli
             <TableCell className="whitespace-nowrap px-2">{formatPhoneMask(row.phone) || '—'}</TableCell>
             <TableCell className="break-words px-2 leading-tight">{row.courseName}</TableCell>
             <TableCell className="px-2">{formatDate(row.firstClassDate)}</TableCell>
+            <TableCell className="px-2">{row.expectedEndDate}</TableCell>
             <TableCell className="px-2">{formatHours(row.workload)}</TableCell>
             <TableCell className="px-2">{formatHours(row.weeklyHours)}</TableCell>
             <TableCell className="break-words px-2"><ScheduleLines slots={row.schedules} /></TableCell>
@@ -219,6 +255,7 @@ export default function StudentsByStartPeriod() {
       const date = parseCourseDate(course.first_class_date);
       if (!date || !course.students) return [];
       const schedules = byCourse.get(course.id) ?? [];
+      const workload = Number(course.workload) || 0;
       return [{
         studentCourseId: course.id,
         studentId: course.student_id,
@@ -226,8 +263,9 @@ export default function StudentsByStartPeriod() {
         phone: course.students.phone || '',
         courseName: course.courses?.name || course.custom_course_name || 'Sem curso',
         firstClassDate: course.first_class_date,
-        workload: Number(course.workload) || 0,
+        workload,
         weeklyHours: calculateWeeklyHours(schedules),
+        expectedEndDate: calculateExpectedEndDate(date, workload, schedules),
         schedules,
         status: course.status || 'em_andamento',
         schoolName: school?.name || '',
@@ -273,6 +311,7 @@ export default function StudentsByStartPeriod() {
     Telefone: formatPhoneMask(row.phone) || '—',
     Curso: row.courseName,
     'Data de início': formatDate(row.firstClassDate),
+    'Previsão de Finalização': row.expectedEndDate,
     'Carga total': formatHours(row.workload),
     'Horas por semana': formatHours(row.weeklyHours),
     'Dias e horários': formatSchedules(row.schedules),
@@ -293,15 +332,16 @@ export default function StudentsByStartPeriod() {
     const pageHeight = pdf.internal.pageSize.getHeight();
     const margin = 10;
     const columns = [
-      { label: 'Aluno', width: 43 },
-      { label: 'Telefone', width: 25 },
-      { label: 'Curso', width: 39 },
-      { label: 'Início', width: 22 },
-      { label: 'Total', width: 16 },
-      { label: 'Horas/semana', width: 19 },
-      { label: 'Dias e horários', width: 68 },
-      { label: 'Status', width: 27 },
-      { label: 'Unidade', width: 18 },
+      { label: 'Aluno', width: 36 },
+      { label: 'Telefone', width: 24 },
+      { label: 'Curso', width: 32 },
+      { label: 'Início', width: 20 },
+      { label: 'Previsão final', width: 22 },
+      { label: 'Total', width: 14 },
+      { label: 'Horas/semana', width: 18 },
+      { label: 'Dias e horários', width: 58 },
+      { label: 'Status', width: 24 },
+      { label: 'Unidade', width: 19 },
     ];
     let y = margin;
 
@@ -361,6 +401,7 @@ export default function StudentsByStartPeriod() {
           formatPhoneMask(row.phone) || '—',
           row.courseName,
           formatDate(row.firstClassDate),
+          row.expectedEndDate,
           formatHours(row.workload),
           formatHours(row.weeklyHours),
           formatSchedules(row.schedules),
