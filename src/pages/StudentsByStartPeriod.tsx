@@ -247,6 +247,7 @@ export default function StudentsByStartPeriod() {
   const filteredRows = useMemo(() => {
     const normalized = search.trim().toLocaleLowerCase('pt-BR');
     return allRows.filter(row => {
+      if (Math.abs(row.weeklyHours - 1) < 0.001) return false;
       const date = parseCourseDate(row.firstClassDate);
       if (!date || date.getFullYear() !== Number(year)) return false;
       if (!normalized) return true;
