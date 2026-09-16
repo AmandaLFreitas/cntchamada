@@ -3,7 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useStudents } from '@/hooks/use-supabase-data';
 import { useSchool } from '@/contexts/SchoolContext';
-import { effectiveWeeksBetween, addEffectiveWeeks } from '@/lib/calendar-breaks';
+import { addEffectiveWeeks } from '@/lib/calendar-breaks';
 
 export interface FinalizingStudent {
   studentId: string;
@@ -20,7 +20,6 @@ export interface FinalizingStudent {
 
   hoursPerSession: number;
   pct: number;
-  source: 'real' | 'estimated';
 }
 
 const parseDate = (v: string | null | undefined): Date | null => {
@@ -116,9 +115,6 @@ export function useFinalizingStudents() {
     if (!students || !courseSchedules || !attendanceByStudent) return [];
     const result: FinalizingStudent[] = [];
     const seen = new Set<string>();
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-
     (students as any[]).forEach(s => {
       const activeCourses = (s.student_courses ?? []).filter((sc: any) => sc.is_active);
       const studentAttendance = attendanceByStudent[s.id] ?? [];
@@ -149,34 +145,9 @@ export function useFinalizingStudents() {
         const workload = sc.workload || 48;
         const realPct = workload > 0 ? (realHoursCompleted / workload) * 100 : 0;
 
-        // Estimated progress — uses this course's own weekly frequency, skipping breaks
         const startDate = parseDate(sc.first_class_date || sc.enrollment_date);
-        let estimatedHoursCompleted = 0;
-        let estimatedPct = 0;
-        if (startDate && weeklyHours > 0) {
-          const weeksElapsed = effectiveWeeksBetween(startDate, today);
-          estimatedHoursCompleted = Math.min(weeksElapsed * weeklyHours, workload);
-          estimatedPct = workload > 0 ? (estimatedHoursCompleted / workload) * 100 : 0;
-        }
-
-        // Use higher of real vs estimated (real wins when tied)
-        let hoursCompleted: number;
-        let pct: number;
-        let source: 'real' | 'estimated';
-        if (realPct >= estimatedPct) {
-          hoursCompleted = realHoursCompleted;
-          pct = realPct;
-          source = 'real';
-        } else {
-          hoursCompleted = estimatedHoursCompleted;
-          pct = estimatedPct;
-          source = 'estimated';
-        }
-
-        const pctRounded = Math.round(pct);
-
-        if (pctRounded >= 80 && pctRounded < 100) {
-          const hoursRemaining = Math.max(workload - hoursCompleted, 0);
+        if (realPct >= 80 && realPct < 100) {
+          const hoursRemaining = Math.max(workload - realHoursCompleted, 0);
           const lessonsRemaining = Math.ceil(hoursRemaining / effectiveHoursPerSession);
           const distinctDays = Math.max(courseSched?.days.size ?? 0, 1);
           const hoursPerDay = Math.max(weeklyHours / distinctDays, effectiveHoursPerSession);
@@ -196,13 +167,12 @@ export function useFinalizingStudents() {
             startDate: formatDate(startDate),
             expectedEndDate: formatDate(expectedEnd),
             workload,
-            hoursCompleted: Math.round(hoursCompleted * 10) / 10,
+            hoursCompleted: Math.round(realHoursCompleted * 10) / 10,
             hoursRemaining: Math.round(hoursRemaining * 10) / 10,
             lessonsRemaining,
             daysRemaining,
             hoursPerSession: effectiveHoursPerSession,
-            pct: pctRounded,
-            source,
+            pct: Math.round(realPct * 100) / 100,
           });
         }
 
