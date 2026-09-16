@@ -5,6 +5,7 @@ import { AlertTriangle } from 'lucide-react';
 
 export default function Finalizing() {
   const finalizing = useFinalizingStudents();
+  const formatHours = (hours: number) => `${hours.toLocaleString('pt-BR', { maximumFractionDigits: 2 })}h`;
 
   return (
     <div className="space-y-6">
@@ -14,7 +15,7 @@ export default function Finalizing() {
       </div>
 
       <p className="text-sm text-muted-foreground">
-        Lista automática de alunos com 80% ou mais de progresso no curso atual.
+        Lista automática de matrículas com 80% ou mais e menos de 100% da carga horária realizada em presenças.
       </p>
 
       {finalizing.length === 0 ? (
@@ -30,7 +31,9 @@ export default function Finalizing() {
                 <TableHead>Curso</TableHead>
                 <TableHead className="hidden md:table-cell">Data Início</TableHead>
                 <TableHead className="hidden md:table-cell">Previsão Término</TableHead>
-                <TableHead className="text-center">Dias Restantes</TableHead>
+                <TableHead className="text-center">Carga Total</TableHead>
+                <TableHead className="text-center">Horas Realizadas</TableHead>
+                <TableHead className="text-center">Horas Restantes</TableHead>
                 <TableHead className="min-w-[160px]">Conclusão</TableHead>
               </TableRow>
             </TableHeader>
@@ -41,16 +44,14 @@ export default function Finalizing() {
                   <TableCell>{f.course}</TableCell>
                   <TableCell className="hidden md:table-cell">{f.startDate || '—'}</TableCell>
                   <TableCell className="hidden md:table-cell">{f.expectedEndDate || '—'}</TableCell>
-                  <TableCell className="text-center">
-                    <span className="font-semibold text-yellow-600">
-                      {f.daysRemaining} {f.daysRemaining === 1 ? 'dia' : 'dias'}
-                    </span>
-                  </TableCell>
+                  <TableCell className="text-center">{formatHours(f.workload)}</TableCell>
+                  <TableCell className="text-center font-medium">{formatHours(f.hoursCompleted)}</TableCell>
+                  <TableCell className="text-center font-semibold text-yellow-600">{formatHours(f.hoursRemaining)}</TableCell>
 
                   <TableCell>
                     <div className="flex items-center gap-2">
                       <Progress value={f.pct} className="h-2 flex-1" />
-                      <span className="text-xs font-medium w-10 text-right">{f.pct}%</span>
+                      <span className="w-14 text-right text-xs font-medium">{f.pct.toLocaleString('pt-BR', { maximumFractionDigits: 2 })}%</span>
                     </div>
                   </TableCell>
                 </TableRow>

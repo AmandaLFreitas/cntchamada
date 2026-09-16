@@ -292,6 +292,7 @@ export function useSaveAttendance() {
       qc.invalidateQueries({ queryKey: ['has_any_attendance'] });
       qc.invalidateQueries({ queryKey: ['new_students'] });
       qc.invalidateQueries({ queryKey: ['first_dates_batch'] });
+      qc.invalidateQueries({ queryKey: ['attendance_for_finalizing'] });
     },
   });
 }
