@@ -1,7 +1,7 @@
 import { useState, useMemo } from 'react';
 import { addDays, format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { CalendarIcon, ChevronLeft, ChevronRight } from 'lucide-react';
+import { CalendarIcon, ChevronLeft, ChevronRight, Download, FileSpreadsheet, Printer } from 'lucide-react';
 import { DayTabs } from '@/components/DayTabs';
 import { TimeSlotCard } from '@/components/TimeSlotCard';
 import { useTimeSlots, useSlotCounts, useSlotStudents, useCompleteStudent } from '@/hooks/use-supabase-data';
@@ -20,6 +20,7 @@ import { toast } from 'sonner';
 import { Badge } from '@/components/ui/badge';
 import { useNewStudents } from '@/hooks/use-new-students';
 import { calculateScheduledCourseEndDate } from '@/lib/calendar-breaks';
+import { exportOverviewExcel, exportOverviewPDF, fetchOverviewWeeklyReport, printOverviewReport } from '@/lib/overview-weekly-report';
 
 const STATUS_LABELS: Record<string, string> = {
   em_andamento: 'Em andamento',
@@ -70,13 +71,36 @@ export default function Overview() {
   const [selectedDay, setSelectedDay] = useState(getTodayDayName());
   const [selectedSlotId, setSelectedSlotId] = useState<string | null>(null);
   const [search, setSearch] = useState('');
-  const { schoolId } = useSchool();
+  const { schoolId, school } = useSchool();
   const { data: timeSlots } = useTimeSlots();
   const { data: slotCounts } = useSlotCounts();
   const { data: slotStudents } = useSlotStudents(selectedSlotId);
   const completeStudent = useCompleteStudent();
   const { data: newStudents } = useNewStudents();
   const newStudentIds = new Set((newStudents ?? []).map(n => n.studentId));
+  const [exporting, setExporting] = useState<'excel' | 'pdf' | 'print' | null>(null);
+
+  const { data: weeklyReport, isFetching: weeklyReportLoading, refetch: refetchWeeklyReport } = useQuery({
+    queryKey: ['overview_weekly_report', schoolId],
+    enabled: !!schoolId && !!school,
+    queryFn: () => fetchOverviewWeeklyReport(schoolId as string, school?.name || '—', school?.slug || 'unidade'),
+  });
+
+  const runExport = async (type: 'excel' | 'pdf' | 'print') => {
+    if (!schoolId || !school) return;
+    setExporting(type);
+    try {
+      const result = weeklyReport ?? (await refetchWeeklyReport()).data;
+      if (!result) throw new Error('Não foi possível carregar os dados do relatório.');
+      if (type === 'excel') exportOverviewExcel(result);
+      if (type === 'pdf') exportOverviewPDF(result);
+      if (type === 'print') printOverviewReport(result);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Erro ao gerar o relatório.');
+    } finally {
+      setExporting(null);
+    }
+  };
 
   const allDaySlots = timeSlots?.filter(s => s.day_of_week === selectedDay) ?? [];
 
@@ -246,9 +270,19 @@ export default function Overview() {
   return (
     <div>
       
-      <div className="flex flex-col sm:flex-row sm:items-center gap-3 mb-4">
+      <div className="flex flex-col gap-3 mb-4 lg:flex-row lg:items-center">
         <h1 className="text-2xl font-bold">Visão Geral</h1>
-        <div className="flex items-center gap-2 ml-auto">
+        <div className="flex flex-wrap items-center gap-2 lg:ml-auto">
+          <Button variant="outline" size="sm" className="gap-1.5" onClick={() => runExport('excel')} disabled={weeklyReportLoading || exporting !== null}>
+            <FileSpreadsheet className="h-4 w-4" />{exporting === 'excel' ? 'Gerando...' : 'Excel'}
+          </Button>
+          <Button variant="outline" size="sm" className="gap-1.5" onClick={() => runExport('pdf')} disabled={weeklyReportLoading || exporting !== null}>
+            <Download className="h-4 w-4" />{exporting === 'pdf' ? 'Gerando...' : 'PDF'}
+          </Button>
+          <Button variant="outline" size="sm" className="gap-1.5" onClick={() => runExport('print')} disabled={weeklyReportLoading || exporting !== null}>
+            <Printer className="h-4 w-4" />{exporting === 'print' ? 'Preparando...' : 'Imprimir'}
+          </Button>
+          <div className="flex items-center gap-2 sm:ml-auto">
           <Button variant="outline" size="icon" onClick={() => navigateDate(-1)}>
             <ChevronLeft className="h-4 w-4" />
           </Button>
@@ -266,6 +300,7 @@ export default function Overview() {
           <Button variant="outline" size="icon" onClick={() => navigateDate(1)}>
             <ChevronRight className="h-4 w-4" />
           </Button>
+          </div>
         </div>
       </div>
 

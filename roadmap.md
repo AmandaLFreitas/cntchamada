@@ -6,4 +6,4 @@
 - [x] Adicionar previsão de finalização por matrícula em Alunos por Período, incluindo tela e exportações.
 - [x] Corrigir a previsão de término da Visão Geral com horas presenciais reais e próximas aulas por matrícula.
 
-- [ ] Adicionar Excel, PDF e impressão semanal completa na Visão Geral, com todos os horários e separação por unidade.
+- [x] Adicionar Excel, PDF e impressão semanal completa na Visão Geral, com todos os horários e separação por unidade.
