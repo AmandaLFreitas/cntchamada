@@ -293,6 +293,7 @@ export function useSaveAttendance() {
       qc.invalidateQueries({ queryKey: ['new_students'] });
       qc.invalidateQueries({ queryKey: ['first_dates_batch'] });
       qc.invalidateQueries({ queryKey: ['attendance_for_finalizing'] });
+      qc.invalidateQueries({ queryKey: ['overview_course_forecasts'] });
     },
   });
 }
@@ -374,6 +375,7 @@ export function useCreateStudent() {
       qc.invalidateQueries({ queryKey: ['slot_counts'] });
       qc.invalidateQueries({ queryKey: ['slot_students'] });
       qc.invalidateQueries({ queryKey: ['new_students'] });
+      qc.invalidateQueries({ queryKey: ['overview_course_forecasts'] });
     },
   });
 }
@@ -473,6 +475,7 @@ export function useUpdateStudent() {
       qc.invalidateQueries({ queryKey: ['slot_counts'] });
       qc.invalidateQueries({ queryKey: ['slot_students'] });
       qc.invalidateQueries({ queryKey: ['new_students'] });
+      qc.invalidateQueries({ queryKey: ['overview_course_forecasts'] });
     },
   });
 }

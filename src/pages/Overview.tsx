@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import { format, addWeeks, parse } from 'date-fns';
+import { addDays, format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { CalendarIcon, ChevronLeft, ChevronRight } from 'lucide-react';
 import { DayTabs } from '@/components/DayTabs';
@@ -19,6 +19,7 @@ import { Search } from 'lucide-react';
 import { toast } from 'sonner';
 import { Badge } from '@/components/ui/badge';
 import { useNewStudents } from '@/hooks/use-new-students';
+import { calculateScheduledCourseEndDate } from '@/lib/calendar-breaks';
 
 const STATUS_LABELS: Record<string, string> = {
   em_andamento: 'Em andamento',
@@ -32,6 +33,36 @@ const dayNameFromDate = (date: Date): string => {
   const name = days[date.getDay()];
   if (name === 'Domingo' || name === 'Sexta') return 'Segunda';
   return name;
+};
+
+const JS_DAY_BY_NAME: Record<string, number> = {
+  Domingo: 0,
+  Segunda: 1,
+  'Segunda-feira': 1,
+  Terça: 2,
+  'Terça-feira': 2,
+  Quarta: 3,
+  'Quarta-feira': 3,
+  Quinta: 4,
+  'Quinta-feira': 4,
+  Sexta: 5,
+  'Sexta-feira': 5,
+  Sábado: 6,
+  Sabado: 6,
+};
+
+const slotDurationHours = (start?: string | null, end?: string | null): number => {
+  if (!start || !end) return 0;
+  const [startHour, startMinute] = start.split(':').map(Number);
+  const [endHour, endMinute] = end.split(':').map(Number);
+  if (![startHour, startMinute, endHour, endMinute].every(Number.isFinite)) return 0;
+  return Math.max((endHour + endMinute / 60) - (startHour + startMinute / 60), 0);
+};
+
+type CourseForecast = {
+  weeklyHours: number;
+  hoursCompleted: number;
+  expectedEndDate: string;
 };
 
 export default function Overview() {
@@ -91,6 +122,7 @@ export default function Overview() {
   });
 
   const studentIds = filteredSlotStudents.map((s: any) => s.students?.id).filter(Boolean) ?? [];
+  const studentCourseIds = [...new Set(filteredSlotStudents.map((s: any) => s.student_course_id).filter(Boolean))] as string[];
 
   const { data: firstDates } = useQuery({
     queryKey: ['first_dates_batch', studentIds, schoolId],
@@ -111,42 +143,76 @@ export default function Overview() {
     },
   });
 
-  const { data: scheduleCounts } = useQuery({
-    queryKey: ['schedule_counts_batch', studentIds, schoolId],
-    enabled: studentIds.length > 0 && !!schoolId,
+  const { data: courseForecasts } = useQuery({
+    queryKey: ['overview_course_forecasts', schoolId, studentIds, studentCourseIds],
+    enabled: studentIds.length > 0 && studentCourseIds.length > 0 && !!schoolId,
     queryFn: async () => {
-      const { data } = await supabase
-        .from('student_schedules')
-        .select('student_id, time_slots(start_time, end_time)')
-        .eq('school_id', schoolId!)
-        .in('student_id', studentIds);
-      const map: Record<string, number> = {};
-      data?.forEach(r => {
-        if (!map[r.student_id]) map[r.student_id] = 0;
-        if (r.time_slots) {
-          const start = (r.time_slots as any).start_time?.split(':').map(Number) ?? [0, 0];
-          const end = (r.time_slots as any).end_time?.split(':').map(Number) ?? [0, 0];
-          const hours = (end[0] + end[1] / 60) - (start[0] + start[1] / 60);
-          map[r.student_id] += Math.max(hours, 1);
+      const [schedulesResult, attendanceResult] = await Promise.all([
+        supabase
+          .from('student_schedules')
+          .select('student_course_id, time_slot_id, time_slots(day_of_week, start_time, end_time)')
+          .eq('school_id', schoolId!)
+          .in('student_course_id', studentCourseIds),
+        supabase
+          .from('attendance')
+          .select('student_id, time_slot_id, status')
+          .eq('school_id', schoolId!)
+          .in('student_id', studentIds)
+          .eq('status', 'present'),
+      ]);
+      if (schedulesResult.error) throw schedulesResult.error;
+      if (attendanceResult.error) throw attendanceResult.error;
+
+      const schedulesByCourse: Record<string, {
+        slotHours: Map<string, number>;
+        weeklySchedule: { dayOfWeek: number; hours: number }[];
+      }> = {};
+      (schedulesResult.data ?? []).forEach((row: any) => {
+        const courseId = row.student_course_id;
+        const slot = row.time_slots;
+        const dayOfWeek = JS_DAY_BY_NAME[slot?.day_of_week];
+        const hours = slotDurationHours(slot?.start_time, slot?.end_time);
+        if (!courseId || !row.time_slot_id || dayOfWeek === undefined || hours <= 0) return;
+        if (!schedulesByCourse[courseId]) {
+          schedulesByCourse[courseId] = { slotHours: new Map(), weeklySchedule: [] };
         }
+        schedulesByCourse[courseId].slotHours.set(row.time_slot_id, hours);
+        schedulesByCourse[courseId].weeklySchedule.push({ dayOfWeek, hours });
       });
-      return map;
+
+      const attendanceByStudent: Record<string, { time_slot_id: string }[]> = {};
+      (attendanceResult.data ?? []).forEach((row: any) => {
+        if (!attendanceByStudent[row.student_id]) attendanceByStudent[row.student_id] = [];
+        attendanceByStudent[row.student_id].push({ time_slot_id: row.time_slot_id });
+      });
+
+      const forecasts: Record<string, CourseForecast> = {};
+      filteredSlotStudents.forEach((schedule: any) => {
+        const courseId = schedule.student_course_id;
+        const student = schedule.students;
+        if (!courseId || !student || forecasts[courseId]) return;
+        const courseSchedule = schedulesByCourse[courseId];
+        if (!courseSchedule) return;
+
+        const hoursCompleted = (attendanceByStudent[student.id] ?? []).reduce((total, attendance) => {
+          return total + (courseSchedule.slotHours.get(attendance.time_slot_id) ?? 0);
+        }, 0);
+        const workload = Number(student.workload) || 48;
+        const hoursRemaining = Math.max(workload - hoursCompleted, 0);
+        const weeklyHours = courseSchedule.weeklySchedule.reduce((total, item) => total + item.hours, 0);
+        const projectedDate = hoursRemaining > 0
+          ? calculateScheduledCourseEndDate(addDays(new Date(), 1), hoursRemaining, courseSchedule.weeklySchedule)
+          : new Date();
+
+        forecasts[courseId] = {
+          weeklyHours,
+          hoursCompleted,
+          expectedEndDate: projectedDate ? format(projectedDate, 'dd/MM/yyyy') : '-',
+        };
+      });
+      return forecasts;
     },
   });
-
-  const calculateEndDate = (studentId: string, workload: number): string => {
-    const startDateStr = firstDates?.[studentId];
-    if (!startDateStr) return '-';
-    const hoursPerWeek = scheduleCounts?.[studentId] ?? 1;
-    const weeks = Math.ceil(workload / hoursPerWeek);
-    try {
-      const startDate = parse(startDateStr, 'yyyy-MM-dd', new Date());
-      const endDate = addWeeks(startDate, weeks);
-      return format(endDate, 'dd/MM/yyyy');
-    } catch {
-      return '-';
-    }
-  };
 
   const handleDateSelect = (date: Date | undefined) => {
     if (!date) return;
@@ -230,7 +296,8 @@ export default function Overview() {
                 const workload = student.workload ?? 48;
                 const firstPresence = firstDates?.[student.id] ?? null;
                 const courseStart = student.first_class_date || student.enrollment_date || null;
-                const endDate = calculateEndDate(student.id, workload);
+                const forecast = courseForecasts?.[s.student_course_id];
+                const endDate = forecast?.expectedEndDate ?? '-';
                 const courseStatus = student.course_status || 'em_andamento';
                 const isNew = newStudentIds.has(student.id);
                 return (
@@ -250,7 +317,7 @@ export default function Overview() {
                     </div>
                     <div className="mt-1 text-sm text-muted-foreground space-y-0.5 break-words">
                       <p>Curso: {courseName}</p>
-                      <p>Carga horária: {workload}h • {scheduleCounts?.[student.id]?.toFixed(0) ?? '?'}h/semana</p>
+                      <p>Carga horária: {workload}h • {forecast?.weeklyHours.toFixed(1).replace('.0', '') ?? '?'}h/semana</p>
                       <p>Início do curso: {courseStart || '—'} • Primeira presença: {firstPresence || '—'}</p>
                       <p>Previsão de término: {endDate} • Status: {STATUS_LABELS[courseStatus] || courseStatus}</p>
                     </div>
