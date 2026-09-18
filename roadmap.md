@@ -5,3 +5,5 @@
 - [x] Garantir atualização após alterações na chamada e validar limites de 80% e 100%.
 - [x] Adicionar previsão de finalização por matrícula em Alunos por Período, incluindo tela e exportações.
 - [x] Corrigir a previsão de término da Visão Geral com horas presenciais reais e próximas aulas por matrícula.
+
+- [x] Adicionar Excel, PDF e impressão semanal completa na Visão Geral, com todos os horários e separação por unidade.
