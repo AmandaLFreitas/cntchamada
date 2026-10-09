@@ -10,3 +10,5 @@
 - [x] Corrigir a previsão de término da Visão Geral com horas presenciais reais e próximas aulas por matrícula.
 
 - [x] Adicionar Excel, PDF e impressão semanal completa na Visão Geral, com todos os horários e separação por unidade.
+- [x] Adicionar Excel de planejamento de finalizações até fevereiro de 2027, com cinco abas, totais únicos e permissões por unidade.
+- [x] Validar previsões, totais, formatação e download com dados reais.
