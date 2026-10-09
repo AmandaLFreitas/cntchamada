@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useReportData } from '@/hooks/use-supabase-data';
 import { AttendanceReport } from '@/components/AttendanceReport';
 import { MonthlyReports } from '@/components/MonthlyReports';
@@ -15,12 +15,13 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { CertificateDialog } from '@/components/CertificateDialog';
 import type { CertificateData } from '@/lib/certificate-templates';
 import { useAuth } from '@/contexts/AuthContext';
+import { REPORT_STATUS_LABELS, reportCourseName, type ReportStatus } from '@/lib/report-status';
 
 type ViewMode = 'cards' | 'list';
-type StatusFilter = 'em_andamento' | 'finalizado' | 'desistiu';
+type StatusFilter = ReportStatus;
 
 export default function Reports() {
-  const { data, isLoading } = useReportData();
+  const { data, isLoading, isError, refetch } = useReportData();
   const { isAdmin } = useAuth();
   const { schoolId } = useSchool();
   const [search, setSearch] = useState('');
@@ -30,46 +31,24 @@ export default function Reports() {
   const [certOpen, setCertOpen] = useState(false);
   const [certData, setCertData] = useState<CertificateData | null>(null);
 
-  // Get all student_courses with student info for status filtering
-  const { data: allStudentCourses } = useQuery({
-    queryKey: ['all_student_courses_report', schoolId],
-    enabled: !!schoolId,
-    queryFn: async () => {
-      const { data, error } = await (supabase as any).from('student_courses')
-        .select('*, students(*, courses:courses(*)), courses(name, workload)')
-        .eq('school_id', schoolId!)
-        .order('created_at', { ascending: false });
-      if (error) throw error;
-      return data ?? [];
-    },
-  });
+  useEffect(() => {
+    setSelectedStudentId(null);
+    setCertOpen(false);
+    setCertData(null);
+  }, [schoolId]);
 
-  const { data: statusCounts } = useQuery({
-    queryKey: ['student_course_status_counts', schoolId],
-    enabled: !!schoolId,
-    queryFn: async () => {
-      const { data: all, error } = await (supabase as any).from('student_courses')
-        .select('status')
-        .eq('school_id', schoolId!);
-      if (error) throw error;
-      const counts = { em_andamento: 0, finalizado: 0, desistiu: 0 };
-      (all ?? []).forEach((sc: any) => {
-        const st = sc.status || 'em_andamento';
-        if (st in counts) counts[st as keyof typeof counts]++;
-      });
-      return counts;
-    },
-  });
+  const statusCounts = data?.statusCounts;
 
   const { data: studentSchedules } = useQuery({
     queryKey: ['student_detail_schedules', selectedStudentId, schoolId],
     enabled: !!selectedStudentId && !!schoolId,
     queryFn: async () => {
+      if (!schoolId || !selectedStudentId) return null;
       const { data, error } = await supabase
         .from('student_schedules')
         .select('*, time_slots(*)')
-        .eq('school_id', schoolId!)
-        .eq('student_id', selectedStudentId!);
+        .eq('school_id', schoolId)
+        .eq('student_id', selectedStudentId);
       if (error) throw error;
       return data;
     },
@@ -79,11 +58,12 @@ export default function Reports() {
     queryKey: ['student_detail_attendance', selectedStudentId, schoolId],
     enabled: !!selectedStudentId && !!schoolId,
     queryFn: async () => {
+      if (!schoolId || !selectedStudentId) return null;
       const { data, error } = await supabase
         .from('attendance')
         .select('date, status')
-        .eq('school_id', schoolId!)
-        .eq('student_id', selectedStudentId!);
+        .eq('school_id', schoolId)
+        .eq('student_id', selectedStudentId);
       if (error) throw error;
       // Collapse per date
       const byDate = new Map<string, { hasPresent: boolean; hasAbsent: boolean }>();
@@ -104,6 +84,7 @@ export default function Reports() {
   });
 
 
+  if (isError) return <div role="alert" className="space-y-3"><p className="text-destructive">Não foi possível carregar os relatórios.</p><Button variant="outline" onClick={() => refetch()}>Tentar novamente</Button></div>;
   if (isLoading) return <p className="text-muted-foreground">Carregando...</p>;
 
   const statusLabels: Record<StatusFilter, string> = {
@@ -118,23 +99,7 @@ export default function Reports() {
     setSearch('');
   };
 
-  // Group student_courses by student for display
-  const filteredByStatus = (allStudentCourses ?? []).filter((sc: any) => (sc.status || 'em_andamento') === statusFilter);
-
-  // Deduplicate students - show each student once with their course info
-  const studentMap = new Map<string, any>();
-  filteredByStatus.forEach((sc: any) => {
-    const sid = sc.student_id;
-    if (!studentMap.has(sid)) {
-      studentMap.set(sid, {
-        ...sc.students,
-        courseName: sc.courses?.name || sc.custom_course_name || 'Sem curso',
-        workload: sc.workload,
-        studentCourseStatus: sc.status,
-      });
-    }
-  });
-  const uniqueStudents = Array.from(studentMap.values());
+  const uniqueStudents = data?.studentsByStatus[statusFilter] ?? [];
 
   const filteredStudents = uniqueStudents.filter(s =>
     !search || s.full_name?.toLowerCase().includes(search.toLowerCase())
@@ -149,18 +114,18 @@ export default function Reports() {
       {viewMode === 'cards' ? (
         <>
           <div className="flex flex-wrap gap-4 mb-6">
-            <button onClick={() => handleCardClick('em_andamento')} className="bg-card border rounded-lg p-4 hover:shadow-md transition-shadow cursor-pointer text-left">
+            <Button variant="outline" onClick={() => handleCardClick('em_andamento')} className="bg-card h-auto whitespace-normal items-start flex-col gap-0 border rounded-lg p-4 hover:shadow-md transition-shadow cursor-pointer text-left">
               <p className="text-sm text-muted-foreground">Em andamento</p>
               <p className="text-3xl font-bold text-primary">{statusCounts?.em_andamento ?? 0}</p>
-            </button>
-            <button onClick={() => handleCardClick('finalizado')} className="bg-card border rounded-lg p-4 hover:shadow-md transition-shadow cursor-pointer text-left">
+            </Button>
+            <Button variant="outline" onClick={() => handleCardClick('finalizado')} className="bg-card h-auto whitespace-normal items-start flex-col gap-0 border rounded-lg p-4 hover:shadow-md transition-shadow cursor-pointer text-left">
               <p className="text-sm text-muted-foreground">Finalizados</p>
               <p className="text-3xl font-bold text-green-600">{statusCounts?.finalizado ?? 0}</p>
-            </button>
-            <button onClick={() => handleCardClick('desistiu')} className="bg-card border rounded-lg p-4 hover:shadow-md transition-shadow cursor-pointer text-left">
+            </Button>
+            <Button variant="outline" onClick={() => handleCardClick('desistiu')} className="bg-card h-auto whitespace-normal items-start flex-col gap-0 border rounded-lg p-4 hover:shadow-md transition-shadow cursor-pointer text-left">
               <p className="text-sm text-muted-foreground">Desistentes</p>
               <p className="text-3xl font-bold text-destructive">{statusCounts?.desistiu ?? 0}</p>
-            </button>
+            </Button>
           </div>
 
           <Separator className="my-6" />
@@ -190,14 +155,18 @@ export default function Reports() {
 
           <div className="grid gap-2">
             {filteredStudents.map((s: any) => (
-              <button key={s.id} onClick={() => setSelectedStudentId(s.id)}
-                className="bg-card border rounded-lg p-3 flex items-center gap-3 hover:shadow-md transition-shadow cursor-pointer text-left w-full">
+              <Button variant="outline" key={s.id} onClick={() => setSelectedStudentId(s.id)}
+                className="bg-card h-auto whitespace-normal justify-start text-foreground border rounded-lg p-3 flex items-center gap-3 hover:shadow-md transition-shadow cursor-pointer text-left w-full">
                 <User className="h-4 w-4 text-muted-foreground flex-shrink-0" />
                 <div className="min-w-0">
                   <p className="font-medium truncate">{s.full_name || 'Sem nome'}</p>
-                  <p className="text-sm text-muted-foreground">{s.courseName}</p>
+                  {s.enrollments.map(enrollment => (
+                    <p key={enrollment.id} className="text-sm text-muted-foreground break-words">
+                      {reportCourseName(enrollment)} · {enrollment.workload}h · {REPORT_STATUS_LABELS[statusFilter]}
+                    </p>
+                  ))}
                 </div>
-              </button>
+              </Button>
             ))}
             {filteredStudents.length === 0 && (
               <p className="text-muted-foreground text-center py-8">Nenhum aluno encontrado.</p>
@@ -217,9 +186,22 @@ export default function Reports() {
                 {isAdmin && <div><p className="text-muted-foreground">CPF</p><p className="font-medium">{selectedStudent.cpf || '-'}</p></div>}
                 <div><p className="text-muted-foreground">Data de Nascimento</p><p className="font-medium">{selectedStudent.birth_date || '-'}</p></div>
                 {isAdmin && <div><p className="text-muted-foreground">Endereço</p><p className="font-medium">{selectedStudent.street ? `${selectedStudent.street}, ${selectedStudent.house_number || 's/n'}` : '-'}</p></div>}
-                <div><p className="text-muted-foreground">Curso</p><p className="font-medium">{selectedStudent.courseName}</p></div>
-                <div><p className="text-muted-foreground">Carga Horária</p><p className="font-medium">{selectedStudent.workload}h</p></div>
-                <div><p className="text-muted-foreground">Status</p><p className="font-medium capitalize">{selectedStudent.studentCourseStatus?.replace('_', ' ') || 'Em andamento'}</p></div>
+              </div>
+              <div className="space-y-3">
+                {selectedStudent.enrollments.map(enrollment => (
+                  <div key={enrollment.id} className="border-b pb-3 text-sm">
+                    <p className="font-medium">{reportCourseName(enrollment)}</p>
+                    <p className="text-muted-foreground">{enrollment.workload}h · {REPORT_STATUS_LABELS[statusFilter]}</p>
+                    {enrollment.status === 'finalizado' && (
+                      <Button variant="outline" className="mt-2 gap-2" onClick={() => {
+                        setCertData({ studentName: selectedStudent.full_name || 'Sem nome',
+                          courseName: reportCourseName(enrollment), workload: enrollment.workload,
+                          startDate: null, endDate: new Date().toISOString().split('T')[0] });
+                        setCertOpen(true);
+                      }}><FileText className="h-4 w-4" /> Gerar Certificado</Button>
+                    )}
+                  </div>
+                ))}
               </div>
 
               {studentAttendance && (
@@ -246,21 +228,7 @@ export default function Reports() {
                 </div>
               )}
 
-              {selectedStudent.studentCourseStatus === 'finalizado' && (
-                <Button className="w-full gap-2" onClick={() => {
-                  const today = new Date().toISOString().split('T')[0];
-                  setCertData({
-                    studentName: selectedStudent.full_name || 'Sem nome',
-                    courseName: selectedStudent.courseName,
-                    workload: selectedStudent.workload ?? 48,
-                    startDate: null,
-                    endDate: today,
-                  });
-                  setCertOpen(true);
-                }}>
-                  <FileText className="h-4 w-4" /> Gerar Certificado
-                </Button>
-              )}
+
             </div>
           )}
         </DialogContent>

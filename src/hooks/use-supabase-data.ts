@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useSchool } from '@/contexts/SchoolContext';
+import { groupReportEnrollments, type ReportEnrollment } from '@/lib/report-status';
 
 // Helper for student_courses table (may not be in auto-generated types yet)
 const scTable = () => (supabase as any).from('student_courses');
@@ -370,6 +371,8 @@ export function useCreateStudent() {
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['students'] });
+      qc.invalidateQueries({ queryKey: ['report_data'] });
+      qc.invalidateQueries({ queryKey: ['enrollments_report'] });
       qc.invalidateQueries({ queryKey: ['student_courses'] });
       qc.invalidateQueries({ queryKey: ['student_schedules'] });
       qc.invalidateQueries({ queryKey: ['slot_counts'] });
@@ -470,6 +473,8 @@ export function useUpdateStudent() {
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['students'] });
+      qc.invalidateQueries({ queryKey: ['report_data'] });
+      qc.invalidateQueries({ queryKey: ['enrollments_report'] });
       qc.invalidateQueries({ queryKey: ['student_courses'] });
       qc.invalidateQueries({ queryKey: ['student_schedules'] });
       qc.invalidateQueries({ queryKey: ['slot_counts'] });
@@ -490,6 +495,8 @@ export function useDeleteStudent() {
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['students'] });
+      qc.invalidateQueries({ queryKey: ['report_data'] });
+      qc.invalidateQueries({ queryKey: ['enrollments_report'] });
       qc.invalidateQueries({ queryKey: ['student_courses'] });
       qc.invalidateQueries({ queryKey: ['student_schedules'] });
       qc.invalidateQueries({ queryKey: ['slot_counts'] });
@@ -530,6 +537,8 @@ export function useCompleteStudent() {
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['students'] });
+      qc.invalidateQueries({ queryKey: ['report_data'] });
+      qc.invalidateQueries({ queryKey: ['enrollments_report'] });
       qc.invalidateQueries({ queryKey: ['student_courses'] });
       qc.invalidateQueries({ queryKey: ['completions'] });
       qc.invalidateQueries({ queryKey: ['student_schedules'] });
@@ -578,75 +587,28 @@ export function useFirstAttendance(studentId: string | null) {
   });
 }
 
-// Report data (SCOPED by school)
+// One enrollment source for status cards, lists and monthly summaries.
 export function useReportData() {
   const { schoolId } = useSchool();
   return useQuery({
     queryKey: ['report_data', schoolId],
     enabled: !!schoolId,
     queryFn: async () => {
-      const { data: students, error: sErr } = await supabase
-        .from('students')
-        .select('*')
-        .eq('school_id', schoolId!)
-        .order('full_name');
-      if (sErr) throw sErr;
-
-      const { data: scs, error: scErr } = await scTable()
-        .select('*, courses(name)')
-        .eq('school_id', schoolId!)
-        .eq('is_active', true);
-      if (scErr) throw scErr;
-
-      const { data: attendance, error: aErr } = await supabase
-        .from('attendance')
-        .select('student_id, status')
-        .eq('school_id', schoolId!);
-      if (aErr) throw aErr;
-
-      const { data: completions, error: cErr } = await supabase
-        .from('completions')
-        .select('student_id, start_date, end_date')
-        .eq('school_id', schoolId!);
-      if (cErr) throw cErr;
-
-      const { data: firstDates, error: fErr } = await supabase
-        .from('attendance')
-        .select('student_id, date')
-        .eq('school_id', schoolId!)
-        .eq('status', 'present')
-        .order('date', { ascending: true });
-      if (fErr) throw fErr;
-
-      const firstAttendance: Record<string, string> = {};
-      firstDates?.forEach(r => {
-        if (!firstAttendance[r.student_id]) firstAttendance[r.student_id] = r.date;
-      });
-
-      const attendanceCounts: Record<string, { present: number; absent: number }> = {};
-      attendance?.forEach(r => {
-        if (!attendanceCounts[r.student_id]) attendanceCounts[r.student_id] = { present: 0, absent: 0 };
-        if (r.status === 'present') attendanceCounts[r.student_id].present++;
-        else if (r.status === 'absent') attendanceCounts[r.student_id].absent++;
-      });
-
-      const completionMap: Record<string, { start_date: string | null; end_date: string }> = {};
-      completions?.forEach(r => {
-        completionMap[r.student_id] = { start_date: r.start_date, end_date: r.end_date };
-      });
-
-      // Attach active courses to students
-      const studentsWithCourses = (students ?? []).map((s: any) => ({
-        ...s,
-        student_courses: (scs ?? []).filter((sc: any) => sc.student_id === s.id),
-      }));
-
-      return {
-        students: studentsWithCourses,
-        attendanceCounts,
-        firstAttendance,
-        completionMap,
-      };
+      if (!schoolId) throw new Error('Nenhuma unidade selecionada');
+      const enrollments: ReportEnrollment[] = [];
+      const pageSize = 500;
+      for (let offset = 0; ; offset += pageSize) {
+        const { data, error } = await supabase.from('student_courses')
+          .select('id, student_id, school_id, status, workload, enrollment_date, first_class_date, custom_course_name, students(*), courses(name)')
+          .eq('school_id', schoolId)
+          .order('id')
+          .range(offset, offset + pageSize - 1);
+        if (error) throw error;
+        const page = (data ?? []) as ReportEnrollment[];
+        enrollments.push(...page);
+        if (page.length < pageSize) break;
+      }
+      return { enrollments, ...groupReportEnrollments(enrollments, schoolId) };
     },
   });
 }
