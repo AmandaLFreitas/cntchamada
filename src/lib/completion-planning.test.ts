@@ -35,7 +35,7 @@ describe('Planejamento de finalizações', () => {
   });
   it('gera as cinco abas também quando não há matrículas', () => {
     const workbook = buildCompletionPlanningWorkbook([], 'Toledo', true);
-    expect(workbook.getWorksheet('Resumo')?.getCell('B9').value).toMatchObject({ result: 0 });
+    expect(workbook.getWorksheet('Resumo')?.getCell('B9').value).toMatchObject({ formula: "SUM('Todos os Alunos'!T6:T6)" });
     expect(workbook.worksheets).toHaveLength(5);
   });
 });
