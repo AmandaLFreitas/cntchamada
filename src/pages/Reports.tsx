@@ -4,6 +4,7 @@ import { AttendanceReport } from '@/components/AttendanceReport';
 import { MonthlyReports } from '@/components/MonthlyReports';
 import { EnrollmentsReport } from '@/components/EnrollmentsReport';
 import { TrialLessonsScheduledReport } from '@/components/TrialLessonsScheduledReport';
+import { CompletionPlanningReport } from '@/components/CompletionPlanningReport';
 import { Separator } from '@/components/ui/separator';
 import { Input } from '@/components/ui/input';
 import { Search, ChevronLeft, User, FileText } from 'lucide-react';
@@ -127,6 +128,9 @@ export default function Reports() {
               <p className="text-3xl font-bold text-destructive">{statusCounts?.desistiu ?? 0}</p>
             </Button>
           </div>
+
+          <Separator className="my-6" />
+          <CompletionPlanningReport />
 
           <Separator className="my-6" />
           <MonthlyReports />
