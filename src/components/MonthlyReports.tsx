@@ -1,8 +1,10 @@
-import { useState, useRef } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useSchool } from '@/contexts/SchoolContext';
 import { useAuth } from '@/contexts/AuthContext';
+import { useReportData } from '@/hooks/use-supabase-data';
+import { REPORT_STATUS_LABELS, reportCourseName, type ReportStatus } from '@/lib/report-status';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -21,6 +23,8 @@ export function MonthlyReports() {
   const now = new Date();
   const { schoolId } = useSchool();
   const { isAdmin } = useAuth();
+  const { data: reportData } = useReportData();
+  useEffect(() => { setDetailView(null); setSelectedStudentId(null); }, [schoolId]);
   const [month, setMonth] = useState(now.getMonth());
   const [year, setYear] = useState(now.getFullYear());
   const [detailView, setDetailView] = useState<DetailView>(null);
@@ -32,25 +36,10 @@ export function MonthlyReports() {
   const startDate = `${year}-${String(month + 1).padStart(2, '0')}-01`;
   const endDate = new Date(year, month + 1, 0).toISOString().split('T')[0];
 
-  const { data: stats } = useQuery({
+  const { data: attendanceStats } = useQuery({
     queryKey: ['monthly_stats_sc', month, year, schoolId],
     enabled: !!schoolId,
     queryFn: async () => {
-      const { data: active } = await (supabase as any).from('student_courses')
-        .select('id')
-        .eq('school_id', schoolId!)
-        .eq('status', 'em_andamento');
-
-      const { data: finalized } = await (supabase as any).from('student_courses')
-        .select('id, created_at')
-        .eq('school_id', schoolId!)
-        .eq('status', 'finalizado');
-
-      const { data: dropouts } = await (supabase as any).from('student_courses')
-        .select('id, created_at')
-        .eq('school_id', schoolId!)
-        .eq('status', 'desistiu');
-
       const { data: attendance } = await supabase
         .from('attendance')
         .select('student_id, date, status, is_justified')
@@ -81,9 +70,6 @@ export function MonthlyReports() {
       });
 
       return {
-        active: active?.length ?? 0,
-        finalized: finalized?.length ?? 0,
-        dropouts: dropouts?.length ?? 0,
         totalPresencas: presencas,
         totalFaltas: faltas,
         faltasJustificadas: justificadas,
@@ -93,40 +79,15 @@ export function MonthlyReports() {
   });
 
 
-  const { data: detailStudents } = useQuery({
-    queryKey: ['monthly_detail_sc', detailView, month, year, schoolId, isAdmin],
-    enabled: (detailView === 'active' || detailView === 'finalized' || detailView === 'dropouts') && !!schoolId,
-    queryFn: async () => {
-      let statusFilter = 'em_andamento';
-      if (detailView === 'finalized') statusFilter = 'finalizado';
-      if (detailView === 'dropouts') statusFilter = 'desistiu';
-
-      const studentCols = isAdmin
-        ? 'id, full_name, birth_date, cpf, street, house_number, phone, guardian_name, guardian_phone'
-        : 'id, full_name, birth_date';
-      const { data } = await (supabase as any).from('student_courses')
-        .select(`*, students(${studentCols}), courses(name, workload)`)
-        .eq('school_id', schoolId!)
-        .eq('status', statusFilter);
-
-      return (data ?? []).map((sc: any) => ({
-        id: sc.students?.id ?? sc.id,
-        full_name: sc.students?.full_name,
-        birth_date: sc.students?.birth_date,
-        cpf: sc.students?.cpf,
-        street: sc.students?.street,
-        house_number: sc.students?.house_number,
-        enrollment_date: sc.enrollment_date,
-        first_class_date: sc.first_class_date,
-        guardian_name: sc.students?.guardian_name,
-        guardian_phone: sc.students?.guardian_phone,
-        phone: sc.students?.phone,
-        courseName: sc.courses?.name || sc.custom_course_name || 'Sem curso',
-        workload: sc.workload,
-        status: sc.status,
-      }));
-    },
-  });
+  const stats = {
+    ...attendanceStats,
+    active: reportData?.statusCounts.em_andamento ?? 0,
+    finalized: reportData?.statusCounts.finalizado ?? 0,
+    dropouts: reportData?.statusCounts.desistiu ?? 0,
+  };
+  const detailStatus: ReportStatus | null = detailView === 'active' ? 'em_andamento'
+    : detailView === 'finalized' ? 'finalizado' : detailView === 'dropouts' ? 'desistiu' : null;
+  const detailStudents = detailStatus ? reportData?.studentsByStatus[detailStatus] ?? [] : [];
 
   // Aggregated attendance per student for the selected month (presences/absences)
   const { data: attendanceByStudent } = useQuery({
@@ -276,14 +237,11 @@ export function MonthlyReports() {
           detailView === 'presencas' ? s.presencas : s.faltas,
       }));
     }
-    return filteredDetail.map((s: any) => ({
-      Nome: s.full_name || '',
-      Curso: s.courseName,
-      'Carga Horária': s.workload,
-      Matrícula: s.enrollment_date || '',
-      'Primeiro dia': s.first_class_date || '',
-      Status: s.status,
-    }));
+    return filteredDetail.flatMap(s => s.enrollments.map(enrollment => ({
+      Nome: s.full_name || '', Curso: reportCourseName(enrollment),
+      'Carga Horária': enrollment.workload, Matrícula: enrollment.enrollment_date || '',
+      'Primeiro dia': enrollment.first_class_date || '', Status: enrollment.status,
+    })));
   };
 
   const exportFileName = () => {
@@ -382,29 +340,29 @@ export function MonthlyReports() {
       </div>
 
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
-        <button onClick={() => { setDetailView('active'); setSearch(''); }} className="bg-card border rounded-lg p-4 text-center hover:shadow-md transition-shadow cursor-pointer">
+        <Button variant="outline" onClick={() => { setDetailView('active'); setSearch(''); }} className="bg-card h-auto whitespace-normal flex-col gap-0 border rounded-lg p-4 text-center hover:shadow-md transition-shadow cursor-pointer">
           <p className="text-sm text-muted-foreground">Ativos</p>
           <p className="text-2xl font-bold text-primary">{stats?.active ?? 0}</p>
-        </button>
-        <button onClick={() => { setDetailView('finalized'); setSearch(''); }} className="bg-card border rounded-lg p-4 text-center hover:shadow-md transition-shadow cursor-pointer">
+        </Button>
+        <Button variant="outline" onClick={() => { setDetailView('finalized'); setSearch(''); }} className="bg-card h-auto whitespace-normal flex-col gap-0 border rounded-lg p-4 text-center hover:shadow-md transition-shadow cursor-pointer">
           <p className="text-sm text-muted-foreground">Finalizados</p>
           <p className="text-2xl font-bold text-green-600">{stats?.finalized ?? 0}</p>
-        </button>
-        <button onClick={() => { setDetailView('dropouts'); setSearch(''); }} className="bg-card border rounded-lg p-4 text-center hover:shadow-md transition-shadow cursor-pointer">
+        </Button>
+        <Button variant="outline" onClick={() => { setDetailView('dropouts'); setSearch(''); }} className="bg-card h-auto whitespace-normal flex-col gap-0 border rounded-lg p-4 text-center hover:shadow-md transition-shadow cursor-pointer">
           <p className="text-sm text-muted-foreground">Desistentes</p>
           <p className="text-2xl font-bold text-destructive">{stats?.dropouts ?? 0}</p>
-        </button>
-        <button onClick={() => { setDetailView('presencas'); setSearch(''); }} className="bg-card border rounded-lg p-4 text-center hover:shadow-md transition-shadow cursor-pointer">
+        </Button>
+        <Button variant="outline" onClick={() => { setDetailView('presencas'); setSearch(''); }} className="bg-card h-auto whitespace-normal flex-col gap-0 border rounded-lg p-4 text-center hover:shadow-md transition-shadow cursor-pointer">
           <p className="text-sm text-muted-foreground">Presenças</p>
           <p className="text-2xl font-bold text-green-600">{stats?.totalPresencas ?? 0}</p>
-        </button>
-        <button onClick={() => { setDetailView('faltas'); setSearch(''); }} className="bg-card border rounded-lg p-4 text-center hover:shadow-md transition-shadow cursor-pointer">
+        </Button>
+        <Button variant="outline" onClick={() => { setDetailView('faltas'); setSearch(''); }} className="bg-card h-auto whitespace-normal flex-col gap-0 border rounded-lg p-4 text-center hover:shadow-md transition-shadow cursor-pointer">
           <p className="text-sm text-muted-foreground">Faltas</p>
           <p className="text-2xl font-bold text-destructive">{stats?.totalFaltas ?? 0}</p>
           <p className="text-[10px] text-muted-foreground mt-1">
             {stats?.faltasJustificadas ?? 0} just. · {stats?.faltasNaoJustificadas ?? 0} n/just.
           </p>
-        </button>
+        </Button>
 
       </div>
 
@@ -448,10 +406,10 @@ export function MonthlyReports() {
                 {isAttendanceList ? (
                   <>
                     {attendanceList.map(s => (
-                      <button
+                      <Button variant="outline"
                         key={s.id}
                         onClick={() => setSelectedStudentId(s.id)}
-                        className="bg-card border rounded-lg p-3 flex items-center gap-3 hover:shadow-md transition-shadow cursor-pointer text-left w-full"
+                        className="bg-card h-auto whitespace-normal justify-start text-foreground border rounded-lg p-3 flex items-center gap-3 hover:shadow-md transition-shadow cursor-pointer text-left w-full"
                       >
                         <User className="h-4 w-4 text-muted-foreground flex-shrink-0" />
                         <div className="min-w-0 flex-1">
@@ -460,7 +418,7 @@ export function MonthlyReports() {
                         <span className={`font-bold text-lg ${detailView === 'presencas' ? 'text-green-600' : 'text-destructive'}`}>
                           {detailView === 'presencas' ? s.presencas : s.faltas}
                         </span>
-                      </button>
+                      </Button>
                     ))}
                     {attendanceList.length === 0 && (
                       <p className="text-muted-foreground text-center py-8">Nenhum aluno encontrado.</p>
@@ -468,15 +426,17 @@ export function MonthlyReports() {
                   </>
                 ) : (
                   <>
-                    {filteredDetail.map((s: any) => (
-                      <button key={s.id + s.courseName} onClick={() => setSelectedStudentId(s.id)}
-                        className="bg-card border rounded-lg p-3 flex items-center gap-3 hover:shadow-md transition-shadow cursor-pointer text-left w-full">
+                    {filteredDetail.map(s => (
+                      <Button variant="outline" key={s.id} onClick={() => setSelectedStudentId(s.id)}
+                        className="bg-card h-auto whitespace-normal justify-start text-foreground border rounded-lg p-3 flex items-center gap-3 hover:shadow-md transition-shadow cursor-pointer text-left w-full">
                         <User className="h-4 w-4 text-muted-foreground flex-shrink-0" />
                         <div className="min-w-0 flex-1">
                           <p className="font-medium truncate">{s.full_name || 'Sem nome'}</p>
-                          <p className="text-sm text-muted-foreground">{s.courseName}</p>
+                          {s.enrollments.map(enrollment => <p key={enrollment.id} className="text-sm text-muted-foreground break-words">
+                            {reportCourseName(enrollment)} · {enrollment.workload}h · {detailStatus ? REPORT_STATUS_LABELS[detailStatus] : ''}
+                          </p>)}
                         </div>
-                      </button>
+                      </Button>
                     ))}
                     {filteredDetail.length === 0 && (
                       <p className="text-muted-foreground text-center py-8">Nenhum aluno encontrado.</p>
@@ -500,11 +460,14 @@ export function MonthlyReports() {
                 {selectedStudent && (
                   <div className="grid grid-cols-2 gap-3 text-sm">
                     <div><p className="text-muted-foreground">Nome</p><p className="font-medium">{selectedStudent.full_name}</p></div>
-                    <div><p className="text-muted-foreground">Curso</p><p className="font-medium">{selectedStudent.courseName}</p></div>
-                    <div><p className="text-muted-foreground">Carga Horária</p><p className="font-medium">{selectedStudent.workload}h</p></div>
-                    <div><p className="text-muted-foreground">Matrícula</p><p className="font-medium">{selectedStudent.enrollment_date || '-'}</p></div>
-                    <div><p className="text-muted-foreground">Primeiro dia</p><p className="font-medium">{selectedStudent.first_class_date || '-'}</p></div>
-                    <div><p className="text-muted-foreground">Status</p><p className="font-medium capitalize">{selectedStudent.status?.replace('_', ' ')}</p></div>
+                    {selectedStudent.enrollments.map(enrollment => (
+                      <div key={enrollment.id} className="col-span-2 border-b pb-2">
+                        <p className="font-medium">{reportCourseName(enrollment)}</p>
+                        <p>{enrollment.workload}h · {detailStatus ? REPORT_STATUS_LABELS[detailStatus] : ''}</p>
+                        {isAdmin && <p>Matrícula: {enrollment.enrollment_date || '-'}</p>}
+                        <p>Primeiro dia: {enrollment.first_class_date || '-'}</p>
+                      </div>
+                    ))}
                   </div>
                 )}
 
