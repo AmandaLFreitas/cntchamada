@@ -571,7 +571,11 @@ export default function Students() {
     if (isAdmin) {
       personalData.street = form.street || null;
       personalData.house_number = form.house_number || null;
-      personalData.cpf = form.cpf || null;
+      personalData.cpf = form.cpf ? form.cpf.replace(/\D/g, '') : null;
+      personalData.cep = form.cep ? form.cep.replace(/\D/g, '') : null;
+      personalData.neighborhood = form.neighborhood || null;
+      personalData.city = form.city || null;
+      personalData.state = form.state ? form.state.toUpperCase().slice(0, 2) : null;
     }
 
     // Adding a new course to existing student
