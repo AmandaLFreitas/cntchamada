@@ -431,11 +431,16 @@ export default function Students() {
       street: pii?.street ?? student.street ?? '',
       house_number: pii?.house_number ?? student.house_number ?? '',
       birth_date: student.birth_date ?? '',
-      cpf: pii?.cpf ?? student.cpf ?? '',
+      cpf: formatCpfMask(pii?.cpf ?? student.cpf ?? ''),
       guardian_name: pii?.guardian_name ?? student.guardian_name ?? '',
       guardian_phone: pii?.guardian_phone ?? student.guardian_phone ?? '',
+      cep: formatCepMask(pii?.cep ?? student.cep ?? ''),
+      neighborhood: pii?.neighborhood ?? student.neighborhood ?? '',
+      city: pii?.city ?? student.city ?? '',
+      state: pii?.state ?? student.state ?? '',
       show_guardian: !!(pii?.guardian_name ?? student.guardian_name) || isMinor(student.birth_date ?? ''),
     });
+    setLowConfidence(new Set());
     setDialogOpen(true);
   };
 
@@ -475,10 +480,14 @@ export default function Students() {
       street: pii?.street ?? student.street ?? '',
       house_number: pii?.house_number ?? student.house_number ?? '',
       birth_date: student.birth_date ?? '',
-      cpf: pii?.cpf ?? student.cpf ?? '',
+      cpf: formatCpfMask(pii?.cpf ?? student.cpf ?? ''),
       guardian_name: pii?.guardian_name ?? student.guardian_name ?? '',
       guardian_phone: pii?.guardian_phone ?? student.guardian_phone ?? '',
       phone: formatPhoneMask((student as any).phone ?? ''),
+      cep: formatCepMask(pii?.cep ?? (student as any).cep ?? ''),
+      neighborhood: pii?.neighborhood ?? (student as any).neighborhood ?? '',
+      city: pii?.city ?? (student as any).city ?? '',
+      state: pii?.state ?? (student as any).state ?? '',
       photo_url: student.photo_url ?? '',
       material_sent: (student as any).material_sent ?? false,
       course_id: sc.course_id ?? '',
