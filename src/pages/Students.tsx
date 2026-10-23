@@ -120,6 +120,145 @@ export default function Students() {
   const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
   const [detailsStudentId, setDetailsStudentId] = useState<string | null>(null);
   const photoInputRef = useRef<HTMLInputElement>(null);
+  const fichaInputRef = useRef<HTMLInputElement>(null);
+  const cameraInputRef = useRef<HTMLInputElement>(null);
+  const [ocrLoading, setOcrLoading] = useState(false);
+  const [lowConfidence, setLowConfidence] = useState<Set<string>>(new Set());
+  const [cepLoading, setCepLoading] = useState(false);
+  const [cepMatches, setCepMatches] = useState<CepMatch[]>([]);
+  const [cepDialogOpen, setCepDialogOpen] = useState(false);
+
+  const highlightCls = (field: string) =>
+    lowConfidence.has(field) ? 'border-amber-500 ring-1 ring-amber-500 bg-amber-50 dark:bg-amber-950/30' : '';
+
+  const applyCepMatch = (m: CepMatch) => {
+    setForm(f => ({
+      ...f,
+      cep: formatCepMask(m.cep),
+      neighborhood: f.neighborhood || m.bairro,
+      city: f.city || m.localidade,
+      state: f.state || m.uf,
+    }));
+    setCepDialogOpen(false);
+  };
+
+  const handleCepLookup = async (matches?: CepMatch[]) => {
+    const list = matches ?? null;
+    if (list) {
+      if (list.length === 0) { toast.info('CEP não encontrado para este endereço. Preencha manualmente.'); return; }
+      if (list.length === 1) { applyCepMatch(list[0]); toast.success('CEP localizado!'); return; }
+      setCepMatches(list);
+      setCepDialogOpen(true);
+      return;
+    }
+    if (!form.street.trim() || !form.city.trim() || !form.state.trim()) {
+      toast.info('Informe rua, cidade e UF para localizar o CEP.');
+      return;
+    }
+    setCepLoading(true);
+    try {
+      const found = await lookupCepByAddress(form.state, form.city, form.street);
+      if (found.length === 0) { toast.info('CEP não encontrado para este endereço. Preencha manualmente.'); return; }
+      // Não sobrescreve um CEP já preenchido sem confirmação
+      if (form.cep.trim()) {
+        const exact = found.find(m => formatCepMask(m.cep) === form.cep.trim());
+        if (!exact && !window.confirm('O CEP encontrado é diferente do informado. Substituir?')) return;
+      }
+      if (found.length === 1) { applyCepMatch(found[0]); toast.success('CEP localizado!'); return; }
+      setCepMatches(found);
+      setCepDialogOpen(true);
+    } catch {
+      toast.error('Serviço de CEP indisponível no momento. Preencha manualmente.');
+    } finally {
+      setCepLoading(false);
+    }
+  };
+
+  const handleFichaFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file) return;
+    if (file.size > 10 * 1024 * 1024) {
+      toast.error('Arquivo muito grande (máx. 10 MB).');
+      return;
+    }
+    setOcrLoading(true);
+    setLowConfidence(new Set());
+    try {
+      const base64 = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(String(reader.result).split(',')[1] || '');
+        reader.onerror = () => reject(new Error('read error'));
+        reader.readAsDataURL(file);
+      });
+      const { data, error } = await supabase.functions.invoke('read-enrollment-form', {
+        body: { fileData: base64, mimeType: file.type || 'image/jpeg' },
+      });
+      if (error || !data?.fields) {
+        toast.error(data?.error || 'Não foi possível processar o documento. Tente novamente ou preencha manualmente.');
+        return;
+      }
+      const F = data.fields as Record<string, { value: string; confidence: string }>;
+      const low = new Set<string>();
+      const get = (k: string) => {
+        const f = F[k];
+        if (!f || !f.value) return '';
+        if (f.confidence !== 'alta') low.add(k);
+        return f.value;
+      };
+      const cpf = get('cpf').replace(/\D/g, '');
+      const cep = get('cep').replace(/\D/g, '');
+      const phone = get('phone').replace(/\D/g, '');
+      const gPhone = get('guardian_phone').replace(/\D/g, '');
+      const workload = parseInt(get('workload').replace(/\D/g, ''), 10);
+      const courseName = get('course');
+      const matchedCourse = courseName
+        ? courses?.find(c => c.name.toLowerCase().includes(courseName.toLowerCase()) || courseName.toLowerCase().includes(c.name.toLowerCase()))
+        : undefined;
+      const guardianName = get('guardian_name');
+
+      setForm(f => ({
+        ...f,
+        full_name: get('full_name') || f.full_name,
+        cpf: cpf ? formatCpfMask(cpf) : f.cpf,
+        birth_date: get('birth_date') || f.birth_date,
+        phone: phone ? formatPhoneMask(phone) : f.phone,
+        guardian_name: guardianName || f.guardian_name,
+        guardian_phone: gPhone ? formatPhoneMask(gPhone) : f.guardian_phone,
+        street: get('street') || f.street,
+        house_number: get('house_number') || f.house_number,
+        neighborhood: get('neighborhood') || f.neighborhood,
+        city: get('city') || f.city,
+        state: get('state') || f.state,
+        cep: cep ? formatCepMask(cep) : f.cep,
+        enrollment_date: get('enrollment_date') || f.enrollment_date,
+        workload: Number.isFinite(workload) && workload > 0 ? workload : f.workload,
+        course_id: matchedCourse ? matchedCourse.id : f.course_id,
+        custom_course_name: !matchedCourse && courseName ? courseName : f.custom_course_name,
+        show_guardian: f.show_guardian || !!guardianName,
+      }));
+      setLowConfidence(low);
+
+      // Integração com CEP: se a ficha não trouxe CEP confiável mas trouxe endereço, tenta localizar
+      if (!cep && get('street') && get('city') && get('state')) {
+        try {
+          const found = await lookupCepByAddress(get('state'), get('city'), get('street'));
+          if (found.length === 1) {
+            applyCepMatch(found[0]);
+          } else if (found.length > 1) {
+            setCepMatches(found);
+            setCepDialogOpen(true);
+          }
+        } catch { /* CEP manual */ }
+      }
+
+      toast.success('Leitura concluída! Revise os campos destacados antes de salvar.');
+    } catch {
+      toast.error('Não foi possível processar o documento. Tente novamente ou preencha manualmente.');
+    } finally {
+      setOcrLoading(false);
+    }
+  };
 
   const { data: students } = useStudents(false); // all students
   const { data: courses } = useCourses();
