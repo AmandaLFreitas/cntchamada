@@ -1215,6 +1215,28 @@ export default function Students() {
         onOpenChange={(o) => { if (!o) setDetailsStudentId(null); }}
         studentId={detailsStudentId}
       />
+
+      {/* CEP options dialog */}
+      <Dialog open={cepDialogOpen} onOpenChange={setCepDialogOpen}>
+        <DialogContent className="max-w-md w-[95vw]">
+          <DialogHeader>
+            <DialogTitle>Selecione o endereço correto</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-2 max-h-[60vh] overflow-auto">
+            {cepMatches.map((m, i) => (
+              <button
+                key={i}
+                type="button"
+                className="w-full text-left border rounded-lg p-3 hover:bg-muted/50 transition-colors"
+                onClick={() => applyCepMatch(m)}
+              >
+                <p className="font-medium">{formatCepMask(m.cep)}</p>
+                <p className="text-sm text-muted-foreground">{[m.logradouro, m.bairro, m.localidade, m.uf].filter(Boolean).join(' — ')}</p>
+              </button>
+            ))}
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
