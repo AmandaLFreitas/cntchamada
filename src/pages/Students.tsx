@@ -938,9 +938,43 @@ export default function Students() {
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div><Label>Nome completo</Label><Input value={form.full_name} onChange={e => setForm(f => ({ ...f, full_name: e.target.value }))} disabled={!!addCourseStudentId} /></div>
-              {isAdmin && <div><Label>CPF</Label><Input value={form.cpf} onChange={e => setForm(f => ({ ...f, cpf: e.target.value }))} /></div>}
-              {isAdmin && <div><Label>Rua</Label><Input value={form.street} onChange={e => setForm(f => ({ ...f, street: e.target.value }))} /></div>}
-              {isAdmin && <div><Label>Número da Casa</Label><Input value={form.house_number} onChange={e => setForm(f => ({ ...f, house_number: e.target.value }))} /></div>}
+              {isAdmin && (
+                <div>
+                  <Label>CPF</Label>
+                  <Input
+                    inputMode="numeric"
+                    placeholder="000.000.000-00"
+                    maxLength={14}
+                    value={form.cpf}
+                    onChange={e => setForm(f => ({ ...f, cpf: formatCpfMask(e.target.value) }))}
+                    className={highlightCls('cpf')}
+                  />
+                </div>
+              )}
+              {isAdmin && <div><Label>Rua</Label><Input value={form.street} onChange={e => setForm(f => ({ ...f, street: e.target.value }))} className={highlightCls('street')} /></div>}
+              {isAdmin && <div><Label>Número da Casa</Label><Input inputMode="numeric" value={form.house_number} onChange={e => setForm(f => ({ ...f, house_number: e.target.value }))} className={highlightCls('house_number')} /></div>}
+              {isAdmin && <div><Label>Bairro</Label><Input value={form.neighborhood} onChange={e => setForm(f => ({ ...f, neighborhood: e.target.value }))} className={highlightCls('neighborhood')} /></div>}
+              {isAdmin && <div><Label>Cidade</Label><Input value={form.city} onChange={e => setForm(f => ({ ...f, city: e.target.value }))} className={highlightCls('city')} /></div>}
+              {isAdmin && <div><Label>Estado (UF)</Label><Input maxLength={2} placeholder="PR" value={form.state} onChange={e => setForm(f => ({ ...f, state: e.target.value.toUpperCase().replace(/[^A-Z]/g, '') }))} className={highlightCls('state')} /></div>}
+              {isAdmin && (
+                <div>
+                  <Label>CEP</Label>
+                  <div className="flex gap-2">
+                    <Input
+                      inputMode="numeric"
+                      placeholder="00000-000"
+                      maxLength={9}
+                      value={form.cep}
+                      onChange={e => setForm(f => ({ ...f, cep: formatCepMask(e.target.value) }))}
+                      className={highlightCls('cep')}
+                    />
+                    <Button type="button" variant="outline" size="sm" className="shrink-0" onClick={() => handleCepLookup()} disabled={cepLoading} title="Localizar CEP pelo endereço">
+                      {cepLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <MapPin className="h-4 w-4" />}
+                      <span className="ml-1 hidden sm:inline">Buscar</span>
+                    </Button>
+                  </div>
+                </div>
+              )}
               <div>
                 <Label>Telefone</Label>
                 <Input
