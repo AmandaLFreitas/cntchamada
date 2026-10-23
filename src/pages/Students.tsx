@@ -21,12 +21,15 @@ import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { PhotoLightbox } from '@/components/PhotoLightbox';
-import { openWhatsApp, formatPhoneMask } from '@/lib/utils';
+import { openWhatsApp, formatPhoneMask, formatCpfMask, formatCepMask } from '@/lib/utils';
+import { lookupCepByAddress, type CepMatch } from '@/lib/cep-lookup';
+import { ScanLine, Loader2, MapPin } from 'lucide-react';
 
 interface StudentForm {
   full_name: string; street: string; house_number: string; birth_date: string;
   cpf: string; guardian_name: string; guardian_phone: string;
   phone: string;
+  cep: string; neighborhood: string; city: string; state: string;
   photo_url: string;
   material_sent: boolean;
   // Course data
@@ -49,6 +52,7 @@ const emptyForm: StudentForm = {
   full_name: '', street: '', house_number: '', birth_date: '',
   cpf: '', guardian_name: '', guardian_phone: '',
   phone: '',
+  cep: '', neighborhood: '', city: '', state: '',
   photo_url: '',
   material_sent: false,
   course_id: '', custom_course_name: '',
