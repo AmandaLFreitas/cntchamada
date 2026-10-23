@@ -22,6 +22,23 @@ export function isValidPhone(phone: string | null | undefined): boolean {
   return d.length === 10 || d.length === 11;
 }
 
+/** Apply BR CPF mask 000.000.000-00 while typing. Accepts pasted input with or without punctuation, max 11 digits. */
+export function formatCpfMask(raw: string | null | undefined): string {
+  const d = (raw || '').replace(/\D/g, '').slice(0, 11);
+  if (d.length === 0) return '';
+  if (d.length <= 3) return d;
+  if (d.length <= 6) return `${d.slice(0, 3)}.${d.slice(3)}`;
+  if (d.length <= 9) return `${d.slice(0, 3)}.${d.slice(3, 6)}.${d.slice(6)}`;
+  return `${d.slice(0, 3)}.${d.slice(3, 6)}.${d.slice(6, 9)}-${d.slice(9)}`;
+}
+
+/** Apply BR CEP mask 00000-000 while typing. Max 8 digits. */
+export function formatCepMask(raw: string | null | undefined): string {
+  const d = (raw || '').replace(/\D/g, '').slice(0, 8);
+  if (d.length <= 5) return d;
+  return `${d.slice(0, 5)}-${d.slice(5)}`;
+}
+
 /** Open a WhatsApp conversation in a new tab. Strips non-digits and prefixes 55 if missing. */
 export function openWhatsApp(phone: string | null | undefined, message?: string) {
   if (!phone) return;

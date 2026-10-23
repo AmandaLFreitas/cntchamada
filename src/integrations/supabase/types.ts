@@ -345,6 +345,8 @@ export type Database = {
       students: {
         Row: {
           birth_date: string | null
+          cep: string | null
+          city: string | null
           cpf: string | null
           created_at: string
           full_name: string | null
@@ -354,14 +356,18 @@ export type Database = {
           id: string
           is_active: boolean
           material_sent: boolean
+          neighborhood: string | null
           phone: string | null
           photo_url: string | null
           school_id: string
+          state: string | null
           street: string | null
           updated_at: string
         }
         Insert: {
           birth_date?: string | null
+          cep?: string | null
+          city?: string | null
           cpf?: string | null
           created_at?: string
           full_name?: string | null
@@ -371,14 +377,18 @@ export type Database = {
           id?: string
           is_active?: boolean
           material_sent?: boolean
+          neighborhood?: string | null
           phone?: string | null
           photo_url?: string | null
           school_id: string
+          state?: string | null
           street?: string | null
           updated_at?: string
         }
         Update: {
           birth_date?: string | null
+          cep?: string | null
+          city?: string | null
           cpf?: string | null
           created_at?: string
           full_name?: string | null
@@ -388,9 +398,11 @@ export type Database = {
           id?: string
           is_active?: boolean
           material_sent?: boolean
+          neighborhood?: string | null
           phone?: string | null
           photo_url?: string | null
           school_id?: string
+          state?: string | null
           street?: string | null
           updated_at?: string
         }
@@ -544,10 +556,14 @@ export type Database = {
       get_student_pii: {
         Args: { _id: string }
         Returns: {
+          cep: string
+          city: string
           cpf: string
           guardian_name: string
           guardian_phone: string
           house_number: string
+          neighborhood: string
+          state: string
           street: string
         }[]
       }

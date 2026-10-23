@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useRef } from 'react';
+import { useState, useEffect, useMemo, useRef, type ChangeEvent } from 'react';
 import { useStudents, useCourses, useTimeSlots, useCreateStudent, useUpdateStudent, useDeleteStudent, useCompletions } from '@/hooks/use-supabase-data';
 import { supabase } from '@/integrations/supabase/client';
 import { DateInput } from '@/components/DateInput';
@@ -21,12 +21,15 @@ import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { PhotoLightbox } from '@/components/PhotoLightbox';
-import { openWhatsApp, formatPhoneMask } from '@/lib/utils';
+import { openWhatsApp, formatPhoneMask, formatCpfMask, formatCepMask } from '@/lib/utils';
+import { lookupCepByAddress, type CepMatch } from '@/lib/cep-lookup';
+import { ScanLine, Loader2, MapPin } from 'lucide-react';
 
 interface StudentForm {
   full_name: string; street: string; house_number: string; birth_date: string;
   cpf: string; guardian_name: string; guardian_phone: string;
   phone: string;
+  cep: string; neighborhood: string; city: string; state: string;
   photo_url: string;
   material_sent: boolean;
   // Course data
@@ -49,6 +52,7 @@ const emptyForm: StudentForm = {
   full_name: '', street: '', house_number: '', birth_date: '',
   cpf: '', guardian_name: '', guardian_phone: '',
   phone: '',
+  cep: '', neighborhood: '', city: '', state: '',
   photo_url: '',
   material_sent: false,
   course_id: '', custom_course_name: '',
@@ -116,6 +120,145 @@ export default function Students() {
   const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
   const [detailsStudentId, setDetailsStudentId] = useState<string | null>(null);
   const photoInputRef = useRef<HTMLInputElement>(null);
+  const fichaInputRef = useRef<HTMLInputElement>(null);
+  const cameraInputRef = useRef<HTMLInputElement>(null);
+  const [ocrLoading, setOcrLoading] = useState(false);
+  const [lowConfidence, setLowConfidence] = useState<Set<string>>(new Set());
+  const [cepLoading, setCepLoading] = useState(false);
+  const [cepMatches, setCepMatches] = useState<CepMatch[]>([]);
+  const [cepDialogOpen, setCepDialogOpen] = useState(false);
+
+  const highlightCls = (field: string) =>
+    lowConfidence.has(field) ? 'border-amber-500 ring-1 ring-amber-500 bg-amber-50 dark:bg-amber-950/30' : '';
+
+  const applyCepMatch = (m: CepMatch) => {
+    setForm(f => ({
+      ...f,
+      cep: formatCepMask(m.cep),
+      neighborhood: f.neighborhood || m.bairro,
+      city: f.city || m.localidade,
+      state: f.state || m.uf,
+    }));
+    setCepDialogOpen(false);
+  };
+
+  const handleCepLookup = async (matches?: CepMatch[]) => {
+    const list = matches ?? null;
+    if (list) {
+      if (list.length === 0) { toast.info('CEP não encontrado para este endereço. Preencha manualmente.'); return; }
+      if (list.length === 1) { applyCepMatch(list[0]); toast.success('CEP localizado!'); return; }
+      setCepMatches(list);
+      setCepDialogOpen(true);
+      return;
+    }
+    if (!form.street.trim() || !form.city.trim() || !form.state.trim()) {
+      toast.info('Informe rua, cidade e UF para localizar o CEP.');
+      return;
+    }
+    setCepLoading(true);
+    try {
+      const found = await lookupCepByAddress(form.state, form.city, form.street);
+      if (found.length === 0) { toast.info('CEP não encontrado para este endereço. Preencha manualmente.'); return; }
+      // Não sobrescreve um CEP já preenchido sem confirmação
+      if (form.cep.trim()) {
+        const exact = found.find(m => formatCepMask(m.cep) === form.cep.trim());
+        if (!exact && !window.confirm('O CEP encontrado é diferente do informado. Substituir?')) return;
+      }
+      if (found.length === 1) { applyCepMatch(found[0]); toast.success('CEP localizado!'); return; }
+      setCepMatches(found);
+      setCepDialogOpen(true);
+    } catch {
+      toast.error('Serviço de CEP indisponível no momento. Preencha manualmente.');
+    } finally {
+      setCepLoading(false);
+    }
+  };
+
+  const handleFichaFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file) return;
+    if (file.size > 10 * 1024 * 1024) {
+      toast.error('Arquivo muito grande (máx. 10 MB).');
+      return;
+    }
+    setOcrLoading(true);
+    setLowConfidence(new Set());
+    try {
+      const base64 = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(String(reader.result).split(',')[1] || '');
+        reader.onerror = () => reject(new Error('read error'));
+        reader.readAsDataURL(file);
+      });
+      const { data, error } = await supabase.functions.invoke('read-enrollment-form', {
+        body: { fileData: base64, mimeType: file.type || 'image/jpeg' },
+      });
+      if (error || !data?.fields) {
+        toast.error(data?.error || 'Não foi possível processar o documento. Tente novamente ou preencha manualmente.');
+        return;
+      }
+      const F = data.fields as Record<string, { value: string; confidence: string }>;
+      const low = new Set<string>();
+      const get = (k: string) => {
+        const f = F[k];
+        if (!f || !f.value) return '';
+        if (f.confidence !== 'alta') low.add(k);
+        return f.value;
+      };
+      const cpf = get('cpf').replace(/\D/g, '');
+      const cep = get('cep').replace(/\D/g, '');
+      const phone = get('phone').replace(/\D/g, '');
+      const gPhone = get('guardian_phone').replace(/\D/g, '');
+      const workload = parseInt(get('workload').replace(/\D/g, ''), 10);
+      const courseName = get('course');
+      const matchedCourse = courseName
+        ? courses?.find(c => c.name.toLowerCase().includes(courseName.toLowerCase()) || courseName.toLowerCase().includes(c.name.toLowerCase()))
+        : undefined;
+      const guardianName = get('guardian_name');
+
+      setForm(f => ({
+        ...f,
+        full_name: get('full_name') || f.full_name,
+        cpf: cpf ? formatCpfMask(cpf) : f.cpf,
+        birth_date: get('birth_date') || f.birth_date,
+        phone: phone ? formatPhoneMask(phone) : f.phone,
+        guardian_name: guardianName || f.guardian_name,
+        guardian_phone: gPhone ? formatPhoneMask(gPhone) : f.guardian_phone,
+        street: get('street') || f.street,
+        house_number: get('house_number') || f.house_number,
+        neighborhood: get('neighborhood') || f.neighborhood,
+        city: get('city') || f.city,
+        state: get('state') || f.state,
+        cep: cep ? formatCepMask(cep) : f.cep,
+        enrollment_date: get('enrollment_date') || f.enrollment_date,
+        workload: Number.isFinite(workload) && workload > 0 ? workload : f.workload,
+        course_id: matchedCourse ? matchedCourse.id : f.course_id,
+        custom_course_name: !matchedCourse && courseName ? courseName : f.custom_course_name,
+        show_guardian: f.show_guardian || !!guardianName,
+      }));
+      setLowConfidence(low);
+
+      // Integração com CEP: se a ficha não trouxe CEP confiável mas trouxe endereço, tenta localizar
+      if (!cep && get('street') && get('city') && get('state')) {
+        try {
+          const found = await lookupCepByAddress(get('state'), get('city'), get('street'));
+          if (found.length === 1) {
+            applyCepMatch(found[0]);
+          } else if (found.length > 1) {
+            setCepMatches(found);
+            setCepDialogOpen(true);
+          }
+        } catch { /* CEP manual */ }
+      }
+
+      toast.success('Leitura concluída! Revise os campos destacados antes de salvar.');
+    } catch {
+      toast.error('Não foi possível processar o documento. Tente novamente ou preencha manualmente.');
+    } finally {
+      setOcrLoading(false);
+    }
+  };
 
   const { data: students } = useStudents(false); // all students
   const { data: courses } = useCourses();
@@ -288,11 +431,16 @@ export default function Students() {
       street: pii?.street ?? student.street ?? '',
       house_number: pii?.house_number ?? student.house_number ?? '',
       birth_date: student.birth_date ?? '',
-      cpf: pii?.cpf ?? student.cpf ?? '',
+      cpf: formatCpfMask(pii?.cpf ?? student.cpf ?? ''),
       guardian_name: pii?.guardian_name ?? student.guardian_name ?? '',
       guardian_phone: pii?.guardian_phone ?? student.guardian_phone ?? '',
+      cep: formatCepMask(pii?.cep ?? student.cep ?? ''),
+      neighborhood: pii?.neighborhood ?? student.neighborhood ?? '',
+      city: pii?.city ?? student.city ?? '',
+      state: pii?.state ?? student.state ?? '',
       show_guardian: !!(pii?.guardian_name ?? student.guardian_name) || isMinor(student.birth_date ?? ''),
     });
+    setLowConfidence(new Set());
     setDialogOpen(true);
   };
 
@@ -332,10 +480,14 @@ export default function Students() {
       street: pii?.street ?? student.street ?? '',
       house_number: pii?.house_number ?? student.house_number ?? '',
       birth_date: student.birth_date ?? '',
-      cpf: pii?.cpf ?? student.cpf ?? '',
+      cpf: formatCpfMask(pii?.cpf ?? student.cpf ?? ''),
       guardian_name: pii?.guardian_name ?? student.guardian_name ?? '',
       guardian_phone: pii?.guardian_phone ?? student.guardian_phone ?? '',
       phone: formatPhoneMask((student as any).phone ?? ''),
+      cep: formatCepMask(pii?.cep ?? (student as any).cep ?? ''),
+      neighborhood: pii?.neighborhood ?? (student as any).neighborhood ?? '',
+      city: pii?.city ?? (student as any).city ?? '',
+      state: pii?.state ?? (student as any).state ?? '',
       photo_url: student.photo_url ?? '',
       material_sent: (student as any).material_sent ?? false,
       course_id: sc.course_id ?? '',
@@ -419,7 +571,11 @@ export default function Students() {
     if (isAdmin) {
       personalData.street = form.street || null;
       personalData.house_number = form.house_number || null;
-      personalData.cpf = form.cpf || null;
+      personalData.cpf = form.cpf ? form.cpf.replace(/\D/g, '') : null;
+      personalData.cep = form.cep ? form.cep.replace(/\D/g, '') : null;
+      personalData.neighborhood = form.neighborhood || null;
+      personalData.city = form.city || null;
+      personalData.state = form.state ? form.state.toUpperCase().slice(0, 2) : null;
     }
 
     // Adding a new course to existing student
@@ -780,11 +936,67 @@ export default function Students() {
               </div>
             </div>
 
+            {/* Leitura de ficha de matrícula por foto/PDF */}
+            <div className="border rounded-lg p-3 bg-muted/30 space-y-2">
+              <p className="text-sm font-medium">Preenchimento automático</p>
+              <p className="text-xs text-muted-foreground">Envie uma foto legível da ficha de matrícula (boa iluminação, sem cortes) ou um PDF digitalizado. Revise os dados antes de salvar.</p>
+              <div className="flex flex-wrap gap-2">
+                <input type="file" accept="image/*" capture="environment" ref={cameraInputRef} onChange={handleFichaFile} className="hidden" />
+                <input type="file" accept="image/*,application/pdf" ref={fichaInputRef} onChange={handleFichaFile} className="hidden" />
+                <Button type="button" variant="outline" size="sm" onClick={() => cameraInputRef.current?.click()} disabled={ocrLoading}>
+                  {ocrLoading ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <Camera className="h-4 w-4 mr-1" />}
+                  Fotografar ficha
+                </Button>
+                <Button type="button" variant="outline" size="sm" onClick={() => fichaInputRef.current?.click()} disabled={ocrLoading}>
+                  {ocrLoading ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <ScanLine className="h-4 w-4 mr-1" />}
+                  Enviar imagem ou PDF
+                </Button>
+              </div>
+              {ocrLoading && <p className="text-xs text-muted-foreground">Lendo a ficha, aguarde...</p>}
+              {lowConfidence.size > 0 && !ocrLoading && (
+                <p className="text-xs text-amber-600 dark:text-amber-500">Campos destacados em laranja tiveram leitura incerta — confira antes de salvar.</p>
+              )}
+            </div>
+
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div><Label>Nome completo</Label><Input value={form.full_name} onChange={e => setForm(f => ({ ...f, full_name: e.target.value }))} disabled={!!addCourseStudentId} /></div>
-              {isAdmin && <div><Label>CPF</Label><Input value={form.cpf} onChange={e => setForm(f => ({ ...f, cpf: e.target.value }))} /></div>}
-              {isAdmin && <div><Label>Rua</Label><Input value={form.street} onChange={e => setForm(f => ({ ...f, street: e.target.value }))} /></div>}
-              {isAdmin && <div><Label>Número da Casa</Label><Input value={form.house_number} onChange={e => setForm(f => ({ ...f, house_number: e.target.value }))} /></div>}
+              <div><Label>Nome completo</Label><Input value={form.full_name} onChange={e => setForm(f => ({ ...f, full_name: e.target.value }))} disabled={!!addCourseStudentId} className={highlightCls('full_name')} /></div>
+              {isAdmin && (
+                <div>
+                  <Label>CPF</Label>
+                  <Input
+                    inputMode="numeric"
+                    placeholder="000.000.000-00"
+                    maxLength={14}
+                    value={form.cpf}
+                    onChange={e => setForm(f => ({ ...f, cpf: formatCpfMask(e.target.value) }))}
+                    className={highlightCls('cpf')}
+                  />
+                </div>
+              )}
+              {isAdmin && <div><Label>Rua</Label><Input value={form.street} onChange={e => setForm(f => ({ ...f, street: e.target.value }))} className={highlightCls('street')} /></div>}
+              {isAdmin && <div><Label>Número da Casa</Label><Input inputMode="numeric" value={form.house_number} onChange={e => setForm(f => ({ ...f, house_number: e.target.value }))} className={highlightCls('house_number')} /></div>}
+              {isAdmin && <div><Label>Bairro</Label><Input value={form.neighborhood} onChange={e => setForm(f => ({ ...f, neighborhood: e.target.value }))} className={highlightCls('neighborhood')} /></div>}
+              {isAdmin && <div><Label>Cidade</Label><Input value={form.city} onChange={e => setForm(f => ({ ...f, city: e.target.value }))} className={highlightCls('city')} /></div>}
+              {isAdmin && <div><Label>Estado (UF)</Label><Input maxLength={2} placeholder="PR" value={form.state} onChange={e => setForm(f => ({ ...f, state: e.target.value.toUpperCase().replace(/[^A-Z]/g, '') }))} className={highlightCls('state')} /></div>}
+              {isAdmin && (
+                <div>
+                  <Label>CEP</Label>
+                  <div className="flex gap-2">
+                    <Input
+                      inputMode="numeric"
+                      placeholder="00000-000"
+                      maxLength={9}
+                      value={form.cep}
+                      onChange={e => setForm(f => ({ ...f, cep: formatCepMask(e.target.value) }))}
+                      className={highlightCls('cep')}
+                    />
+                    <Button type="button" variant="outline" size="sm" className="shrink-0" onClick={() => handleCepLookup()} disabled={cepLoading} title="Localizar CEP pelo endereço">
+                      {cepLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <MapPin className="h-4 w-4" />}
+                      <span className="ml-1 hidden sm:inline">Buscar</span>
+                    </Button>
+                  </div>
+                </div>
+              )}
               <div>
                 <Label>Telefone</Label>
                 <Input
@@ -1003,6 +1215,28 @@ export default function Students() {
         onOpenChange={(o) => { if (!o) setDetailsStudentId(null); }}
         studentId={detailsStudentId}
       />
+
+      {/* CEP options dialog */}
+      <Dialog open={cepDialogOpen} onOpenChange={setCepDialogOpen}>
+        <DialogContent className="max-w-md w-[95vw]">
+          <DialogHeader>
+            <DialogTitle>Selecione o endereço correto</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-2 max-h-[60vh] overflow-auto">
+            {cepMatches.map((m, i) => (
+              <button
+                key={i}
+                type="button"
+                className="w-full text-left border rounded-lg p-3 hover:bg-muted/50 transition-colors"
+                onClick={() => applyCepMatch(m)}
+              >
+                <p className="font-medium">{formatCepMask(m.cep)}</p>
+                <p className="text-sm text-muted-foreground">{[m.logradouro, m.bairro, m.localidade, m.uf].filter(Boolean).join(' — ')}</p>
+              </button>
+            ))}
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
