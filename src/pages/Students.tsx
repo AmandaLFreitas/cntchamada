@@ -936,8 +936,30 @@ export default function Students() {
               </div>
             </div>
 
+            {/* Leitura de ficha de matrícula por foto/PDF */}
+            <div className="border rounded-lg p-3 bg-muted/30 space-y-2">
+              <p className="text-sm font-medium">Preenchimento automático</p>
+              <p className="text-xs text-muted-foreground">Envie uma foto legível da ficha de matrícula (boa iluminação, sem cortes) ou um PDF digitalizado. Revise os dados antes de salvar.</p>
+              <div className="flex flex-wrap gap-2">
+                <input type="file" accept="image/*" capture="environment" ref={cameraInputRef} onChange={handleFichaFile} className="hidden" />
+                <input type="file" accept="image/*,application/pdf" ref={fichaInputRef} onChange={handleFichaFile} className="hidden" />
+                <Button type="button" variant="outline" size="sm" onClick={() => cameraInputRef.current?.click()} disabled={ocrLoading}>
+                  {ocrLoading ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <Camera className="h-4 w-4 mr-1" />}
+                  Fotografar ficha
+                </Button>
+                <Button type="button" variant="outline" size="sm" onClick={() => fichaInputRef.current?.click()} disabled={ocrLoading}>
+                  {ocrLoading ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <ScanLine className="h-4 w-4 mr-1" />}
+                  Enviar imagem ou PDF
+                </Button>
+              </div>
+              {ocrLoading && <p className="text-xs text-muted-foreground">Lendo a ficha, aguarde...</p>}
+              {lowConfidence.size > 0 && !ocrLoading && (
+                <p className="text-xs text-amber-600 dark:text-amber-500">Campos destacados em laranja tiveram leitura incerta — confira antes de salvar.</p>
+              )}
+            </div>
+
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div><Label>Nome completo</Label><Input value={form.full_name} onChange={e => setForm(f => ({ ...f, full_name: e.target.value }))} disabled={!!addCourseStudentId} /></div>
+              <div><Label>Nome completo</Label><Input value={form.full_name} onChange={e => setForm(f => ({ ...f, full_name: e.target.value }))} disabled={!!addCourseStudentId} className={highlightCls('full_name')} /></div>
               {isAdmin && (
                 <div>
                   <Label>CPF</Label>
