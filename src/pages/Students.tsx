@@ -937,24 +937,23 @@ export default function Students() {
             </div>
 
             {/* Leitura de ficha de matrícula por foto/PDF */}
-            <div className="border rounded-lg p-3 bg-muted/30 space-y-2">
-              <p className="text-sm font-medium">Preenchimento automático</p>
-              <p className="text-xs text-muted-foreground">Envie uma foto legível da ficha de matrícula (boa iluminação, sem cortes) ou um PDF digitalizado. Revise os dados antes de salvar.</p>
-              <div className="flex flex-wrap gap-2">
+            <div className="rounded-md border border-border/60 bg-muted/20 px-2.5 py-1.5">
+              <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                <span className="text-xs font-medium text-muted-foreground">Preenchimento automático</span>
                 <input type="file" accept="image/*" capture="environment" ref={cameraInputRef} onChange={handleFichaFile} className="hidden" />
                 <input type="file" accept="image/*,application/pdf" ref={fichaInputRef} onChange={handleFichaFile} className="hidden" />
-                <Button type="button" variant="outline" size="sm" onClick={() => cameraInputRef.current?.click()} disabled={ocrLoading}>
-                  {ocrLoading ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <Camera className="h-4 w-4 mr-1" />}
-                  Fotografar ficha
+                <Button type="button" variant="ghost" size="sm" className="h-6 px-2 text-xs" onClick={() => cameraInputRef.current?.click()} disabled={ocrLoading} title="Enviar foto legível da ficha de matrícula (boa iluminação, sem cortes)">
+                  {ocrLoading ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : <Camera className="h-3 w-3 mr-1" />}
+                  Fotografar
                 </Button>
-                <Button type="button" variant="outline" size="sm" onClick={() => fichaInputRef.current?.click()} disabled={ocrLoading}>
-                  {ocrLoading ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <ScanLine className="h-4 w-4 mr-1" />}
-                  Enviar imagem ou PDF
+                <Button type="button" variant="ghost" size="sm" className="h-6 px-2 text-xs" onClick={() => fichaInputRef.current?.click()} disabled={ocrLoading} title="Enviar imagem ou PDF digitalizado da ficha">
+                  {ocrLoading ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : <ScanLine className="h-3 w-3 mr-1" />}
+                  Imagem / PDF
                 </Button>
+                {ocrLoading && <span className="text-xs text-muted-foreground">Lendo a ficha...</span>}
               </div>
-              {ocrLoading && <p className="text-xs text-muted-foreground">Lendo a ficha, aguarde...</p>}
               {lowConfidence.size > 0 && !ocrLoading && (
-                <p className="text-xs text-amber-600 dark:text-amber-500">Campos destacados em laranja tiveram leitura incerta — confira antes de salvar.</p>
+                <p className="text-xs text-amber-600 dark:text-amber-500">Campos em laranja: leitura incerta, confira antes de salvar.</p>
               )}
             </div>
 
