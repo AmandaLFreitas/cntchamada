@@ -16,6 +16,7 @@ import { cn } from '@/lib/utils';
 import jsPDF from 'jspdf';
 import { useStudentCourses } from '@/hooks/use-supabase-data';
 import { attendanceHours } from '@/lib/enrollment-attendance';
+import { currentFrequencyEnrollment, attendanceInEnrollment } from '@/lib/frequency-enrollment';
 
 interface Props {
   open: boolean;
@@ -39,9 +40,10 @@ const slotHours = (start?: string | null, end?: string | null): number => {
 export function StudentFrequencyDialog({ open, onOpenChange, studentId, studentName, studentCourseId }: Props) {
   const { data: courses } = useStudentCourses(open ? studentId : null);
   const [selectedCourse, setSelectedCourse] = useState('');
-  const courseId = studentCourseId || selectedCourse;
+  const courseId = selectedCourse || studentCourseId || currentFrequencyEnrollment(courses ?? []);
+  const enrollment = courses?.find((course: any) => course.id === courseId);
   const courseName = courses?.find((course: any) => course.id === courseId)?.courses?.name || courses?.find((course: any) => course.id === courseId)?.custom_course_name;
-  const [filterMode, setFilterMode] = useState<FilterMode>('current_month');
+  const [filterMode, setFilterMode] = useState<FilterMode>('all');
   const [customStart, setCustomStart] = useState<Date | undefined>();
   const [customEnd, setCustomEnd] = useState<Date | undefined>();
   const [showDetails, setShowDetails] = useState(false);
@@ -51,14 +53,18 @@ export function StudentFrequencyDialog({ open, onOpenChange, studentId, studentN
     queryKey: ['student_attendance_all', studentId, schoolId],
     enabled: !!studentId && open && !!schoolId,
     queryFn: async () => {
+      const rows: any[] = [];
+      for (let from = 0; ; from += 1000) {
       const { data, error } = await supabase
         .from('attendance')
         .select('id, date, status, student_course_id, recorded_hours, time_slot_id, time_slots(start_time, end_time, day_of_week)')
-        .eq('school_id', schoolId!)
-        .eq('student_id', studentId!)
-        .order('date', { ascending: false });
+        .eq('school_id', schoolId ?? '')
+        .eq('student_id', studentId ?? '')
+        .order('date', { ascending: false }).order('id').range(from, from + 999);
       if (error) throw error;
-      return data ?? [];
+      rows.push(...(data ?? []));
+      if (!data || data.length < 1000) return rows;
+      }
     },
   });
 
@@ -68,7 +74,7 @@ export function StudentFrequencyDialog({ open, onOpenChange, studentId, studentN
       id: string; date: string; status: 'present' | 'absent' | 'neutral';
       start: string; end: string; hours: number;
     }>;
-    return (attendanceRecords as any[]).filter(r => courseId === 'legacy' ? !r.student_course_id : r.student_course_id === courseId).map(r => {
+    return (attendanceRecords as any[]).filter(r => courseId === 'legacy' ? !r.student_course_id : r.student_course_id === courseId && attendanceInEnrollment(r.date, enrollment?.enrollment_date)).map(r => {
       const start = (r.time_slots?.start_time || '').slice(0, 5);
       const end = (r.time_slots?.end_time || '').slice(0, 5);
       return {
@@ -83,7 +89,7 @@ export function StudentFrequencyDialog({ open, onOpenChange, studentId, studentN
       if (a.date !== b.date) return b.date.localeCompare(a.date);
       return a.start.localeCompare(b.start);
     });
-  }, [attendanceRecords, courseId]);
+  }, [attendanceRecords, courseId, enrollment?.enrollment_date]);
 
   const inRange = useCallback((dateStr: string) => {
     const now = new Date();
@@ -118,7 +124,7 @@ export function StudentFrequencyDialog({ open, onOpenChange, studentId, studentN
   }, [filtered]);
 
   const detailRecords = useMemo(
-    () => filtered.filter(r => r.status !== 'neutral'),
+    () => filtered,
     [filtered]
   );
 
@@ -183,7 +189,7 @@ export function StudentFrequencyDialog({ open, onOpenChange, studentId, studentN
         if (y > 270) { doc.addPage(); y = 20; }
         const dateStr = format(parseISO(r.date), 'dd/MM/yyyy (EEEE)', { locale: ptBR });
         const hStr = r.start && r.end ? `${r.start} às ${r.end}` : '—';
-        const statusStr = r.status === 'present' ? 'Presente' : 'Falta';
+        const statusStr = r.status === 'present' ? 'Presente' : r.status === 'absent' ? 'Falta' : 'Neutro';
         doc.text(dateStr, 20, y);
         doc.text(hStr, 75, y);
         doc.text(statusStr, 120, y);
@@ -196,19 +202,20 @@ export function StudentFrequencyDialog({ open, onOpenChange, studentId, studentN
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-lg max-h-[85vh] overflow-auto">
+      <DialogContent className="w-[95vw] max-w-lg max-h-[85vh] overflow-auto">
         <DialogHeader>
           <DialogTitle>Frequência - {studentName}</DialogTitle>
         </DialogHeader>
 
         <div className="flex flex-wrap items-center gap-2 mb-2">
-          {!studentCourseId && <Select value={selectedCourse} onValueChange={setSelectedCourse}>
+          <p className="text-sm font-medium break-words w-full">{courseId === 'legacy' ? 'Histórico sem matrícula identificada' : courseName || 'Sem matrícula atual'}</p>
+          <Select value={courseId} onValueChange={value => { setSelectedCourse(value); if (showDetails) setFilterMode('all'); }}>
             <SelectTrigger className="w-full"><SelectValue placeholder="Selecionar matrícula" /></SelectTrigger>
             <SelectContent>
               {(courses ?? []).map((course: any) => <SelectItem key={course.id} value={course.id}>{course.courses?.name || course.custom_course_name || 'Sem curso'} · {course.first_class_date || course.enrollment_date || 'Sem data'}</SelectItem>)}
               <SelectItem value="legacy">Histórico anterior sem vínculo de matrícula</SelectItem>
             </SelectContent>
-          </Select>}
+          </Select>
           <Select value={filterMode} onValueChange={(v) => setFilterMode(v as FilterMode)}>
             <SelectTrigger className="w-[180px]">
               <SelectValue />
@@ -271,7 +278,7 @@ export function StudentFrequencyDialog({ open, onOpenChange, studentId, studentN
         </div>
 
         <div className="flex gap-2 mb-2">
-          <Button variant="outline" size="sm" onClick={() => setShowDetails(!showDetails)} className="flex-1">
+          <Button variant="outline" size="sm" onClick={() => { setShowDetails(!showDetails); setFilterMode('all'); }} className="flex-1">
             {showDetails ? 'Ocultar histórico' : 'Ver histórico por hora'}
           </Button>
           <Button variant="outline" size="sm" onClick={generatePDF} className="flex-1">
