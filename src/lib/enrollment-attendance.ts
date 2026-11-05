@@ -1,4 +1,5 @@
 import { supabase } from '@/integrations/supabase/client';
+import { attendanceInEnrollment } from '@/lib/frequency-enrollment';
 
 export interface EnrollmentAttendance {
   id?: string;
@@ -21,10 +22,10 @@ export function attendanceHours(row: EnrollmentAttendance): number {
   return Number.isFinite(duration) ? Math.max(duration, 0) : 0;
 }
 
-export function enrollmentProgress(rows: EnrollmentAttendance[], enrollmentId: string, workload: number) {
+export function enrollmentProgress(rows: EnrollmentAttendance[], enrollmentId: string, workload: number, enrollmentStart?: string | null) {
   const seen = new Set<string>();
   const presences = rows.filter(row => {
-    if (row.student_course_id !== enrollmentId || row.status !== 'present') return false;
+    if (row.student_course_id !== enrollmentId || row.status !== 'present' || !attendanceInEnrollment(row.date, enrollmentStart)) return false;
     if (row.id && seen.has(row.id)) return false;
     if (row.id) seen.add(row.id);
     return true;
