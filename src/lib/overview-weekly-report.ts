@@ -1,3 +1,4 @@
+import { enrollmentProgress, fetchEnrollmentAttendance } from '@/lib/enrollment-attendance';
 import { addDays, format } from 'date-fns';
 import jsPDF from 'jspdf';
 import * as XLSX from 'xlsx-js-style';
@@ -80,10 +81,7 @@ export async function fetchOverviewWeeklyReport(schoolId: string, schoolName: st
     fetchAll((from, to) => (supabase as any).from('student_schedules')
       .select('id, student_id, student_course_id, time_slot_id')
       .eq('school_id', schoolId).range(from, to)),
-    fetchAll((from, to) => (supabase as any).from('attendance')
-      .select('student_id, time_slot_id, date, status')
-      .eq('school_id', schoolId).eq('status', 'present')
-      .order('date', { ascending: true }).range(from, to)),
+    fetchEnrollmentAttendance(schoolId),
   ]);
   if (slotsResult.error) throw slotsResult.error;
 
@@ -103,13 +101,6 @@ export async function fetchOverviewWeeklyReport(schoolId: string, schoolName: st
     schedulesByCourse.set(schedule.student_course_id, rows);
   });
 
-  const attendanceByStudent = new Map<string, any[]>();
-  attendance.forEach(row => {
-    const rows = attendanceByStudent.get(row.student_id) ?? [];
-    rows.push(row);
-    attendanceByStudent.set(row.student_id, rows);
-  });
-
   const courseInfo = new Map<string, Omit<OverviewReportStudent, 'scheduleId'>>();
   courseMap.forEach((course, courseId) => {
     const courseSchedules = schedulesByCourse.get(courseId) ?? [];
@@ -124,11 +115,8 @@ export async function fetchOverviewWeeklyReport(schoolId: string, schoolName: st
       courseSlotHours.set(slot.id, hours);
       weeklySchedule.push({ dayOfWeek, hours });
     });
-    const matchingPresence = (attendanceByStudent.get(course.student_id) ?? [])
-      .filter(row => courseSlotHours.has(row.time_slot_id));
-    const completed = matchingPresence.reduce((sum, row) => sum + (courseSlotHours.get(row.time_slot_id) ?? 0), 0);
     const workload = Number(course.workload) || 48;
-    const remaining = Math.max(workload - completed, 0);
+    const { hoursCompleted: completed, hoursRemaining: remaining, firstPresence } = enrollmentProgress(attendance, courseId, workload);
     const projected = remaining > 0 && weeklySchedule.length
       ? calculateScheduledCourseEndDate(addDays(new Date(), 1), remaining, weeklySchedule)
       : remaining <= 0 ? new Date() : null;
@@ -140,7 +128,7 @@ export async function fetchOverviewWeeklyReport(schoolId: string, schoolName: st
       workload,
       weeklyHours: weeklySchedule.reduce((sum, item) => sum + item.hours, 0),
       courseStart: course.first_class_date || course.enrollment_date || '—',
-      firstPresence: matchingPresence[0]?.date || '—',
+      firstPresence: firstPresence || '—',
       expectedEndDate: projected ? format(projected, 'dd/MM/yyyy') : '—',
       status: statusLabel(course.status || 'em_andamento'),
     });

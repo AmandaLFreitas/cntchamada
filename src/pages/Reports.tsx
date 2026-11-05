@@ -17,6 +17,7 @@ import { CertificateDialog } from '@/components/CertificateDialog';
 import type { CertificateData } from '@/lib/certificate-templates';
 import { useAuth } from '@/contexts/AuthContext';
 import { REPORT_STATUS_LABELS, reportCourseName, type ReportStatus } from '@/lib/report-status';
+import { enrollmentProgress, fetchEnrollmentAttendance } from '@/lib/enrollment-attendance';
 
 type ViewMode = 'cards' | 'list';
 type StatusFilter = ReportStatus;
@@ -39,6 +40,11 @@ export default function Reports() {
   }, [schoolId]);
 
   const statusCounts = data?.statusCounts;
+  const { data: enrollmentAttendance = [] } = useQuery({
+    queryKey: ['progress_attendance', schoolId],
+    enabled: !!schoolId,
+    queryFn: () => fetchEnrollmentAttendance(schoolId ?? ''),
+  });
 
   const { data: studentSchedules } = useQuery({
     queryKey: ['student_detail_schedules', selectedStudentId, schoolId],
@@ -196,6 +202,7 @@ export default function Reports() {
                   <div key={enrollment.id} className="border-b pb-3 text-sm">
                     <p className="font-medium">{reportCourseName(enrollment)}</p>
                     <p className="text-muted-foreground">{enrollment.workload}h · {REPORT_STATUS_LABELS[statusFilter]}</p>
+                    <p className="text-muted-foreground">Horas de presença vinculadas: {enrollmentProgress(enrollmentAttendance, enrollment.id, enrollment.workload).hoursCompleted}h · {enrollmentProgress(enrollmentAttendance, enrollment.id, enrollment.workload).pct.toFixed(1)}%</p>
                     {enrollment.status === 'finalizado' && (
                       <Button variant="outline" className="mt-2 gap-2" onClick={() => {
                         setCertData({ studentName: selectedStudent.full_name || 'Sem nome',

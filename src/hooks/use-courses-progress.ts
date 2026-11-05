@@ -2,7 +2,7 @@ import { useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useSchool } from '@/contexts/SchoolContext';
-import { effectiveWeeksBetween } from '@/lib/calendar-breaks';
+import { enrollmentProgress, fetchEnrollmentAttendance } from '@/lib/enrollment-attendance';
 
 export interface CourseProgress {
   workload: number;
@@ -47,7 +47,7 @@ export function useCoursesProgress(studentCourseIds: string[]) {
       const { data } = await (supabase as any)
         .from('student_courses')
         .select('id, student_id, workload, first_class_date, enrollment_date')
-        .in('id', ids);
+        .eq('school_id', schoolId ?? '').in('id', ids);
       return data || [];
     },
   });
@@ -59,7 +59,7 @@ export function useCoursesProgress(studentCourseIds: string[]) {
       const { data } = await supabase
         .from('student_schedules')
         .select('student_course_id, time_slot_id, time_slots(start_time, end_time, day_of_week)')
-        .eq('school_id', schoolId!)
+        .eq('school_id', schoolId ?? '')
         .in('student_course_id', ids);
       return data || [];
     },
@@ -72,13 +72,8 @@ export function useCoursesProgress(studentCourseIds: string[]) {
     queryKey: ['progress_attendance', schoolId, studentIds],
     enabled: !!schoolId && studentIds.length > 0,
     queryFn: async () => {
-      const { data } = await supabase
-        .from('attendance')
-        .select('student_id, time_slot_id, status')
-        .eq('school_id', schoolId!)
-        .in('student_id', studentIds)
-        .eq('status', 'present');
-      return data || [];
+      if (!schoolId) return [];
+      return fetchEnrollmentAttendance(schoolId);
     },
   });
 
@@ -102,12 +97,6 @@ export function useCoursesProgress(studentCourseIds: string[]) {
       }
     });
 
-    const attByStudent: Record<string, { time_slot_id: string }[]> = {};
-    attendance.forEach((a: any) => {
-      if (!attByStudent[a.student_id]) attByStudent[a.student_id] = [];
-      attByStudent[a.student_id].push({ time_slot_id: a.time_slot_id });
-    });
-
     const result: Record<string, CourseProgress> = {};
     (scs as any[]).forEach(sc => {
       const sched = schedBySc[sc.id];
@@ -118,21 +107,8 @@ export function useCoursesProgress(studentCourseIds: string[]) {
       const hoursPerDay = Math.max(weeklyHours / distinctDays, hps);
       const slotIds = sched?.slotIds ?? new Set<string>();
 
-      let realHours = 0;
-      (attByStudent[sc.student_id] ?? []).forEach(a => {
-        if (a.time_slot_id && slotIds.has(a.time_slot_id)) {
-          realHours += sched!.slotHoursMap[a.time_slot_id] ?? hps;
-        }
-      });
-
-      let estimated = 0;
-      const start = parseDate(sc.first_class_date || sc.enrollment_date);
-      if (start && weeklyHours > 0) {
-        const wks = effectiveWeeksBetween(start, today);
-        estimated = Math.min(wks * weeklyHours, sc.workload || 48);
-      }
       const workload = sc.workload || 48;
-      const hoursCompleted = Math.max(realHours, estimated);
+      const { hoursCompleted } = enrollmentProgress(attendance, sc.id, workload);
       const hoursRemaining = Math.max(workload - hoursCompleted, 0);
       const lessonsRemaining = Math.ceil(hoursRemaining / hps);
       const daysRemaining = Math.ceil(hoursRemaining / hoursPerDay);

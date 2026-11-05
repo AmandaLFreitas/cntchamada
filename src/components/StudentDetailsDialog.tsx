@@ -9,6 +9,9 @@ import { PhotoLightbox } from '@/components/PhotoLightbox';
 import { formatPhoneMask, openWhatsApp } from '@/lib/utils';
 import { Phone, MessageCircle } from 'lucide-react';
 import { formatBR } from '@/hooks/use-new-students';
+import { enrollmentProgress, fetchEnrollmentAttendance } from '@/lib/enrollment-attendance';
+import { StudentFrequencyDialog } from '@/components/StudentFrequencyDialog';
+import { Button } from '@/components/ui/button';
 
 interface Props {
   open: boolean;
@@ -49,6 +52,12 @@ export function StudentDetailsDialog({ open, onOpenChange, studentId }: Props) {
   const { role } = useAuth();
   const isRestricted = role === 'restricted';
   const [lightboxOpen, setLightboxOpen] = useState(false);
+  const [frequencyCourseId, setFrequencyCourseId] = useState<string | null>(null);
+  const { data: courseAttendance = [] } = useQuery({
+    queryKey: ['progress_attendance', schoolId],
+    enabled: open && !!schoolId,
+    queryFn: () => fetchEnrollmentAttendance(schoolId ?? ''),
+  });
 
   const { data } = useQuery({
     queryKey: ['student_details', studentId, schoolId],
@@ -163,13 +172,19 @@ export function StudentDetailsDialog({ open, onOpenChange, studentId }: Props) {
             {(data?.courses ?? []).length === 0 && (
               <p className="text-muted-foreground">Sem cursos cadastrados.</p>
             )}
+            <Button variant="outline" size="sm" onClick={() => setFrequencyCourseId('legacy')}>Histórico anterior sem vínculo de matrícula</Button>
             {(data?.courses ?? []).map((sc: any) => {
               const scheds = data?.schedulesByScId[sc.id] ?? [];
+              const progress = enrollmentProgress(courseAttendance, sc.id, sc.workload);
               return (
                 <div key={sc.id} className="border rounded-lg p-3 space-y-1">
                   <p className="font-semibold">{sc.courses?.name || sc.custom_course_name || 'Sem curso'}</p>
                   <Row label="Início" value={formatBR(sc.first_class_date || sc.enrollment_date) || '—'} />
                   <Row label="Carga horária" value={`${sc.workload}h`} />
+                  <Row label="Horas de presença vinculadas" value={`${progress.hoursCompleted}h`} />
+                  <Row label="Horas restantes" value={`${progress.hoursRemaining}h`} />
+                  <Row label="Conclusão" value={`${progress.pct.toFixed(1)}%`} />
+                  <Button variant="ghost" size="sm" onClick={() => setFrequencyCourseId(sc.id)}>Frequência do curso</Button>
                   <Row label="Status" value={STATUS_LABELS[sc.status] || sc.status} />
                   <div>
                     <span className="text-muted-foreground">Horários:</span>
@@ -202,6 +217,7 @@ export function StudentDetailsDialog({ open, onOpenChange, studentId }: Props) {
         )}
       </DialogContent>
       <PhotoLightbox open={lightboxOpen} onOpenChange={setLightboxOpen} src={student?.photo_url || ''} alt={student?.full_name || 'Aluno'} />
+      <StudentFrequencyDialog key={frequencyCourseId || 'closed'} open={!!frequencyCourseId} onOpenChange={() => setFrequencyCourseId(null)} studentId={studentId} studentName={student?.full_name || 'Aluno'} studentCourseId={frequencyCourseId || undefined} />
     </Dialog>
   );
 }

@@ -231,25 +231,28 @@ export function useSaveAttendance() {
   const { schoolId } = useSchool();
   return useMutation({
     mutationFn: async ({
-      studentId, timeSlotId, date, status,
+      studentId, studentCourseId, timeSlotId, date, status,
       isJustified, absenceNote,
     }: {
-      studentId: string; timeSlotId: string; date: string; status: string;
+      studentId: string; studentCourseId: string; timeSlotId: string; date: string; status: string;
       isJustified?: boolean; absenceNote?: string | null;
     }) => {
       if (!schoolId) throw new Error('Nenhuma unidade selecionada');
+      const { data: existing, error: readError } = await supabase.from('attendance')
+        .select('id, student_course_id').eq('school_id', schoolId)
+        .eq('student_id', studentId).eq('time_slot_id', timeSlotId).eq('date', date).maybeSingle();
+      if (readError) throw readError;
+      if (existing && existing.student_course_id !== studentCourseId) {
+        throw new Error('Este horário já possui um registro histórico sem vínculo ou de outra matrícula. Ele foi preservado.');
+      }
       if (!status) {
-        const { error } = await supabase
-          .from('attendance')
-          .delete()
-          .eq('student_id', studentId)
-          .eq('time_slot_id', timeSlotId)
-          .eq('date', date);
+        if (!existing) return null;
+        const { error } = await supabase.from('attendance').delete().eq('id', existing.id).eq('school_id', schoolId);
         if (error) throw error;
         return null;
       }
       const payload: any = {
-        student_id: studentId, time_slot_id: timeSlotId, date, status, school_id: schoolId,
+        student_id: studentId, student_course_id: studentCourseId, time_slot_id: timeSlotId, date, status, school_id: schoolId,
       };
       if (status === 'absent') {
         payload.is_justified = !!isJustified;
@@ -258,24 +261,25 @@ export function useSaveAttendance() {
         payload.is_justified = false;
         payload.absence_note = null;
       }
-      const { data, error } = await (supabase as any)
-        .from('attendance')
-        .upsert(payload, { onConflict: 'student_id,time_slot_id,date' })
-        .select();
+      const { student_course_id: _course, ...updatePayload } = payload;
+      const query = existing
+        ? supabase.from('attendance').update(updatePayload).eq('id', existing.id).eq('school_id', schoolId)
+        : supabase.from('attendance').insert(payload);
+      const { data, error } = await query.select();
       if (error) throw error;
       return data;
     },
-    onMutate: async ({ studentId, timeSlotId, date, status, isJustified, absenceNote }) => {
+    onMutate: async ({ studentId, studentCourseId, timeSlotId, date, status, isJustified, absenceNote }) => {
       await qc.cancelQueries({ queryKey: ['attendance', date, timeSlotId, schoolId] });
       const prev = qc.getQueryData<any[]>(['attendance', date, timeSlotId, schoolId]);
       qc.setQueryData<any[]>(['attendance', date, timeSlotId, schoolId], (old) => {
         const list = old ? [...old] : [];
-        const idx = list.findIndex(r => r.student_id === studentId);
+        const idx = list.findIndex(r => r.student_id === studentId && r.student_course_id === studentCourseId);
         if (!status) {
           if (idx >= 0) list.splice(idx, 1);
         } else {
           const patch = {
-            student_id: studentId, time_slot_id: timeSlotId, date, status, school_id: schoolId,
+            student_id: studentId, student_course_id: studentCourseId, time_slot_id: timeSlotId, date, status, school_id: schoolId,
             is_justified: status === 'absent' ? !!isJustified : false,
             absence_note: status === 'absent' ? (absenceNote ?? null) : null,
           };
@@ -289,12 +293,16 @@ export function useSaveAttendance() {
     onError: (_e, vars, ctx) => {
       if (ctx?.prev) qc.setQueryData(['attendance', vars.date, vars.timeSlotId, schoolId], ctx.prev);
     },
+    onSettled: (_data, _error, vars) => {
+      qc.invalidateQueries({ queryKey: ['attendance', vars.date, vars.timeSlotId, schoolId] });
+    },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['has_any_attendance'] });
       qc.invalidateQueries({ queryKey: ['new_students'] });
       qc.invalidateQueries({ queryKey: ['first_dates_batch'] });
       qc.invalidateQueries({ queryKey: ['attendance_for_finalizing'] });
       qc.invalidateQueries({ queryKey: ['overview_course_forecasts'] });
+      ['progress_attendance', 'overview_weekly_report', 'student_attendance_all', 'student_details', 'completion_planning', 'course_schedules_finalizing'].forEach(key => qc.invalidateQueries({ queryKey: [key] }));
     },
   });
 }
@@ -380,6 +388,7 @@ export function useCreateStudent() {
       qc.invalidateQueries({ queryKey: ['slot_students'] });
       qc.invalidateQueries({ queryKey: ['new_students'] });
       qc.invalidateQueries({ queryKey: ['overview_course_forecasts'] });
+      ['progress_attendance', 'overview_weekly_report', 'student_attendance_all', 'student_details', 'completion_planning', 'course_schedules_finalizing'].forEach(key => qc.invalidateQueries({ queryKey: [key] }));
     },
   });
 }
@@ -452,6 +461,7 @@ export function useUpdateStudent() {
               .from('student_schedules')
               .delete()
               .eq('student_id', id)
+              .is('student_course_id', null)
               .in('time_slot_id', uniqueSchedules);
             if (delOrphanError) throw delOrphanError;
           }
@@ -483,6 +493,7 @@ export function useUpdateStudent() {
       qc.invalidateQueries({ queryKey: ['slot_students'] });
       qc.invalidateQueries({ queryKey: ['new_students'] });
       qc.invalidateQueries({ queryKey: ['overview_course_forecasts'] });
+      ['progress_attendance', 'overview_weekly_report', 'student_attendance_all', 'student_details', 'completion_planning', 'course_schedules_finalizing'].forEach(key => qc.invalidateQueries({ queryKey: [key] }));
     },
   });
 }
@@ -543,6 +554,7 @@ export function useCompleteStudent() {
       qc.invalidateQueries({ queryKey: ['enrollments_report'] });
       qc.invalidateQueries({ queryKey: ['student_courses'] });
       qc.invalidateQueries({ queryKey: ['completions'] });
+      ['attendance_for_finalizing', 'overview_course_forecasts', 'overview_weekly_report', 'progress_scs', 'progress_schedules', 'student_details'].forEach(key => qc.invalidateQueries({ queryKey: [key] }));
       qc.invalidateQueries({ queryKey: ['student_schedules'] });
       qc.invalidateQueries({ queryKey: ['slot_counts'] });
       qc.invalidateQueries({ queryKey: ['slot_students'] });

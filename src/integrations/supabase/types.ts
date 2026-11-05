@@ -21,8 +21,10 @@ export type Database = {
           date: string
           id: string
           is_justified: boolean
+          recorded_hours: number | null
           school_id: string
           status: string
+          student_course_id: string | null
           student_id: string
           time_slot_id: string
           updated_at: string
@@ -33,8 +35,10 @@ export type Database = {
           date: string
           id?: string
           is_justified?: boolean
+          recorded_hours?: number | null
           school_id: string
           status: string
+          student_course_id?: string | null
           student_id: string
           time_slot_id: string
           updated_at?: string
@@ -45,8 +49,10 @@ export type Database = {
           date?: string
           id?: string
           is_justified?: boolean
+          recorded_hours?: number | null
           school_id?: string
           status?: string
+          student_course_id?: string | null
           student_id?: string
           time_slot_id?: string
           updated_at?: string
@@ -57,6 +63,13 @@ export type Database = {
             columns: ["school_id"]
             isOneToOne: false
             referencedRelation: "schools"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "attendance_student_course_id_fkey"
+            columns: ["student_course_id"]
+            isOneToOne: false
+            referencedRelation: "student_courses"
             referencedColumns: ["id"]
           },
           {

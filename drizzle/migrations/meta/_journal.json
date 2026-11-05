@@ -8,6 +8,13 @@
       "when": 1792763666870,
       "tag": "0000_add_address_fields_to_students",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1793888628858,
+      "tag": "0001_isolate_attendance_by_enrollment",
+      "breakpoints": true
     }
   ]
 }
