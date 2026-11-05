@@ -3,6 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useStudents } from '@/hooks/use-supabase-data';
 import { useSchool } from '@/contexts/SchoolContext';
+import { enrollmentProgress, fetchEnrollmentAttendance } from '@/lib/enrollment-attendance';
 import { addEffectiveWeeks } from '@/lib/calendar-breaks';
 
 export interface FinalizingStudent {
@@ -61,7 +62,7 @@ export function useFinalizingStudents() {
       const { data } = await supabase
         .from('student_schedules')
         .select('student_id, student_course_id, time_slot_id, time_slots(start_time, end_time, day_of_week)')
-        .eq('school_id', schoolId!)
+        .eq('school_id', schoolId ?? '')
         .in('student_id', studentIds);
 
       const map: Record<string, {
@@ -95,19 +96,8 @@ export function useFinalizingStudents() {
     queryKey: ['attendance_for_finalizing', schoolId, studentIds],
     enabled: !!schoolId && studentIds.length > 0,
     queryFn: async () => {
-      const { data } = await supabase
-        .from('attendance')
-        .select('student_id, time_slot_id, status')
-        .eq('school_id', schoolId!)
-        .in('student_id', studentIds)
-        .eq('status', 'present');
-      // student_id -> array of { time_slot_id }
-      const map: Record<string, { time_slot_id: string }[]> = {};
-      data?.forEach((r: any) => {
-        if (!map[r.student_id]) map[r.student_id] = [];
-        map[r.student_id].push({ time_slot_id: r.time_slot_id });
-      });
-      return map;
+      if (!schoolId) return [];
+      return fetchEnrollmentAttendance(schoolId);
     },
   });
 
@@ -117,7 +107,7 @@ export function useFinalizingStudents() {
     const seen = new Set<string>();
     (students as any[]).forEach(s => {
       const activeCourses = (s.student_courses ?? []).filter((sc: any) => sc.is_active);
-      const studentAttendance = attendanceByStudent[s.id] ?? [];
+
 
       activeCourses.forEach((sc: any) => {
         if (seen.has(sc.id)) return;
@@ -132,17 +122,8 @@ export function useFinalizingStudents() {
         const hoursPerSession = sessions > 0 ? weeklyHours / sessions : 1;
         const effectiveHoursPerSession = Math.max(hoursPerSession, 1);
 
-        // PER-COURSE attendance: count only presences in this course's time slots,
-        // and weight each by the actual slot duration (so 1h Excel + 1h Design same
-        // day yields exactly 1h per course, never summed).
-        let realHoursCompleted = 0;
-        studentAttendance.forEach(a => {
-          if (a.time_slot_id && courseSlotIds.has(a.time_slot_id)) {
-            realHoursCompleted += slotHoursMap[a.time_slot_id] ?? effectiveHoursPerSession;
-          }
-        });
-
         const workload = sc.workload || 48;
+        const { hoursCompleted: realHoursCompleted } = enrollmentProgress(attendanceByStudent, sc.id, workload);
         const realPct = workload > 0 ? (realHoursCompleted / workload) * 100 : 0;
 
         const startDate = parseDate(sc.first_class_date || sc.enrollment_date);

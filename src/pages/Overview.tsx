@@ -1,3 +1,4 @@
+import { enrollmentProgress, fetchEnrollmentAttendance } from '@/lib/enrollment-attendance';
 import { useState, useMemo } from 'react';
 import { addDays, format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -149,19 +150,15 @@ export default function Overview() {
   const studentCourseIds = [...new Set(filteredSlotStudents.map((s: any) => s.student_course_id).filter(Boolean))] as string[];
 
   const { data: firstDates } = useQuery({
-    queryKey: ['first_dates_batch', studentIds, schoolId],
+    queryKey: ['first_dates_batch', studentCourseIds, schoolId],
     enabled: studentIds.length > 0 && !!schoolId,
     queryFn: async () => {
-      const { data } = await supabase
-        .from('attendance')
-        .select('student_id, date')
-        .eq('school_id', schoolId!)
-        .in('student_id', studentIds)
-        .eq('status', 'present')
-        .order('date', { ascending: true });
+      if (!schoolId) return {};
+      const data = await fetchEnrollmentAttendance(schoolId);
       const map: Record<string, string> = {};
-      data?.forEach(r => {
-        if (!map[r.student_id]) map[r.student_id] = r.date;
+      studentCourseIds.forEach(id => {
+        const first = enrollmentProgress(data, id, 0).firstPresence;
+        if (first) map[id] = first;
       });
       return map;
     },
@@ -177,15 +174,10 @@ export default function Overview() {
           .select('student_course_id, time_slot_id, time_slots(day_of_week, start_time, end_time)')
           .eq('school_id', schoolId!)
           .in('student_course_id', studentCourseIds),
-        supabase
-          .from('attendance')
-          .select('student_id, time_slot_id, status')
-          .eq('school_id', schoolId!)
-          .in('student_id', studentIds)
-          .eq('status', 'present'),
+        fetchEnrollmentAttendance(schoolId ?? ''),
       ]);
       if (schedulesResult.error) throw schedulesResult.error;
-      if (attendanceResult.error) throw attendanceResult.error;
+
 
       const schedulesByCourse: Record<string, {
         slotHours: Map<string, number>;
@@ -204,12 +196,6 @@ export default function Overview() {
         schedulesByCourse[courseId].weeklySchedule.push({ dayOfWeek, hours });
       });
 
-      const attendanceByStudent: Record<string, { time_slot_id: string }[]> = {};
-      (attendanceResult.data ?? []).forEach((row: any) => {
-        if (!attendanceByStudent[row.student_id]) attendanceByStudent[row.student_id] = [];
-        attendanceByStudent[row.student_id].push({ time_slot_id: row.time_slot_id });
-      });
-
       const forecasts: Record<string, CourseForecast> = {};
       filteredSlotStudents.forEach((schedule: any) => {
         const courseId = schedule.student_course_id;
@@ -218,11 +204,8 @@ export default function Overview() {
         const courseSchedule = schedulesByCourse[courseId];
         if (!courseSchedule) return;
 
-        const hoursCompleted = (attendanceByStudent[student.id] ?? []).reduce((total, attendance) => {
-          return total + (courseSchedule.slotHours.get(attendance.time_slot_id) ?? 0);
-        }, 0);
         const workload = Number(student.workload) || 48;
-        const hoursRemaining = Math.max(workload - hoursCompleted, 0);
+        const { hoursCompleted, hoursRemaining } = enrollmentProgress(attendanceResult, courseId, workload);
         const weeklyHours = courseSchedule.weeklySchedule.reduce((total, item) => total + item.hours, 0);
         const projectedDate = hoursRemaining > 0
           ? calculateScheduledCourseEndDate(addDays(new Date(), 1), hoursRemaining, courseSchedule.weeklySchedule)
@@ -260,7 +243,7 @@ export default function Overview() {
   const handleComplete = async (s: any) => {
     const student = s.students;
     const courseName = student.courses?.name || student.custom_course_name || 'N/A';
-    const startDate = firstDates?.[student.id] ?? null;
+    const startDate = firstDates?.[student.student_course_id] ?? null;
     completeStudent.mutate(
       { studentId: student.id, studentCourseId: s.student_course_id, courseName, startDate },
       { onSuccess: () => { toast.success('Curso finalizado!'); setSelectedSlotId(null); } }
@@ -329,7 +312,7 @@ export default function Overview() {
                 if (!student) return null;
                 const courseName = student.courses?.name || student.custom_course_name || 'N/A';
                 const workload = student.workload ?? 48;
-                const firstPresence = firstDates?.[student.id] ?? null;
+                const firstPresence = firstDates?.[s.student_course_id] ?? null;
                 const courseStart = student.first_class_date || student.enrollment_date || null;
                 const forecast = courseForecasts?.[s.student_course_id];
                 const endDate = forecast?.expectedEndDate ?? '-';

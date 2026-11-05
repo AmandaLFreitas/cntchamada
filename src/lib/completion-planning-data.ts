@@ -1,3 +1,4 @@
+import { enrollmentProgress, fetchEnrollmentAttendance } from '@/lib/enrollment-attendance';
 import { parse, isValid } from 'date-fns';
 import { supabase } from '@/integrations/supabase/client';
 import { fetchOverviewWeeklyReport } from '@/lib/overview-weekly-report';
@@ -50,8 +51,7 @@ export async function fetchCompletionPlanning(schools: School[], isAdmin: boolea
         .eq('school_id', school.id).order('created_at', { ascending: false }).order('id').range(from, to)),
     ]);
     const [attendance, schedules] = await Promise.all([
-      allRows((from, to) => supabase.from('attendance').select('student_id, time_slot_id')
-        .eq('school_id', school.id).eq('status', 'present').order('id').range(from, to)),
+      fetchEnrollmentAttendance(school.id),
       allRows((from, to) => supabase.from('student_schedules').select('student_course_id, time_slot_id')
         .eq('school_id', school.id).order('id').range(from, to)),
     ]);
@@ -78,15 +78,7 @@ export async function fetchCompletionPlanning(schools: School[], isAdmin: boolea
       if (!student || student.school_id !== school.id || student.id !== enrollment.student_id || !forecast || !expectedEnd) continue;
       const ids = byCourse.get(enrollment.id) ?? new Set<string>();
       const courseSlots = overview.slots.filter(slot => ids.has(slot.id));
-      let completed = 0;
-      for (const presence of attendance) {
-        if (presence.student_id !== enrollment.student_id || !ids.has(presence.time_slot_id)) continue;
-        const slot = slotMap.get(presence.time_slot_id);
-        if (!slot) continue;
-        const [sh, sm] = slot.startTime.split(':').map(Number);
-        const [eh, em] = slot.endTime.split(':').map(Number);
-        completed += Math.max((eh * 60 + em - sh * 60 - sm) / 60, 0);
-      }
+      const { hoursCompleted: completed } = enrollmentProgress(attendance, enrollment.id, forecast.workload);
       results.push({
         id: enrollment.id, studentId: student.id, school: school.name,
         name: student.full_name ?? '', phone: student.phone ?? '', birthDate: planningDate(student.birth_date),
