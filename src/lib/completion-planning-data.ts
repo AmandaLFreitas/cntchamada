@@ -78,7 +78,7 @@ export async function fetchCompletionPlanning(schools: School[], isAdmin: boolea
       if (!student || student.school_id !== school.id || student.id !== enrollment.student_id || !forecast || !expectedEnd) continue;
       const ids = byCourse.get(enrollment.id) ?? new Set<string>();
       const courseSlots = overview.slots.filter(slot => ids.has(slot.id));
-      const { hoursCompleted: completed } = enrollmentProgress(attendance, enrollment.id, forecast.workload);
+      const { hoursCompleted: completed } = enrollmentProgress(attendance, enrollment.id, forecast.workload, enrollment.enrollment_date);
       results.push({
         id: enrollment.id, studentId: student.id, school: school.name,
         name: student.full_name ?? '', phone: student.phone ?? '', birthDate: planningDate(student.birth_date),

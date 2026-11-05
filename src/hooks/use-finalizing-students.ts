@@ -123,7 +123,7 @@ export function useFinalizingStudents() {
         const effectiveHoursPerSession = Math.max(hoursPerSession, 1);
 
         const workload = sc.workload || 48;
-        const { hoursCompleted: realHoursCompleted } = enrollmentProgress(attendanceByStudent, sc.id, workload);
+        const { hoursCompleted: realHoursCompleted } = enrollmentProgress(attendanceByStudent, sc.id, workload, sc.enrollment_date);
         const realPct = workload > 0 ? (realHoursCompleted / workload) * 100 : 0;
 
         const startDate = parseDate(sc.first_class_date || sc.enrollment_date);
