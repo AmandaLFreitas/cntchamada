@@ -14,6 +14,8 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Calendar as CalendarComponent } from '@/components/ui/calendar';
 import { cn } from '@/lib/utils';
 import jsPDF from 'jspdf';
+import { useStudentCourses } from '@/hooks/use-supabase-data';
+import { attendanceHours } from '@/lib/enrollment-attendance';
 
 interface Props {
   open: boolean;
@@ -21,6 +23,7 @@ interface Props {
   studentId: string | null;
   studentName: string;
   courseName?: string;
+  studentCourseId?: string;
 }
 
 type FilterMode = 'current_month' | 'all' | 'custom';
@@ -33,7 +36,11 @@ const slotHours = (start?: string | null, end?: string | null): number => {
   return h > 0 ? h : 1;
 };
 
-export function StudentFrequencyDialog({ open, onOpenChange, studentId, studentName, courseName }: Props) {
+export function StudentFrequencyDialog({ open, onOpenChange, studentId, studentName, studentCourseId }: Props) {
+  const { data: courses } = useStudentCourses(open ? studentId : null);
+  const [selectedCourse, setSelectedCourse] = useState('');
+  const courseId = studentCourseId || selectedCourse;
+  const courseName = courses?.find((course: any) => course.id === courseId)?.courses?.name || courses?.find((course: any) => course.id === courseId)?.custom_course_name;
   const [filterMode, setFilterMode] = useState<FilterMode>('current_month');
   const [customStart, setCustomStart] = useState<Date | undefined>();
   const [customEnd, setCustomEnd] = useState<Date | undefined>();
@@ -46,7 +53,7 @@ export function StudentFrequencyDialog({ open, onOpenChange, studentId, studentN
     queryFn: async () => {
       const { data, error } = await supabase
         .from('attendance')
-        .select('id, date, status, time_slot_id, time_slots(start_time, end_time, day_of_week)')
+        .select('id, date, status, student_course_id, recorded_hours, time_slot_id, time_slots(start_time, end_time, day_of_week)')
         .eq('school_id', schoolId!)
         .eq('student_id', studentId!)
         .order('date', { ascending: false });
@@ -61,7 +68,7 @@ export function StudentFrequencyDialog({ open, onOpenChange, studentId, studentN
       id: string; date: string; status: 'present' | 'absent' | 'neutral';
       start: string; end: string; hours: number;
     }>;
-    return (attendanceRecords as any[]).map(r => {
+    return (attendanceRecords as any[]).filter(r => courseId === 'legacy' ? !r.student_course_id : r.student_course_id === courseId).map(r => {
       const start = (r.time_slots?.start_time || '').slice(0, 5);
       const end = (r.time_slots?.end_time || '').slice(0, 5);
       return {
@@ -70,13 +77,13 @@ export function StudentFrequencyDialog({ open, onOpenChange, studentId, studentN
         status: r.status as 'present' | 'absent' | 'neutral',
         start,
         end,
-        hours: slotHours(r.time_slots?.start_time, r.time_slots?.end_time),
+        hours: attendanceHours(r),
       };
     }).sort((a, b) => {
       if (a.date !== b.date) return b.date.localeCompare(a.date);
       return a.start.localeCompare(b.start);
     });
-  }, [attendanceRecords]);
+  }, [attendanceRecords, courseId]);
 
   const inRange = useCallback((dateStr: string) => {
     const now = new Date();
@@ -195,6 +202,13 @@ export function StudentFrequencyDialog({ open, onOpenChange, studentId, studentN
         </DialogHeader>
 
         <div className="flex flex-wrap items-center gap-2 mb-2">
+          {!studentCourseId && <Select value={selectedCourse} onValueChange={setSelectedCourse}>
+            <SelectTrigger className="w-full"><SelectValue placeholder="Selecionar matrícula" /></SelectTrigger>
+            <SelectContent>
+              {(courses ?? []).map((course: any) => <SelectItem key={course.id} value={course.id}>{course.courses?.name || course.custom_course_name || 'Sem curso'} · {course.first_class_date || course.enrollment_date || 'Sem data'}</SelectItem>)}
+              <SelectItem value="legacy">Histórico anterior sem vínculo de matrícula</SelectItem>
+            </SelectContent>
+          </Select>}
           <Select value={filterMode} onValueChange={(v) => setFilterMode(v as FilterMode)}>
             <SelectTrigger className="w-[180px]">
               <SelectValue />
