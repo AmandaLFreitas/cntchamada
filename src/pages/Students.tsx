@@ -1185,6 +1185,7 @@ export default function Students() {
 
       {/* Frequency Dialog */}
       <StudentFrequencyDialog
+        key={frequencyStudentId || 'closed'}
         open={!!frequencyStudentId}
         onOpenChange={() => setFrequencyStudentId(null)}
         studentId={frequencyStudentId}

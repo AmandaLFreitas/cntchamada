@@ -188,7 +188,8 @@ export default function Attendance() {
   };
 
   const getRecord = (studentId: string, studentCourseId?: string) => {
-    return attendance?.find(a => a.student_id === studentId && a.student_course_id === studentCourseId) as any;
+    return (attendance?.find(a => a.student_id === studentId && a.student_course_id === studentCourseId)
+      ?? attendance?.find(a => a.student_id === studentId && !a.student_course_id)) as any;
   };
   const getStatus = (studentId: string, studentCourseId?: string) => {
     return getRecord(studentId, studentCourseId)?.status ?? null;

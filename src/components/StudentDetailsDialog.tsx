@@ -172,6 +172,7 @@ export function StudentDetailsDialog({ open, onOpenChange, studentId }: Props) {
             {(data?.courses ?? []).length === 0 && (
               <p className="text-muted-foreground">Sem cursos cadastrados.</p>
             )}
+            <Button variant="outline" size="sm" onClick={() => setFrequencyCourseId('legacy')}>Histórico anterior sem vínculo de matrícula</Button>
             {(data?.courses ?? []).map((sc: any) => {
               const scheds = data?.schedulesByScId[sc.id] ?? [];
               const progress = enrollmentProgress(courseAttendance, sc.id, sc.workload);

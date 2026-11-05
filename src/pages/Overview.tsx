@@ -243,7 +243,7 @@ export default function Overview() {
   const handleComplete = async (s: any) => {
     const student = s.students;
     const courseName = student.courses?.name || student.custom_course_name || 'N/A';
-    const startDate = firstDates?.[student.student_course_id] ?? null;
+    const startDate = firstDates?.[s.student_course_id] ?? null;
     completeStudent.mutate(
       { studentId: student.id, studentCourseId: s.student_course_id, courseName, startDate },
       { onSuccess: () => { toast.success('Curso finalizado!'); setSelectedSlotId(null); } }
