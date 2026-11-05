@@ -187,26 +187,26 @@ export default function Attendance() {
     return `${d}/${m}/${y}`;
   };
 
-  const getRecord = (studentId: string) => {
-    return attendance?.find(a => a.student_id === studentId) as any;
+  const getRecord = (studentId: string, studentCourseId?: string) => {
+    return attendance?.find(a => a.student_id === studentId && a.student_course_id === studentCourseId) as any;
   };
-  const getStatus = (studentId: string) => {
-    return getRecord(studentId)?.status ?? null;
+  const getStatus = (studentId: string, studentCourseId?: string) => {
+    return getRecord(studentId, studentCourseId)?.status ?? null;
   };
 
-  const markAttendance = (studentId: string, status: string) => {
+  const markAttendance = (studentId: string, studentCourseId: string, status: string) => {
     if (!selectedSlotId) return;
-    const current = getStatus(studentId);
+    const current = getStatus(studentId, studentCourseId);
     // Toggle: clicking same status clears it
     const next = current === status ? '' : status;
-    saveAttendance.mutate({ studentId, timeSlotId: selectedSlotId, date: isoDate, status: next });
+    saveAttendance.mutate({ studentId, studentCourseId, timeSlotId: selectedSlotId, date: isoDate, status: next }, { onError: error => toast.error(error.message) });
   };
 
 
 
   const finalizing = useFinalizingStudents();
   const finalizingMap = new Map<string, any>();
-  finalizing.forEach(f => finalizingMap.set(f.studentId, f));
+  finalizing.forEach(f => finalizingMap.set(f.studentCourseId, f));
 
   const toggleMaterial = useMutation({
     mutationFn: async ({ id, value }: { id: string; value: boolean }) => {
@@ -629,13 +629,13 @@ export default function Attendance() {
               {filteredStudents.map((s: any) => {
                 const student = s.students;
                 if (!student) return null;
-                const status = getStatus(student.id);
+                const status = getStatus(student.id, s.student_course_id);
                 
 
 
                 const courseName = student.courses?.name || student.custom_course_name || 'N/A';
                 const materialSent = !!student.material_sent;
-                const fin = finalizingMap.get(student.id);
+                const fin = finalizingMap.get(s.student_course_id);
                 const isFinalizing = !!fin;
                 const isRescued = !!s.rescue_flagged;
                 return (
@@ -705,12 +705,12 @@ export default function Attendance() {
                           <>
                             <Button size="icon" variant={status === 'present' ? 'default' : 'outline'}
                               className={status === 'present' ? 'bg-green-600 hover:bg-green-700' : ''}
-                              onClick={() => markAttendance(student.id, 'present')} title="Presença (clique novamente para desmarcar)">
+                              onClick={() => markAttendance(student.id, s.student_course_id, 'present')} title="Presença (clique novamente para desmarcar)">
                               <Check className={cn('h-4 w-4', status !== 'present' && 'text-green-600')} />
                             </Button>
                             <Button size="icon" variant={status === 'absent' ? 'default' : 'outline'}
                               className={status === 'absent' ? 'bg-destructive hover:bg-destructive/90' : ''}
-                              onClick={() => markAttendance(student.id, 'absent')} title="Falta (clique novamente para desmarcar)">
+                              onClick={() => markAttendance(student.id, s.student_course_id, 'absent')} title="Falta (clique novamente para desmarcar)">
                               <X className={cn('h-4 w-4', status !== 'absent' && 'text-destructive')} />
                             </Button>
 
@@ -718,7 +718,7 @@ export default function Attendance() {
 
                             <Button size="icon" variant={status === 'neutral' ? 'default' : 'outline'}
                               className={status === 'neutral' ? 'bg-muted-foreground hover:bg-muted-foreground/90 text-white' : ''}
-                              onClick={() => markAttendance(student.id, 'neutral')} title="Neutro (feriado/sem aula)">
+                              onClick={() => markAttendance(student.id, s.student_course_id, 'neutral')} title="Neutro (feriado/sem aula)">
                               <Minus className="h-4 w-4" />
                             </Button>
                           </>
