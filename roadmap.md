@@ -1,7 +1,8 @@
 # Roadmap
 
-- [ ] Vincular novas presenças à matrícula correta sem transferir registros antigos.
-- [ ] Unificar horas, frequência, previsões e histórico por matrícula e validar a reinicialização.
+- [x] Vincular novas presenças à matrícula correta sem transferir registros antigos.
+- [x] Unificar horas, frequência, previsões e histórico por matrícula; validar reinicialização em testes.
+- [ ] Validar cadastro de novo curso e chamada com sessão autenticada — aguarda login no preview.
 
 - [x] Corrigir origem, contagens únicas e listas por status de matrícula nos Relatórios.
 - [x] Unificar classificação mensal e atualização automática; validar com dados reais por unidade.

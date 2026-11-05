@@ -293,6 +293,9 @@ export function useSaveAttendance() {
     onError: (_e, vars, ctx) => {
       if (ctx?.prev) qc.setQueryData(['attendance', vars.date, vars.timeSlotId, schoolId], ctx.prev);
     },
+    onSettled: (_data, _error, vars) => {
+      qc.invalidateQueries({ queryKey: ['attendance', vars.date, vars.timeSlotId, schoolId] });
+    },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['has_any_attendance'] });
       qc.invalidateQueries({ queryKey: ['new_students'] });
@@ -458,6 +461,7 @@ export function useUpdateStudent() {
               .from('student_schedules')
               .delete()
               .eq('student_id', id)
+              .is('student_course_id', null)
               .in('time_slot_id', uniqueSchedules);
             if (delOrphanError) throw delOrphanError;
           }
@@ -550,6 +554,7 @@ export function useCompleteStudent() {
       qc.invalidateQueries({ queryKey: ['enrollments_report'] });
       qc.invalidateQueries({ queryKey: ['student_courses'] });
       qc.invalidateQueries({ queryKey: ['completions'] });
+      ['attendance_for_finalizing', 'overview_course_forecasts', 'overview_weekly_report', 'progress_scs', 'progress_schedules', 'student_details'].forEach(key => qc.invalidateQueries({ queryKey: [key] }));
       qc.invalidateQueries({ queryKey: ['student_schedules'] });
       qc.invalidateQueries({ queryKey: ['slot_counts'] });
       qc.invalidateQueries({ queryKey: ['slot_students'] });
