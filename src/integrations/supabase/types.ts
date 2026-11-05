@@ -564,6 +564,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      attendance_enrollment_date: { Args: { value: string }; Returns: string }
       can_manage_trial_lessons: { Args: never; Returns: boolean }
       get_student_course_payment: { Args: { _id: string }; Returns: string }
       get_student_pii: {
@@ -591,6 +592,10 @@ export type Database = {
       }
       has_school_access: { Args: { _school_id: string }; Returns: boolean }
       has_trial_lessons_all_access: { Args: never; Returns: boolean }
+      safe_legacy_attendance_enrollment: {
+        Args: { lesson: string; school: string; student: string }
+        Returns: string
+      }
     }
     Enums: {
       app_role: "admin" | "restricted" | "professor"

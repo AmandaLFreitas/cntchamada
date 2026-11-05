@@ -15,6 +15,13 @@
       "when": 1793888628858,
       "tag": "0001_isolate_attendance_by_enrollment",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1793889326875,
+      "tag": "0002_validate_and_recover_enrollment_attribution",
+      "breakpoints": true
     }
   ]
 }
