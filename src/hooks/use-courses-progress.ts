@@ -108,7 +108,7 @@ export function useCoursesProgress(studentCourseIds: string[]) {
       const slotIds = sched?.slotIds ?? new Set<string>();
 
       const workload = sc.workload || 48;
-      const { hoursCompleted } = enrollmentProgress(attendance, sc.id, workload);
+      const { hoursCompleted } = enrollmentProgress(attendance, sc.id, workload, sc.enrollment_date);
       const hoursRemaining = Math.max(workload - hoursCompleted, 0);
       const lessonsRemaining = Math.ceil(hoursRemaining / hps);
       const daysRemaining = Math.ceil(hoursRemaining / hoursPerDay);

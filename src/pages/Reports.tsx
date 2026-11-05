@@ -202,7 +202,7 @@ export default function Reports() {
                   <div key={enrollment.id} className="border-b pb-3 text-sm">
                     <p className="font-medium">{reportCourseName(enrollment)}</p>
                     <p className="text-muted-foreground">{enrollment.workload}h · {REPORT_STATUS_LABELS[statusFilter]}</p>
-                    <p className="text-muted-foreground">Horas de presença vinculadas: {enrollmentProgress(enrollmentAttendance, enrollment.id, enrollment.workload).hoursCompleted}h · {enrollmentProgress(enrollmentAttendance, enrollment.id, enrollment.workload).pct.toFixed(1)}%</p>
+                    <p className="text-muted-foreground">Horas de presença vinculadas: {enrollmentProgress(enrollmentAttendance, enrollment.id, enrollment.workload, enrollment.enrollment_date).hoursCompleted}h · {enrollmentProgress(enrollmentAttendance, enrollment.id, enrollment.workload, enrollment.enrollment_date).pct.toFixed(1)}%</p>
                     {enrollment.status === 'finalizado' && (
                       <Button variant="outline" className="mt-2 gap-2" onClick={() => {
                         setCertData({ studentName: selectedStudent.full_name || 'Sem nome',

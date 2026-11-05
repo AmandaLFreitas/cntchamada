@@ -116,7 +116,7 @@ export async function fetchOverviewWeeklyReport(schoolId: string, schoolName: st
       weeklySchedule.push({ dayOfWeek, hours });
     });
     const workload = Number(course.workload) || 48;
-    const { hoursCompleted: completed, hoursRemaining: remaining, firstPresence } = enrollmentProgress(attendance, courseId, workload);
+    const { hoursCompleted: completed, hoursRemaining: remaining, firstPresence } = enrollmentProgress(attendance, courseId, workload, course.enrollment_date);
     const projected = remaining > 0 && weeklySchedule.length
       ? calculateScheduledCourseEndDate(addDays(new Date(), 1), remaining, weeklySchedule)
       : remaining <= 0 ? new Date() : null;

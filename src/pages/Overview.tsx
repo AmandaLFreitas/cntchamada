@@ -205,7 +205,7 @@ export default function Overview() {
         if (!courseSchedule) return;
 
         const workload = Number(student.workload) || 48;
-        const { hoursCompleted, hoursRemaining } = enrollmentProgress(attendanceResult, courseId, workload);
+        const { hoursCompleted, hoursRemaining } = enrollmentProgress(attendanceResult, courseId, workload, student.enrollment_date);
         const weeklyHours = courseSchedule.weeklySchedule.reduce((total, item) => total + item.hours, 0);
         const projectedDate = hoursRemaining > 0
           ? calculateScheduledCourseEndDate(addDays(new Date(), 1), hoursRemaining, courseSchedule.weeklySchedule)

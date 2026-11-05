@@ -175,7 +175,7 @@ export function StudentDetailsDialog({ open, onOpenChange, studentId }: Props) {
             <Button variant="outline" size="sm" onClick={() => setFrequencyCourseId('legacy')}>Histórico anterior sem vínculo de matrícula</Button>
             {(data?.courses ?? []).map((sc: any) => {
               const scheds = data?.schedulesByScId[sc.id] ?? [];
-              const progress = enrollmentProgress(courseAttendance, sc.id, sc.workload);
+              const progress = enrollmentProgress(courseAttendance, sc.id, sc.workload, sc.enrollment_date);
               return (
                 <div key={sc.id} className="border rounded-lg p-3 space-y-1">
                   <p className="font-semibold">{sc.courses?.name || sc.custom_course_name || 'Sem curso'}</p>
