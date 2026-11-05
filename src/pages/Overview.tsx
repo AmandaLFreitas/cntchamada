@@ -157,7 +157,8 @@ export default function Overview() {
       const data = await fetchEnrollmentAttendance(schoolId);
       const map: Record<string, string> = {};
       studentCourseIds.forEach(id => {
-        const first = enrollmentProgress(data, id, 0).firstPresence;
+        const enrollment = filteredSlotStudents.find((schedule: any) => schedule.student_course_id === id)?.students;
+        const first = enrollmentProgress(data, id, 0, enrollment?.enrollment_date).firstPresence;
         if (first) map[id] = first;
       });
       return map;

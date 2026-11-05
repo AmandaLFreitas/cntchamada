@@ -212,7 +212,7 @@ export function StudentFrequencyDialog({ open, onOpenChange, studentId, studentN
           <Select value={courseId} onValueChange={value => { setSelectedCourse(value); if (showDetails) setFilterMode('all'); }}>
             <SelectTrigger className="w-full"><SelectValue placeholder="Selecionar matrícula" /></SelectTrigger>
             <SelectContent>
-              {(courses ?? []).map((course: any) => <SelectItem key={course.id} value={course.id}>{course.courses?.name || course.custom_course_name || 'Sem curso'} · {course.first_class_date || course.enrollment_date || 'Sem data'}</SelectItem>)}
+              {(courses ?? []).map((course: any) => <SelectItem key={course.id} value={course.id}>{course.courses?.name || course.custom_course_name || 'Sem curso'} · {course.enrollment_date || course.first_class_date || 'Sem data'}</SelectItem>)}
               <SelectItem value="legacy">Histórico anterior sem vínculo de matrícula</SelectItem>
             </SelectContent>
           </Select>
