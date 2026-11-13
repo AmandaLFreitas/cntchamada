@@ -6,7 +6,7 @@ const MODEL = 'google/gemini-3-flash-preview'
 const FIELDS = [
   'full_name', 'cpf', 'birth_date', 'phone', 'guardian_name', 'guardian_phone',
   'street', 'house_number', 'complement', 'neighborhood', 'city', 'state', 'cep',
-  'course', 'workload', 'enrollment_date', 'weekdays', 'class_times',
+  'course', 'workload', 'enrollment_date', 'start_date', 'weekdays', 'class_times', 'schedule_text',
 ] as const
 
 const PROMPT = `Você está lendo uma ficha de matrícula de uma escola de informática (pode estar manuscrita ou impressa).
@@ -26,16 +26,19 @@ Extraia as informações visíveis e responda SOMENTE com um objeto JSON válido
     "city": {"value": "cidade", "confidence": "alta|baixa"},
     "state": {"value": "UF com 2 letras", "confidence": "alta|baixa"},
     "cep": {"value": "apenas 8 dígitos", "confidence": "alta|baixa"},
-    "course": {"value": "nome do curso", "confidence": "alta|baixa"},
+    "course": {"value": "exatamente como escrito no campo 'Curso de' (pode ser abreviação, ex: Inf.ADM, básica, KIDS, CAD, Excel)", "confidence": "alta|baixa"},
     "workload": {"value": "carga horária em horas, apenas número", "confidence": "alta|baixa"},
-    "enrollment_date": {"value": "dd/mm/aaaa", "confidence": "alta|baixa"},
+    "enrollment_date": {"value": "dd/mm/aaaa — SOMENTE se houver campo explícito de data da matrícula; NÃO use o campo 'Início'", "confidence": "alta|baixa"},
+    "start_date": {"value": "dd/mm/aaaa do campo 'Início' (dia de início das aulas)", "confidence": "alta|baixa"},
     "weekdays": {"value": "dias da semana separados por vírgula, ex: Segunda, Quarta", "confidence": "alta|baixa"},
-    "class_times": {"value": "horários das aulas, ex: 14:30 às 15:30", "confidence": "alta|baixa"}
+    "class_times": {"value": "horários das aulas, ex: 14:30 às 15:30", "confidence": "alta|baixa"},
+    "schedule_text": {"value": "texto do horário exatamente como escrito, com dias e horas, ex: Sab(10-12) ou Seg/Qua (14:30-16:30)", "confidence": "alta|baixa"}
   }
 }
 Regras:
 - NUNCA invente dados. Se uma informação não estiver visível ou legível, use {"value": "", "confidence": "baixa"}.
 - Use "baixa" confidence quando a leitura for incerta ou parcial.
+- Abreviações de dias: Seg=Segunda, Ter=Terça, Qua=Quarta, Qui=Quinta, Sex=Sexta, Sab=Sábado. 'Sab(10-12)' = Sábado das 10:00 às 12:00.
 - Datas sempre em dd/mm/aaaa. Telefones e CPF/CEP somente com dígitos.`
 
 function jsonResponse(body: unknown, status = 200) {

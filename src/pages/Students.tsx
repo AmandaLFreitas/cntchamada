@@ -1,3 +1,4 @@
+import { resolveCourseName, parseScheduleText, scheduleToDayKeys } from '@/lib/enrollment-form-parse';
 import { useState, useEffect, useMemo, useRef, type ChangeEvent } from 'react';
 import { useStudents, useCourses, useTimeSlots, useCreateStudent, useUpdateStudent, useDeleteStudent, useCompletions } from '@/hooks/use-supabase-data';
 import { supabase } from '@/integrations/supabase/client';
@@ -212,9 +213,13 @@ export default function Students() {
       const gPhone = get('guardian_phone').replace(/\D/g, '');
       const workload = parseInt(get('workload').replace(/\D/g, ''), 10);
       const courseName = get('course');
-      const matchedCourse = courseName
-        ? courses?.find(c => c.name.toLowerCase().includes(courseName.toLowerCase()) || courseName.toLowerCase().includes(c.name.toLowerCase()))
-        : undefined;
+      const matchedCourse = courseName && courses ? resolveCourseName(courseName, courses) : undefined;
+      const scheduleRaw = [get('schedule_text'), `${get('weekdays')} ${get('class_times')}`].find(t => t.trim()) ?? '';
+      let parsedDays = scheduleToDayKeys(parseScheduleText(scheduleRaw), timeSlots ?? []);
+      if (!Object.keys(parsedDays).length && get('schedule_text')) {
+        parsedDays = scheduleToDayKeys(parseScheduleText(`${get('weekdays')} ${get('class_times')}`), timeSlots ?? []);
+      }
+      const hasParsedSchedule = Object.keys(parsedDays).length > 0;
       const guardianName = get('guardian_name');
 
       setForm(f => ({
@@ -232,9 +237,12 @@ export default function Students() {
         state: get('state') || f.state,
         cep: cep ? formatCepMask(cep) : f.cep,
         enrollment_date: get('enrollment_date') || f.enrollment_date,
+        first_class_date: get('start_date') || f.first_class_date,
+        daySchedules: hasParsedSchedule ? parsedDays : f.daySchedules,
+        customScheduleMode: hasParsedSchedule ? true : f.customScheduleMode,
         workload: Number.isFinite(workload) && workload > 0 ? workload : f.workload,
         course_id: matchedCourse ? matchedCourse.id : f.course_id,
-        custom_course_name: !matchedCourse && courseName ? courseName : f.custom_course_name,
+        custom_course_name: matchedCourse ? '' : (courseName || f.custom_course_name),
         show_guardian: f.show_guardian || !!guardianName,
       }));
       setLowConfidence(low);
