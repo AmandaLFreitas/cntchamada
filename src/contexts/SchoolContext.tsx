@@ -33,9 +33,7 @@ export function SchoolProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     let mounted = true;
     supabase
-      .from('schools')
-      .select('id, name, slug')
-      .order('name')
+      .rpc('list_login_schools')
       .then(({ data }) => {
         if (!mounted) return;
         setAllSchools((data ?? []) as School[]);

@@ -592,6 +592,14 @@ export type Database = {
       }
       has_school_access: { Args: { _school_id: string }; Returns: boolean }
       has_trial_lessons_all_access: { Args: never; Returns: boolean }
+      list_login_schools: {
+        Args: never
+        Returns: {
+          id: string
+          name: string
+          slug: string
+        }[]
+      }
       safe_legacy_attendance_enrollment: {
         Args: { lesson: string; school: string; student: string }
         Returns: string
