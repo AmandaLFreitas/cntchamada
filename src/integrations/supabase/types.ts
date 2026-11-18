@@ -566,6 +566,7 @@ export type Database = {
     Functions: {
       attendance_enrollment_date: { Args: { value: string }; Returns: string }
       can_manage_trial_lessons: { Args: never; Returns: boolean }
+      current_user_school_ids: { Args: never; Returns: string[] }
       get_student_course_payment: { Args: { _id: string }; Returns: string }
       get_student_pii: {
         Args: { _id: string }
@@ -603,6 +604,10 @@ export type Database = {
       safe_legacy_attendance_enrollment: {
         Args: { lesson: string; school: string; student: string }
         Returns: string
+      }
+      students_with_attendance: {
+        Args: { _student_ids: string[] }
+        Returns: string[]
       }
     }
     Enums: {
